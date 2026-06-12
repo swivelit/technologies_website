@@ -1,409 +1,530 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Swivel Technology | Home</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swivel Technologies — Building the Future Through Artificial Intelligence</title>
+  <meta name="description" content="Swivel Technologies, backed by Jey Groups, builds intelligent products across AI, e-commerce, mental wellness, enterprise automation and manufacturing quality — Good One, Swico AI, Grab Basket, Manas, AI Business Assistant and Defect Detector.">
+  <meta name="theme-color" content="#050508">
+  <link rel="icon" type="image/png" href="images/logo.png">
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="css/style.css">
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
-    <link href="https://unpkg.com/aos@2.3.4/dist/aos.css" rel="stylesheet">
-
-    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
-
+  <link rel="stylesheet" href="css/site.css">
+  <script>document.documentElement.classList.add('js');</script>
 </head>
-
 <body>
 
-    <header>
-        <div class="container">
-            <nav>
+  <canvas id="gl" aria-hidden="true"></canvas>
+  <div class="vignette" aria-hidden="true"></div>
 
-                <a href="index.html"><img src="images/logo.png" alt="Swivel Logo"></a>
+  <!-- loader -->
+  <div class="loader" id="loader" aria-hidden="true">
+    <p class="loader__word mono"><b>SWIVEL</b> — IGNITING PARTICLES</p>
+    <div class="loader__bar"><span id="loaderBar"></span></div>
+    <p class="loader__pct mono" id="loaderPct">000</p>
+  </div>
 
-                <div class="menu-toggle">
-                    <i class="fa-solid fa-bars"></i>
-                </div>
+  <!-- persistent chrome -->
+  <header class="chrome chrome--top">
+    <a class="brand" href="#intro" aria-label="Swivel Technologies — back to top">
+      <span class="brand__main">SWIVEL</span>
+      <span class="brand__sub mono">TECHNOLOGIES</span>
+    </a>
+    <nav class="pills" aria-label="Primary">
+      <a class="pill" href="#work"><span class="pill__dot" aria-hidden="true"></span>Work</a>
+      <button class="pill pill--accent" type="button" data-open="contactOverlay">Contact</button>
+    </nav>
+  </header>
 
-                <ul>
-                    <li><a href="index.html">Home</a></li>
-                    <li><a href="company.html">Company</a></li>
-                    <li><a href="products.html">Products</a></li>
-                    <li><a href="career.html">Career</a></li>
-                    <li><a href="contact.html">Contact</a></li>
-                </ul>
+  <aside class="chrome chrome--index" aria-label="Product index">
+    <ol class="windex" id="windex">
+      <li style="--item-accent:#ff7a18"><a href="#good-one"><span class="n">01</span>GOOD ONE</a></li>
+      <li style="--item-accent:#7b5cff"><a href="#swico-ai"><span class="n">02</span>SWICO AI</a></li>
+      <li style="--item-accent:#ff2d96"><a href="#grab-basket"><span class="n">03</span>GRAB BASKET</a></li>
+      <li style="--item-accent:#2dd6c1"><a href="#manas"><span class="n">04</span>MANAS</a></li>
+      <li style="--item-accent:#ffb627"><a href="#ai-business-assistant"><span class="n">05</span>AI BUSINESS ASSISTANT</a></li>
+      <li style="--item-accent:#ff3d2e"><a href="#defect-detector"><span class="n">06</span>DEFECT DETECTOR</a></li>
+    </ol>
+    <button class="btn-outline" type="button" data-open="productsOverlay">See All Work ↗</button>
+  </aside>
 
-            </nav>
+  <div class="chrome chrome--progress" aria-hidden="true">
+    <span class="progress__label" id="progressLabel">000</span>
+    <span class="progress__track"><span class="progress__fill" id="progressFill"></span></span>
+  </div>
+
+  <main id="content">
+
+    <!-- 00 / INTRO — under WebGL the particles draw images/logo.png here -->
+    <section class="scene scene--intro" id="intro" aria-label="Intro">
+      <div class="scene__hold">
+        <div class="intro__logo">
+          <p class="intro__wordmark">SWIVEL</p>
+          <p class="intro__wordsub mono">— Technologies —</p>
         </div>
-    </header>
-
-    <!-- <div id="ball-container"></div> -->
-
-    <section id="home" class="hero">
-
-        <div class="container">
-
-            <div class="row align-items-center">
-
-                <div class="col-lg-12" data-aos="fade-right">
-
-                    <h1>Swivel Technology</h1>
-                        <h1 class="highlight">Building Companies. Empowering the Future.</h1>
-
-                    <div class="divider"></div>
-
-                    <h3>Smart Solutions for Smart Businesses</h3>
-
-                    <p>
-                        Boasting a focus on innovation, technology, and local business development,
-                        JEY GROUPS is a quickly growing company network helping businesses grow digitally.
-                    </p>
-
-                    <a href="#grab" class="btn">Explore Our Solutions</a>
-                    <a href="contact.html" class="btn">Get Started Today</a>
-
-                </div>
-
-               
-
-            </div>
-
-        </div>
-
+        <p class="scroll-hint mono" id="scrollHint">[ scroll to enter ]</p>
+      </div>
     </section>
 
-    <section class="about" data-aos="fade-up">
-
-        <div class="container">
-
-            <div class="row align-items-center">
-
-                <!-- <div class="col-lg-6">
-
-                    <img class="section-img" src="images/home_about.jpg">
-
-                </div> -->
-
-                <div class="col-lg-12">
-
-                    <h2>About Swivel Technology</h2>
-
-                    <div class="divider"></div>
-
-                    <p>
-                        Swivel Technology is a rapidly expanding business network focused on innovation,
-                        technology, and local business growth.
-                    </p>
-
-                    <p>
-                        We empower entrepreneurs and small businesses with digital tools,
-                        web platforms, and scalable technology solutions.
-                    </p>
-
-                </div>
-
-            </div>
-
-        </div>
-
+    <!-- 01 / HERO -->
+    <section class="scene scene--hero" id="hero">
+      <div class="scene__hold">
+        <p class="eyebrow mono" data-reveal>Backed by <b>Jey Groups</b></p>
+        <h1 class="title-xl hero__title" data-scramble>SWIVEL<br>TECHNOLOGIES</h1>
+        <p class="hero__tag" data-reveal>Building the Future Through Artificial Intelligence</p>
+        <p class="hero__sub mono" data-reveal data-reveal-delay="1">Empowering industries · Transforming lives · Driving innovation</p>
+      </div>
     </section>
 
-    <section id="swivel" style="background:#F5E6D3;" data-aos="fade-up">
+    <!-- 02 / WORK -->
+    <div id="work">
 
-        <div class="container Technology">
-
-            <div class="row align-items-center">
-
-                <div class="col-lg-12">
-
-                    <h2>Technology</h2>
-
-                    <div class="divider"></div>
-
-                    <h3>Smart Solutions for Smart Businesses</h3>
-
-                    <p>
-                        Swivel Technology builds modern digital platforms,
-                        websites, business tools, and online stores for startups,
-                        entrepreneurs and local businesses.
-                    </p>
-
-                    <p>
-                        We believe every company should have a strong digital presence
-                        to compete in today's modern market.
-                    </p>
-
-                </div>
-
-                <!-- <div class="col-lg-6">
-
-                    <img class="section-img" src="images/home_tech.jpg">
-
-                </div> -->
-
-            </div>
-
+      <section class="scene scene--worktitle" aria-labelledby="workTitle">
+        <div class="scene__hold">
+          <p class="eyebrow mono" data-reveal>Selected work — 6 platforms</p>
+          <h2 class="title-lg" id="workTitle" data-scramble>ONE INTELLIGENT<br>ECOSYSTEM</h2>
+          <p class="lede" data-reveal>Six products across AI, commerce, wellness and industry — each one a scene. Scroll to move through them.</p>
         </div>
+      </section>
 
+      <!-- 01 GOOD ONE -->
+      <section class="scene scene--product" id="good-one" data-product="good-one" style="--accent:#ff7a18">
+        <div class="scene__hold">
+          <div class="product">
+            <div class="product__info">
+              <p class="product__kicker mono" data-reveal><span class="idx">01 /</span>Marketplace</p>
+              <h3 class="product__title title-md" data-scramble>GOOD ONE</h3>
+              <p class="product__tagline" data-reveal>Buy. Sell. Connect. — the next generation marketplace revolution.</p>
+              <p class="product__desc" data-reveal>A trusted marketplace platform enabling users to buy and sell pre-owned products with ease — electronics, furniture, vehicles, household items — connecting buyers and sellers in a secure, user-friendly environment. More than a marketplace, Good One is a digital business ecosystem empowering local vendors, entrepreneurs, retailers and consumers through seamless commerce.</p>
+              <ul class="feature-list" data-reveal data-reveal-delay="1">
+                <li>Real-time buyer–seller chat</li>
+                <li>Built-in vendor collaboration</li>
+                <li>Easy listing &amp; management</li>
+                <li>Secure interactions</li>
+                <li>Wide range of categories</li>
+                <li>Community-driven market</li>
+                <li>Smart product discovery</li>
+                <li>Sustainable shopping</li>
+                <li>Scalable across industries</li>
+              </ul>
+              <p class="product__foot mono" data-reveal data-reveal-delay="2"><b>Vision</b> — to become the most trusted digital marketplace connecting millions of buyers and sellers across India.</p>
+            </div>
+            <div class="product__card-wrap" data-reveal>
+              <div class="product__card" data-mockup="good-one">
+                <div class="card__bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>Swivel OS — Product 01<span class="addr">goodone.market</span></div>
+                <div class="card__screen">
+                  <div class="card__cover">
+                    <span class="big">01</span>
+                    <p class="tag mono">Marketplace scene — forming</p>
+                  </div>
+                  <span class="card__scan" aria-hidden="true"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 02 SWICO AI -->
+      <section class="scene scene--product" id="swico-ai" data-product="swico-ai" style="--accent:#7b5cff">
+        <div class="scene__hold">
+          <div class="product">
+            <div class="product__info">
+              <p class="product__kicker mono" data-reveal><span class="idx">02 /</span>Voice AI Companion</p>
+              <h3 class="product__title title-md" data-scramble>SWICO AI</h3>
+              <p class="product__tagline" data-reveal>Your AI companion. Your personal assistant. Your digital friend.</p>
+              <p class="product__desc" data-reveal>SWICO is an advanced voice-enabled AI assistant designed to understand people naturally — not just commands. It understands local language patterns, regional slang, emotions, intent and user behaviour to deliver meaningful conversations, instant answers, intelligent recommendations and personalised support.</p>
+              <ul class="feature-list" data-reveal data-reveal-delay="1">
+                <li>Voice-first experience</li>
+                <li>Human-like conversations</li>
+                <li>Emotional intelligence</li>
+                <li>Personalised interactions</li>
+                <li>Smart task management</li>
+                <li>Lifestyle assistance</li>
+                <li>Learns user preferences</li>
+                <li>Multi-language adaptability</li>
+                <li>Instant responses</li>
+                <li>AI-driven recommendations</li>
+                <li>Continuous learning</li>
+              </ul>
+              <p class="product__foot mono" data-reveal data-reveal-delay="2"><b>Vision</b> — to make AI accessible and useful for every individual, regardless of age, language or technical knowledge.</p>
+            </div>
+            <div class="product__card-wrap" data-reveal>
+              <div class="product__card" data-mockup="swico-ai">
+                <div class="card__bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>Swivel OS — Product 02<span class="addr">swico.ai</span></div>
+                <div class="card__screen">
+                  <div class="card__cover">
+                    <span class="big">02</span>
+                    <p class="tag mono">Companion scene — forming</p>
+                  </div>
+                  <span class="card__scan" aria-hidden="true"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 03 GRAB BASKET -->
+      <section class="scene scene--product" id="grab-basket" data-product="grab-basket" style="--accent:#ff2d96">
+        <div class="scene__hold">
+          <div class="product">
+            <div class="product__info">
+              <p class="product__kicker mono" data-reveal><span class="idx">03 /</span>E-Commerce</p>
+              <h3 class="product__title title-md" data-scramble>GRAB BASKET</h3>
+              <p class="product__tagline" data-reveal>Your complete online shopping destination — reimagining everyday shopping.</p>
+              <p class="product__desc" data-reveal>A comprehensive e-commerce ecosystem letting customers across Tamil Nadu shop groceries, food, fashion, cosmetics, electronics and household essentials from a single platform.</p>
+              <ul class="feature-list" data-reveal data-reveal-delay="1">
+                <li>Every category, one platform</li>
+                <li>Fast &amp; reliable delivery</li>
+                <li>Local vendor empowerment</li>
+                <li>User-friendly experience</li>
+                <li>Secure payments</li>
+                <li>Reliable order management</li>
+                <li>Doorstep delivery</li>
+                <li>Scalable logistics network</li>
+              </ul>
+              <p class="product__foot mono" data-reveal data-reveal-delay="2"><b>Mission</b> — to make everyday shopping effortless while empowering local businesses through digital commerce.</p>
+            </div>
+            <div class="product__card-wrap" data-reveal>
+              <div class="product__card" data-mockup="grab-basket">
+                <div class="card__bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>Swivel OS — Product 03<span class="addr">grabbasket.shop</span></div>
+                <div class="card__screen">
+                  <div class="card__cover">
+                    <span class="big">03</span>
+                    <p class="tag mono">Commerce scene — forming</p>
+                  </div>
+                  <span class="card__scan" aria-hidden="true"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 04 MANAS -->
+      <section class="scene scene--product" id="manas" data-product="manas" style="--accent:#2dd6c1">
+        <div class="scene__hold">
+          <div class="product">
+            <div class="product__info">
+              <p class="product__kicker mono" data-reveal><span class="idx">04 /</span>Mental Wellness</p>
+              <h3 class="product__title title-md" data-scramble>MANAS</h3>
+              <p class="product__tagline" data-reveal>Transforming mental wellness through technology.</p>
+              <p class="product__desc" data-reveal>A virtual psychological wellness platform making professional counseling accessible, affordable and stigma-free — through live sessions, expert guidance and personalised support programs.</p>
+              <ul class="feature-list" data-reveal data-reveal-delay="1">
+                <li>Individual counseling</li>
+                <li>Relationship guidance</li>
+                <li>Student mentorship</li>
+                <li>Stress &amp; anxiety management</li>
+                <li>Family counseling</li>
+                <li>Corporate wellness sessions</li>
+                <li>Group therapy programs</li>
+              </ul>
+              <p class="product__foot mono" data-reveal data-reveal-delay="2"><b>Vision</b> — to become India's most trusted digital mental wellness platform.</p>
+            </div>
+            <div class="product__card-wrap" data-reveal>
+              <div class="product__card" data-mockup="manas">
+                <div class="card__bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>Swivel OS — Product 04<span class="addr">manas.care</span></div>
+                <div class="card__screen">
+                  <div class="card__cover">
+                    <span class="big">04</span>
+                    <p class="tag mono">Wellness scene — forming</p>
+                  </div>
+                  <span class="card__scan" aria-hidden="true"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 05 AI BUSINESS ASSISTANT -->
+      <section class="scene scene--product" id="ai-business-assistant" data-product="ai-business-assistant" style="--accent:#ffb627">
+        <div class="scene__hold">
+          <div class="product">
+            <div class="product__info">
+              <p class="product__kicker mono" data-reveal><span class="idx">05 /</span>Enterprise Automation</p>
+              <h3 class="product__title title-md" data-scramble>AI BUSINESS ASSISTANT</h3>
+              <p class="product__tagline" data-reveal>The digital workforce of the future.</p>
+              <p class="product__desc" data-reveal>An intelligent platform that automates administrative work, customer engagement, communication management, reporting, telecalling, scheduling and business operations — the operational backbone of modern organisations.</p>
+              <div class="industry-grid" data-reveal data-reveal-delay="1">
+                <div><h4>Healthcare &amp; Hospitals</h4><p>Patient management · appointment automation · telecalling &amp; follow-ups · admin support</p></div>
+                <div><h4>Colleges &amp; Education</h4><p>Student management · admission automation · parent communication · academic administration</p></div>
+                <div><h4>Manufacturing</h4><p>Workforce coordination · production monitoring · inventory tracking · operational reporting</p></div>
+                <div><h4>Enterprise</h4><p>Employee &amp; branch management · CRM · business intelligence · workflow automation</p></div>
+              </div>
+              <ul class="feature-list" data-reveal data-reveal-delay="2">
+                <li>Reduced operational costs</li>
+                <li>Increased productivity</li>
+                <li>Automated engagement</li>
+                <li>Intelligent decision support</li>
+                <li>Scalable architecture</li>
+              </ul>
+            </div>
+            <div class="product__card-wrap" data-reveal>
+              <div class="product__card" data-mockup="ai-business-assistant">
+                <div class="card__bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>Swivel OS — Product 05<span class="addr">assist.swivel</span></div>
+                <div class="card__screen">
+                  <div class="card__cover">
+                    <span class="big">05</span>
+                    <p class="tag mono">Operations scene — forming</p>
+                  </div>
+                  <span class="card__scan" aria-hidden="true"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 06 DEFECT DETECTOR -->
+      <section class="scene scene--product" id="defect-detector" data-product="defect-detector" style="--accent:#ff3d2e">
+        <div class="scene__hold">
+          <div class="product">
+            <div class="product__info">
+              <p class="product__kicker mono" data-reveal><span class="idx">06 /</span>Computer Vision QA</p>
+              <h3 class="product__title title-md" data-scramble>DEFECT DETECTOR</h3>
+              <p class="product__tagline" data-reveal>AI-powered precision quality assurance — smart inspection for manufacturing excellence.</p>
+              <p class="product__desc" data-reveal>An intelligent AI inspection system using computer vision and machine learning to inspect products in real time, verifying finished products against client-defined specifications before delivery. Built for CNC manufacturing, automotive components, industrial production lines, engineering industries and high-precision manufacturing.</p>
+              <div class="product__stat" data-reveal data-reveal-delay="1">
+                <strong>99.9%</strong>
+                <span class="mono">defect detection accuracy on live production lines</span>
+              </div>
+              <ul class="feature-list" data-reveal data-reveal-delay="2">
+                <li>Reduced rejections &amp; rework</li>
+                <li>Lower manufacturing costs</li>
+                <li>Improved customer satisfaction</li>
+                <li>Consistent quality standards</li>
+                <li>Automated inspection</li>
+                <li>Client-spec validation</li>
+              </ul>
+            </div>
+            <div class="product__card-wrap" data-reveal>
+              <div class="product__card" data-mockup="defect-detector">
+                <div class="card__bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>Swivel OS — Product 06<span class="addr">detect.swivel</span></div>
+                <div class="card__screen">
+                  <div class="card__cover">
+                    <span class="big">06</span>
+                    <p class="tag mono">Inspection scene — forming</p>
+                  </div>
+                  <span class="card__scan" aria-hidden="true"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- 03 / ABOUT -->
+    <section class="scene scene--text" id="about" style="--accent:#7b5cff">
+      <div class="scene__hold">
+        <p class="eyebrow mono" data-reveal>Who we are</p>
+        <h2 class="title-lg" data-scramble>INTELLIGENT ECOSYSTEMS,<br>NOT JUST SOFTWARE</h2>
+        <div class="body-copy">
+          <p data-reveal>Swivel Technologies is a fast-growing technology company dedicated to delivering innovative digital solutions and customised services. We develop our own digital platforms while partnering with businesses to create technology that improves efficiency, drives growth and supports innovation. Backed by Jey Groups, we continuously embrace new challenges and opportunities for advancement — with a strong focus on quality, sustainability and long-term value, building solutions that help clients succeed in an ever-evolving digital landscape.</p>
+          <p data-reveal>We don't just build software — we create intelligent ecosystems that redefine how businesses operate, how people interact with technology, and how industries achieve growth. Our ambition is to become a global leader in Artificial Intelligence, Automation and Digital Transformation.</p>
+        </div>
+        <p class="sector-strip mono" data-reveal data-reveal-delay="1">Delivering across — <b>Healthcare</b> · <b>Education</b> · <b>Retail</b> · <b>Manufacturing</b> · <b>Enterprise Management</b></p>
+      </div>
     </section>
 
-    <section id="grab" data-aos="fade-up">
-
-        <div class="container text-center">
-
-            <h2>Grab Basket – Your Online Store Made Simple</h2>
-
-            <div class="divider mx-auto"></div>
-
-            <p>
-                Grab Basket helps shop owners and entrepreneurs create their own
-                online store easily without technical knowledge.
-            </p>
-
-            <div class="row mt-5 g-4">
-
-                <div class="col-md-4" data-aos="zoom-in">
-                    <div class="card">
-                        <i class="fa-solid fa-mobile-screen fa-2x mb-3"></i>
-                        <h5>Mobile Friendly</h5>
-                        <p>Your online store works perfectly on mobile devices.</p>
-                    </div>
-                </div>
-
-                <div class="col-md-4" data-aos="zoom-in">
-                    <div class="card">
-                        <i class="fa-solid fa-bolt fa-2x mb-3"></i>
-                        <h5>Easy to Use</h5>
-                        <p>Simple dashboard to manage products and orders.</p>
-                    </div>
-                </div>
-
-                <div class="col-md-4" data-aos="zoom-in">
-                    <div class="card">
-                        <i class="fa-solid fa-coins fa-2x mb-3"></i>
-                        <h5>Affordable Pricing</h5>
-                        <p>Low cost platform designed for small businesses.</p>
-                    </div>
-                </div>
-
-                <div class="col-md-4" data-aos="zoom-in">
-                    <div class="card">
-                        <i class="fa-solid fa-upload fa-2x mb-3"></i>
-                        <h5>Fast Product Upload</h5>
-                        <p>Add products quickly and manage your inventory easily.</p>
-                    </div>
-                </div>
-
-                <div class="col-md-4" data-aos="zoom-in">
-                    <div class="card">
-                        <i class="fa-solid fa-cart-shopping fa-2x mb-3"></i>
-                        <h5>Simple Order System</h5>
-                        <p>Track and process customer orders with ease.</p>
-                    </div>
-                </div>
-
-                <div class="col-md-4" data-aos="zoom-in">
-                    <div class="card">
-                        <i class="fa-solid fa-lock fa-2x mb-3"></i>
-                        <h5>Secure Payments</h5>
-                        <p>Safe and reliable payment options for customers.</p>
-                    </div>
-                </div>
-
-            </div>
-
-        </div>
-
+    <!-- 04 / WHY -->
+    <section class="scene scene--text scene--why" id="why" style="--accent:#ff7a18">
+      <div class="scene__hold">
+        <p class="eyebrow mono" data-reveal>Why choose Swivel</p>
+        <h2 class="title-lg" data-scramble>BUILT DIFFERENT,<br>BY DESIGN</h2>
+        <ol class="why-list">
+          <li data-reveal><span class="n">/01</span><div><h3>Diversified product portfolio</h3><p>AI, E-Commerce, HealthTech, Mental Wellness, Manufacturing Automation and Enterprise Software — one company, six frontiers.</p></div></li>
+          <li data-reveal><span class="n">/02</span><div><h3>AI-driven innovation in every product</h3><p>Intelligence isn't a feature we add — it's the foundation every platform is built on.</p></div></li>
+          <li data-reveal><span class="n">/03</span><div><h3>Massive market potential</h3><p>Products designed for scale, with recurring revenue built into every model.</p></div></li>
+          <li data-reveal><span class="n">/04</span><div><h3>Industry-focused solutions</h3><p>Not generic software — platforms shaped around how each industry actually works.</p></div></li>
+          <li data-reveal><span class="n">/05</span><div><h3>Future-ready vision</h3><p>Innovating today. Transforming tomorrow.</p></div></li>
+        </ol>
+      </div>
     </section>
 
-    <section id="goal" style="background:#F5E6D3;" data-aos="fade-up">
-
-        <div class="container text-center">
-
-            <h2>Our Goal</h2>
-
-            <div class="divider mx-auto"></div>
-
-
-            <p>
-                Our goal is to bring digital transformation to small businesses,
-                local stores and entrepreneurs.
-            </p>
-
-            <p>
-                We provide simple and affordable digital solutions
-                that allow traditional businesses to move online
-                and grow faster in the modern economy.
-            </p>
-
-            <p>
-                Through technology, automation, and online platforms
-                we help businesses improve efficiency and reach more customers.
-            </p>
-
+    <!-- 05 / MISSION & VISION -->
+    <section class="scene scene--text scene--mv" id="mission" style="--accent:#4f7cff">
+      <div class="scene__hold">
+        <div class="mv-grid">
+          <article>
+            <span class="mono" data-reveal>Vision</span>
+            <p data-reveal>To lead the future of digital innovation — becoming one of India's leading AI and technology companies, <em>building transformative products that create meaningful impact for millions of people, businesses and communities worldwide.</em></p>
+          </article>
+          <article>
+            <span class="mono" data-reveal>Mission</span>
+            <p data-reveal>To create intelligent products and customised technology solutions that simplify challenges, accelerate growth, improve human well-being <em>and drive sustainable value through continuous innovation and excellence.</em></p>
+          </article>
         </div>
-
+      </div>
     </section>
 
-    <section class="cta" data-aos="zoom-in">
+    <!-- 06 / TEAM -->
+    <section class="scene scene--text scene--team" id="team" style="--accent:#ffb627">
+      <div class="scene__hold">
+        <p class="eyebrow mono" data-reveal>The team</p>
+        <h2 class="title-lg" data-scramble>THE MINDS<br>BEHIND SWIVEL</h2>
 
-        <h2>Now is the time to put your business online!</h2>
-
-        <p>
-            Sign up with Grab Basket and start growing your business digitally.
-        </p>
-
-        <a href="#" class="btn">Sign Up Now</a>
-
-        <a href="contact.html" class="btn">Contact Us Today</a>
-
-    </section>
-
-    <footer class="footer-section pt-5 pb-4">
-
-        <div class="container">
-
-            <div class="row justify-content-between">
-
-                <div class="col-lg-4 col-md-6 mb-4">
-
-                    <h5>Technology</h5>
-
-                    <p style="color:white;">
-                        We build innovative digital solutions for entrepreneurs,
-                        startups and small businesses.
-                    </p>
-
-                </div>
-
-                <div class="col-lg-3 col-md-6 mb-4">
-
-                    <h5>Contact Info</h5>
-
-                    <ul class="list-unstyled">
-
-                        <li>Chennai, Tamil Nadu 600116</li>
-
-                        <li><a href="mailto:jeygroups@gmail.com">jeygroups@gmail.com</a></li>
-
-                        <li><a href="tel:+918438074230">+91 84380 74230</a></li>
-
-                    </ul>
-
-                </div>
-
-                <div class="col-lg-3 col-md-6 mb-4">
-
-                    <h5>Follow Us</h5>
-
-                    <div class="d-flex gap-3">
-
-                        <a target="_blank"
-                            href="https://www.instagram.com/swivel.technologies?igsh=MTU3bWl4bm81NjI4Ng%3D%3D"><i
-                                class="fa-brands fa-instagram"></i></a>
-
-                        <a target="_blank" href="https://www.linkedin.com/in/jey-groups-32358a3b1/"><i
-                                class="fa-brands fa-linkedin-in"></i></a>
-
-                        <a target="_blank" href="https://swivtrek.in/"><i class="fa-solid fa-globe"></i></a>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <div class="text-center mt-4 pt-3 border-top">
-
-                <p style="color:white;">
-                    © 2026 Swivel Technology | All Rights Reserved
-                </p>
-
-            </div>
-
+        <div class="founder" data-reveal>
+          <div class="founder__photo">
+            <img src="images/jeyanth (3).jpeg" alt="Jeyanth Ayyapparaj, Founder and CEO" loading="lazy" width="400" height="400">
+          </div>
+          <div>
+            <h3>Jeyanth Ayyapparaj</h3>
+            <p class="role mono">Founder &amp; CEO — Jey Groups</p>
+            <p>Success often begins with a change in mindset. At 23, with no backup plan or external support, the journey started with a simple vision — to build opportunities through innovation, technology and strong determination. Through persistence, learning and resilience, that vision grew into organisations that support businesses and empower individuals.</p>
+            <p>Today the focus is on bridging the gap between education and industry while building a future driven by innovation, growth and opportunity.</p>
+          </div>
         </div>
 
-    </footer>
+        <div class="team-grid">
+          <div class="team-card" data-reveal>
+            <figure><img src="images/ragul.jpeg" alt="Ragul, Chief Financial Officer" loading="lazy"></figure>
+            <h3>Ragul</h3>
+            <p class="role mono">Chief Financial Officer</p>
+          </div>
+          <div class="team-card" data-reveal data-reveal-delay="1">
+            <figure><img src="images/hari.jpeg" alt="Hari Krishnan, Chief Technology Officer" loading="lazy"></figure>
+            <h3>Hari Krishnan</h3>
+            <p class="role mono">Chief Technology Officer</p>
+          </div>
+          <div class="team-card" data-reveal data-reveal-delay="2">
+            <figure><img src="images/harsha.jpeg" alt="Harsha, Head of Digital Marketing" loading="lazy"></figure>
+            <h3>Harsha</h3>
+            <p class="role mono">Head of Digital Marketing</p>
+          </div>
+        </div>
 
-    <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+        <div class="stat-strip" data-reveal>
+          <div><strong>18+</strong><span class="mono">Major projects delivered</span></div>
+          <div><strong>3,000</strong><span class="mono">Employees onboarded</span></div>
+          <div><strong>40,000</strong><span class="mono">Partner shops collaborating</span></div>
+          <div><strong>4M+</strong><span class="mono">Products managed seamlessly</span></div>
+        </div>
 
-    <script>
-        AOS.init({ duration: 1200, once: true });
+        <div class="careers-cta" data-reveal>
+          <p>We create opportunities for talented people in technology, marketing and innovation. Build your future with Swivel.</p>
+          <a class="btn-outline" href="career.html">Join the team ↗</a>
+        </div>
+      </div>
+    </section>
 
-        window.addEventListener("scroll", function () {
-            document.querySelector("header")
-                .classList.toggle("scrolled", window.scrollY > 50);
-        });
-    </script>
+    <!-- 07 / CONTACT -->
+    <section class="scene scene--contact" id="contact" style="--accent:#ff7a18">
+      <div class="scene__hold">
+        <p class="eyebrow mono" data-reveal>Contact</p>
+        <h2 class="title-lg" data-scramble>START A<br>CONVERSATION</h2>
 
-    <!-- <script>
-        const container = document.getElementById("ball-container");
+        <div class="contact-grid">
+          <form class="form js-contact-form" id="contactFormMain" novalidate>
+            <div class="field">
+              <label class="mono" for="cfName">Your name</label>
+              <input id="cfName" type="text" name="user_name" autocomplete="name" required>
+            </div>
+            <div class="field">
+              <label class="mono" for="cfEmail">Your email</label>
+              <input id="cfEmail" type="email" name="user_email" autocomplete="email" required>
+            </div>
+            <div class="field">
+              <label class="mono" for="cfPhone">Mobile number — optional</label>
+              <input id="cfPhone" type="tel" name="user_phone" autocomplete="tel">
+            </div>
+            <div class="field">
+              <label class="mono" for="cfMsg">Your message</label>
+              <textarea id="cfMsg" name="message" rows="4" required></textarea>
+            </div>
+            <p class="form__status mono" aria-live="polite"></p>
+            <button class="btn-solid" type="submit">Send enquiry →</button>
+          </form>
 
-        function createBall() {
+          <div class="contact-info">
+            <div class="block" data-reveal>
+              <h4 class="mono">Location</h4>
+              <p>Chennai, Tamil Nadu 600116</p>
+            </div>
+            <div class="block" data-reveal>
+              <h4 class="mono">Email</h4>
+              <a href="mailto:jeygroups@gmail.com">jeygroups@gmail.com</a>
+            </div>
+            <div class="block" data-reveal>
+              <h4 class="mono">Phone</h4>
+              <a href="tel:+918438074230">+91 84380 74230</a>
+            </div>
+            <div class="block" data-reveal>
+              <h4 class="mono">Follow</h4>
+              <div class="socials">
+                <a href="https://www.instagram.com/swivel.technologies?igsh=MTU3bWl4bm81NjI4Ng%3D%3D" target="_blank" rel="noopener">Instagram</a>
+                <a href="https://www.linkedin.com/in/jey-groups-32358a3b1/" target="_blank" rel="noopener">LinkedIn</a>
+                <a href="https://swivtrek.in/" target="_blank" rel="noopener">Swivtrek</a>
+              </div>
+            </div>
+          </div>
+        </div>
 
-            const ball = document.createElement("div");
-            ball.classList.add("ball");
+        <footer class="site-foot">
+          <p class="tagline">Building the future, one intelligent solution at a time.</p>
+          <p>© <span id="year">2026</span> Swivel Technologies — Backed by Jey Groups</p>
+        </footer>
+      </div>
+    </section>
 
-            const size = Math.random() * 80 + 20;
+  </main>
 
-            ball.style.width = size + "px";
-            ball.style.height = size + "px";
+  <!-- contact overlay -->
+  <div class="overlay" id="contactOverlay" role="dialog" aria-modal="true" aria-labelledby="contactOverlayTitle" hidden>
+    <div class="overlay__backdrop" data-close></div>
+    <div class="overlay__panel">
+      <div class="overlay__head">
+        <h2 class="overlay__title" id="contactOverlayTitle">Start a conversation</h2>
+        <button class="overlay__close" type="button" data-close>[ esc ] close ×</button>
+      </div>
+      <form class="form js-contact-form" id="contactFormOverlay" novalidate>
+        <div class="field">
+          <label class="mono" for="ofName">Your name</label>
+          <input id="ofName" type="text" name="user_name" autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label class="mono" for="ofEmail">Your email</label>
+          <input id="ofEmail" type="email" name="user_email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label class="mono" for="ofPhone">Mobile number — optional</label>
+          <input id="ofPhone" type="tel" name="user_phone" autocomplete="tel">
+        </div>
+        <div class="field">
+          <label class="mono" for="ofMsg">Your message</label>
+          <textarea id="ofMsg" name="message" rows="4" required></textarea>
+        </div>
+        <p class="form__status mono" aria-live="polite"></p>
+        <button class="btn-solid" type="submit">Send enquiry →</button>
+      </form>
+    </div>
+  </div>
 
-            ball.style.left = Math.random() * window.innerWidth + "px";
+  <!-- products overlay -->
+  <div class="overlay" id="productsOverlay" role="dialog" aria-modal="true" aria-labelledby="productsOverlayTitle" hidden>
+    <div class="overlay__backdrop" data-close></div>
+    <div class="overlay__panel">
+      <div class="overlay__head">
+        <h2 class="overlay__title" id="productsOverlayTitle">All work</h2>
+        <button class="overlay__close" type="button" data-close>[ esc ] close ×</button>
+      </div>
+      <div class="ogrid">
+        <a href="#good-one" style="--accent:#ff7a18" data-close><span class="n">01 / Marketplace</span><h3>GOOD ONE</h3><p>Buy. Sell. Connect. A trusted pre-owned marketplace ecosystem.</p></a>
+        <a href="#swico-ai" style="--accent:#7b5cff" data-close><span class="n">02 / Voice AI</span><h3>SWICO AI</h3><p>A voice-first AI companion that understands people, not just commands.</p></a>
+        <a href="#grab-basket" style="--accent:#ff2d96" data-close><span class="n">03 / E-Commerce</span><h3>GRAB BASKET</h3><p>Groceries to electronics — everyday shopping on a single platform.</p></a>
+        <a href="#manas" style="--accent:#2dd6c1" data-close><span class="n">04 / Wellness</span><h3>MANAS</h3><p>Accessible, affordable, stigma-free psychological wellness.</p></a>
+        <a href="#ai-business-assistant" style="--accent:#ffb627" data-close><span class="n">05 / Enterprise</span><h3>AI BUSINESS ASSISTANT</h3><p>The digital workforce automating modern organisations.</p></a>
+        <a href="#defect-detector" style="--accent:#ff3d2e" data-close><span class="n">06 / Vision QA</span><h3>DEFECT DETECTOR</h3><p>99.9% accurate computer-vision inspection for manufacturing.</p></a>
+      </div>
+    </div>
+  </div>
 
-            const colors = ["#38bdf8", "#f472b6", "#34d399", "#facc15", "#a78bfa"];
-
-            ball.style.background = colors[Math.floor(Math.random() * colors.length)];
-
-            ball.style.animationDuration = (Math.random() * 15 + 10) + "s";
-
-            container.appendChild(ball);
-
-            setTimeout(() => {
-                ball.remove();
-            }, 20000);
-
-        }
-
-        setInterval(createBall, 800);
-    </script> -->
-
-    <script>
-
-        const currentPage = location.pathname.split("/").pop();
-
-        const menuLinks = document.querySelectorAll("nav ul li a");
-
-        menuLinks.forEach(link => {
-
-            const linkPage = link.getAttribute("href");
-
-            if (linkPage === currentPage) {
-                link.classList.add("active");
-            }
-
-        });
-
-    </script>
-
-    <script>
-
-        const toggle = document.querySelector(".menu-toggle");
-        const menu = document.querySelector("nav ul");
-
-        toggle.addEventListener("click", () => {
-            menu.classList.toggle("show");
-        });
-
-    </script>
-
+  <script type="module" src="js/app.js"></script>
 </body>
-
 </html>
