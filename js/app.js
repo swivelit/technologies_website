@@ -10,12 +10,21 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 if (!location.hash) window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const smallScreen = matchMedia('(max-width: 820px)').matches;
+const mobileMode = matchMedia('(max-width: 820px), (pointer: coarse), (hover: none)').matches;
 
 function webglSupported() {
   try {
     const c = document.createElement('canvas');
-    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+    const attrs = {
+      alpha: true,
+      antialias: false,
+      powerPreference: 'high-performance',
+    };
+    const gl =
+      c.getContext('webgl2', attrs) ||
+      c.getContext('webgl', attrs) ||
+      c.getContext('experimental-webgl', attrs);
+    return !!gl && !gl.isContextLost?.() && gl.getParameter(gl.MAX_VERTEX_ATTRIBS) >= 8;
   } catch {
     return false;
   }
@@ -28,12 +37,12 @@ async function boot() {
   const wantGL =
     canvas &&
     !reduceMotion &&
-    !smallScreen &&
     // getImageData on the logo is CORS-blocked under file:// — serve over http
     location.protocol !== 'file:' &&
     webglSupported();
 
   if (!wantGL) {
+    html.classList.remove('gl-loading', 'gl', 'gl-mobile');
     html.classList.add('no-gl');
     if (location.hash) {
       requestAnimationFrame(() => window.__swivelScrollTo?.(location.hash, { immediate: true }));
@@ -44,10 +53,10 @@ async function boot() {
   html.classList.add('gl-loading');
   try {
     const { initGL } = await import('./gl/engine.js');
-    await initGL(canvas);
+    await initGL(canvas, { mobile: mobileMode });
   } catch (err) {
     console.warn('[swivel] WebGL stage unavailable, using static theme:', err);
-    html.classList.remove('gl-loading', 'gl');
+    html.classList.remove('gl-loading', 'gl', 'gl-mobile');
     html.classList.add('no-gl');
   }
 }

@@ -3,7 +3,7 @@
    Layer order: canvas(0) → vignette(1) → content(2) → chrome(10)
    → overlays(60) → loader(100)
    Progressive enhancement: base styles render a fully readable
-   static dark site (no JS / no WebGL / small screens / reduced
+   static dark site (no JS / no WebGL / reduced
    motion). html.gl unlocks the tall scroll-scene layout driven
    by the WebGL particle stage.
    ============================================================ */
@@ -126,11 +126,21 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   pointer-events: none;
 }
 html.gl #gl { display: block; }
+html.gl-mobile #gl {
+  display: block;
+  opacity: 0.78;
+}
 
 .vignette {
   position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  overflow: hidden;
   background:
     radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+}
+html.gl-mobile .vignette {
+  background:
+    radial-gradient(90% 70% at 50% 35%, rgba(5, 5, 8, 0.08), rgba(5, 5, 8, 0.54) 72%, rgba(0, 0, 0, 0.78) 100%),
+    linear-gradient(180deg, rgba(5, 5, 8, 0.22), rgba(5, 5, 8, 0.66));
 }
 
 main { position: relative; z-index: 2; }
@@ -719,7 +729,16 @@ html.js [data-reveal][data-reveal-delay="1"] { transition-delay: 0.12s; }
 html.js [data-reveal][data-reveal-delay="2"] { transition-delay: 0.24s; }
 html.js [data-reveal][data-reveal-delay="3"] { transition-delay: 0.36s; }
 
-/* ---------- no-WebGL / static fallback ---------- */
+/* ---------- mobile GL readability + no-WebGL fallback ---------- */
+html.gl-mobile .scene--product::before,
+html.gl-mobile .scene--text::before,
+html.gl-mobile .scene--contact::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(5, 5, 8, 0.72), rgba(5, 5, 8, 0.38) 48%, rgba(5, 5, 8, 0.72)),
+    radial-gradient(70% 44% at 70% 38%, color-mix(in srgb, var(--accent, var(--ember)) 8%, transparent), transparent 72%);
+}
+
 html.no-gl body {
   background:
     radial-gradient(90% 60% at 50% -10%, rgba(123, 92, 255, 0.12), transparent 60%),
@@ -727,11 +746,44 @@ html.no-gl body {
     var(--bg);
   background-attachment: fixed;
 }
+html.no-gl .vignette::before,
+html.no-gl .vignette::after {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  opacity: 0.55;
+  will-change: transform, opacity;
+}
+html.no-gl .vignette::before {
+  background:
+    radial-gradient(38% 30% at 30% 24%, rgba(255, 122, 24, 0.13), transparent 72%),
+    radial-gradient(42% 32% at 74% 38%, rgba(123, 92, 255, 0.12), transparent 74%),
+    radial-gradient(36% 30% at 52% 78%, rgba(45, 214, 193, 0.06), transparent 76%);
+  animation: fallback-nebula 18s ease-in-out infinite alternate;
+}
+html.no-gl .vignette::after {
+  inset: 0;
+  opacity: 0.22;
+  background:
+    linear-gradient(115deg, transparent 12%, rgba(255, 255, 255, 0.055) 18%, transparent 26%),
+    linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.45));
+  transform: translateX(-45%);
+  animation: fallback-sheen 12s ease-in-out infinite;
+}
 html.no-gl .scene--product::before,
 html.no-gl .scene--text::before,
 html.no-gl .scene--contact::before {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   background: radial-gradient(55% 45% at 75% 35%, color-mix(in srgb, var(--accent, var(--violet)) 10%, transparent), transparent 70%);
+}
+@keyframes fallback-nebula {
+  0% { transform: translate3d(-2%, -1%, 0) scale(1); opacity: 0.44; }
+  100% { transform: translate3d(3%, 2%, 0) scale(1.08); opacity: 0.62; }
+}
+@keyframes fallback-sheen {
+  0%, 35% { transform: translateX(-52%); opacity: 0; }
+  62% { opacity: 0.22; }
+  100% { transform: translateX(52%); opacity: 0; }
 }
 
 /* ---------- career page ---------- */
@@ -761,6 +813,15 @@ html.no-gl .scene--contact::before {
 }
 
 @media (max-width: 1060px), (max-height: 720px), (hover: none), (pointer: coarse) {
+  html.gl-mobile #gl {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100svh;
+    height: 100dvh;
+  }
+
   html.gl .scene__hold {
     position: relative;
     top: auto;

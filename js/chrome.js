@@ -61,25 +61,47 @@ function initWorkIndex() {
 
 /* ---------- reveals + scramble ---------- */
 function initReveals() {
-  const revealEls = document.querySelectorAll('[data-reveal]');
-  const scrambleEls = document.querySelectorAll('[data-scramble]');
+  const revealEls = [...document.querySelectorAll('[data-reveal]')];
+  const scrambleEls = [...document.querySelectorAll('[data-scramble]')];
+  const observedEls = [...new Set([...revealEls, ...scrambleEls])];
+  if (!observedEls.length) return;
+
+  const isMobile = matchMedia('(max-width: 820px), (pointer: coarse), (hover: none)').matches;
+  const revealOne = (el) => {
+    if (el.hasAttribute('data-reveal')) el.classList.add('in');
+    if (el.hasAttribute('data-scramble') && !reduceMotion && !el.dataset.scrambled) {
+      el.dataset.scrambled = '1';
+      scramble(el);
+    }
+  };
+  const revealAll = () => {
+    revealEls.forEach((el) => el.classList.add('in'));
+  };
+
+  if (!('IntersectionObserver' in window)) {
+    requestAnimationFrame(() => {
+      observedEls.forEach(revealOne);
+      revealAll();
+    });
+    return;
+  }
 
   const io = new IntersectionObserver(
     (entries) => {
       for (const e of entries) {
         if (!e.isIntersecting) continue;
-        e.target.classList.add('in');
-        if (e.target.hasAttribute('data-scramble') && !reduceMotion) {
-          scramble(e.target);
-        }
+        revealOne(e.target);
         io.unobserve(e.target);
       }
     },
-    { threshold: 0.25, rootMargin: '0px 0px -6% 0px' }
+    {
+      threshold: isMobile ? 0.1 : 0.25,
+      rootMargin: isMobile ? '0px 0px -2% 0px' : '0px 0px -6% 0px',
+    }
   );
 
-  revealEls.forEach((el) => io.observe(el));
-  scrambleEls.forEach((el) => io.observe(el));
+  observedEls.forEach((el) => io.observe(el));
+  setTimeout(revealAll, isMobile ? 1400 : 2200);
 }
 
 /* ---------- smooth in-page navigation ---------- */

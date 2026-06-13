@@ -139,7 +139,7 @@ function loadScript(src) {
   });
 }
 
-async function loadDeps() {
+async function loadDeps({ lenis = true } = {}) {
   try {
     THREE = await import('../vendor/three.module.min.js');
   } catch {
@@ -151,7 +151,7 @@ async function loadDeps() {
   if (!window.ScrollTrigger) {
     await loadScript('js/vendor/ScrollTrigger.min.js').catch(() => loadScript(CDN.st));
   }
-  if (!window.Lenis) {
+  if (lenis && !window.Lenis) {
     // smooth scroll is a nice-to-have; the stage works without it
     await loadScript('js/vendor/lenis.min.js').catch(() => loadScript(CDN.lenis)).catch(() => {});
   }
@@ -170,8 +170,9 @@ const PROFILES = {
 };
 
 class Particles {
-  constructor(count) {
+  constructor(count, { mobile = false } = {}) {
     this.count = count;
+    this.mobile = mobile;
     this.formations = {};
     this.mode = 'spawn';
 
@@ -295,17 +296,59 @@ class Particles {
   }
 
   _applyProfile(name, duration, tl) {
-    const p = PROFILES[name] || PROFILES.nebula;
+    const p = this._profile(name);
     for (const k of ['uTurbAmp', 'uTurbFreq', 'uTurbSpeed', 'uSize']) {
       if (duration > 0) tl.to(this.uniforms[k], { value: p[k], duration, ease: 'sine.inOut' }, 0);
       else this.uniforms[k].value = p[k];
     }
   }
+
+  _profile(name) {
+    const p = PROFILES[name] || PROFILES.nebula;
+    if (!this.mobile) return p;
+    return {
+      uTurbAmp: p.uTurbAmp * 0.58,
+      uTurbFreq: p.uTurbFreq * 0.9,
+      uTurbSpeed: p.uTurbSpeed * 0.72,
+      uSize: p.uSize * 1.12,
+    };
+  }
 }
 
 /* ---------------- stage ---------------- */
 
-function particleBudget() {
+function clamp(v, min, max) {
+  return Math.min(max, Math.max(min, v));
+}
+
+function renderPixelRatio(isMobile) {
+  const raw = devicePixelRatio || 1;
+  if (!isMobile) return Math.min(raw, 2);
+
+  const cores = navigator.hardwareConcurrency || 6;
+  const memory = navigator.deviceMemory || 4;
+  const cap = cores <= 4 || memory <= 3 ? 1.25 : 1.5;
+  return Math.min(raw, cap);
+}
+
+function particleBudget({ mobile = false } = {}) {
+  if (mobile) {
+    const area = innerWidth * innerHeight;
+    const cores = navigator.hardwareConcurrency || 6;
+    const memory = navigator.deviceMemory || 4;
+    let maxBudget = 9000;
+    if (cores <= 4) maxBudget = 6500;
+    if (memory <= 3) maxBudget = Math.min(maxBudget, 5500);
+    if (memory <= 2) maxBudget = Math.min(maxBudget, 4200);
+
+    let n = area * 0.016;
+    if ((devicePixelRatio || 1) > 1.5) n *= 0.85;
+    if (cores <= 4) n *= 0.78;
+    if (memory <= 4) n *= 0.88;
+    if (memory <= 2) n *= 0.78;
+    return Math.round(clamp(n, 3500, maxBudget));
+  }
+
   const dpr = Math.min(devicePixelRatio || 1, 2);
   let n = (innerWidth * innerHeight) * 0.028;
   if (dpr > 1.5) n *= 0.8;
@@ -313,8 +356,9 @@ function particleBudget() {
   return Math.round(Math.min(48000, Math.max(12000, n)));
 }
 
-export async function initGL(canvas) {
-  await loadDeps();
+export async function initGL(canvas, options = {}) {
+  const isMobile = !!options.mobile;
+  await loadDeps({ lenis: !isMobile });
 
   const html = document.documentElement;
   const loader = document.getElementById('loader');
@@ -335,7 +379,7 @@ export async function initGL(canvas) {
     antialias: false,
     powerPreference: 'high-performance',
   });
-  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const dpr = renderPixelRatio(isMobile);
   renderer.setPixelRatio(dpr);
   renderer.setSize(innerWidth, innerHeight, false);
   renderer.setClearColor(0x000000, 0);
@@ -354,7 +398,7 @@ export async function initGL(canvas) {
   fitCamera();
   camera.position.set(0, 0, cam.baseZ);
 
-  const particles = new Particles(particleBudget());
+  const particles = new Particles(particleBudget({ mobile: isMobile }), { mobile: isMobile });
   particles.uniforms.uPixelRatio.value = dpr;
   scene.add(particles.points);
 
@@ -368,6 +412,7 @@ export async function initGL(canvas) {
   /* flip the document into immersive layout before wiring scroll */
   history.scrollRestoration = 'manual';
   html.classList.add('gl');
+  html.classList.toggle('gl-mobile', isMobile);
   html.classList.remove('gl-loading');
 
   let lenis = null;
@@ -424,7 +469,7 @@ export async function initGL(canvas) {
   }
 
   /* smooth scroll */
-  if (window.Lenis) {
+  if (!isMobile && window.Lenis) {
     try {
       lenis = new window.Lenis({
         lerp: 0.085,
@@ -442,7 +487,36 @@ export async function initGL(canvas) {
   updateSceneStickiness();
 
   /* scroll choreography */
-  const rig = { rotY: 0, idle: 0, idleSpeed: 0.008 };
+  const motion = isMobile
+    ? {
+        heroMorph: 2.2,
+        heroBurst: 0.38,
+        logoMorph: 1.8,
+        logoBurst: 0.18,
+        introMorph: 2.5,
+        introStagger: 0.38,
+        workOpacity: 0.36,
+        contactOpacity: 0.4,
+        dolly: 14,
+        rotY: 0.58,
+        scrub: 0.75,
+        idleNebula: 0.025,
+      }
+    : {
+        heroMorph: 3.0,
+        heroBurst: 1,
+        logoMorph: 2.2,
+        logoBurst: 0.4,
+        introMorph: 3.4,
+        introStagger: 0.55,
+        workOpacity: 0.34,
+        contactOpacity: 0.45,
+        dolly: 26,
+        rotY: 1.05,
+        scrub: 1.3,
+        idleNebula: 0.045,
+      };
+  const rig = { rotY: 0, idle: 0, idleSpeed: isMobile ? 0.004 : 0.008 };
   const dim = (v, d = 1.4) =>
     gsap.to(particles.uniforms.uOpacity, { value: v, duration: d, ease: 'sine.inOut', overwrite: 'auto' });
 
@@ -452,35 +526,35 @@ export async function initGL(canvas) {
     start: 'top 70%',
     onEnter: () => {
       hintEl?.classList.remove('is-on');
-      particles.morphTo('nebula', { duration: 3.0, stagger: 0.45, burst: 1 });
+      particles.morphTo('nebula', { duration: motion.heroMorph, stagger: isMobile ? 0.34 : 0.45, burst: motion.heroBurst });
     },
     onLeaveBack: () => {
       hintEl?.classList.add('is-on');
-      particles.morphTo('logo', { duration: 2.2, stagger: 0.35, burst: 0.4 });
+      particles.morphTo('logo', { duration: motion.logoMorph, stagger: isMobile ? 0.28 : 0.35, burst: motion.logoBurst });
     },
   });
   ScrollTrigger.create({
     trigger: '#work', start: 'top 55%',
-    onEnter: () => dim(0.34), onLeaveBack: () => dim(1),
+    onEnter: () => dim(motion.workOpacity), onLeaveBack: () => dim(1),
   });
   ScrollTrigger.create({
     trigger: '#contact', start: 'top 75%',
-    onEnter: () => dim(0.45), onLeaveBack: () => dim(0.34),
+    onEnter: () => dim(motion.contactOpacity), onLeaveBack: () => dim(motion.workOpacity),
   });
   gsap.to(cam, {
-    dolly: 26, ease: 'none',
-    scrollTrigger: { trigger: '#content', start: 'top top', end: 'bottom bottom', scrub: 1.3 },
+    dolly: motion.dolly, ease: 'none',
+    scrollTrigger: { trigger: '#content', start: 'top top', end: 'bottom bottom', scrub: motion.scrub },
   });
   gsap.to(rig, {
-    rotY: 1.05, ease: 'none',
-    scrollTrigger: { trigger: '#content', start: 'top top', end: 'bottom bottom', scrub: 1.8 },
+    rotY: motion.rotY, ease: 'none',
+    scrollTrigger: { trigger: '#content', start: 'top top', end: 'bottom bottom', scrub: isMobile ? 0.9 : 1.8 },
   });
 
   /* entry: deep links land formed; a fresh visit gets the intro */
   const hash = location.hash && getHashTarget(location.hash) ? location.hash : null;
   if (hash && hash !== '#intro') {
     particles.setImmediate('nebula');
-    particles.uniforms.uOpacity.value = 0.34;
+    particles.uniforms.uOpacity.value = motion.workOpacity;
   } else {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     lenis?.scrollTo?.(0, { immediate: true, force: true });
@@ -517,7 +591,7 @@ export async function initGL(canvas) {
   addEventListener('resize', () => {
     clearTimeout(resizeT);
     resizeT = setTimeout(() => {
-      const d = Math.min(devicePixelRatio || 1, 2);
+      const d = renderPixelRatio(isMobile);
       renderer.setPixelRatio(d);
       renderer.setSize(innerWidth, innerHeight, false);
       particles.uniforms.uPixelRatio.value = d;
@@ -534,7 +608,7 @@ export async function initGL(canvas) {
     gsap.ticker.remove(tick);
     try { lenis?.destroy?.(); } catch {}
     if (window.__swivelLenis === lenis) delete window.__swivelLenis;
-    html.classList.remove('gl');
+    html.classList.remove('gl', 'gl-mobile');
     html.classList.add('no-gl');
   });
 
@@ -551,7 +625,7 @@ export async function initGL(canvas) {
     const dt = Math.min(deltaMS / 1000, 0.05);
 
     particles.uniforms.uTime.value += dt;
-    rig.idleSpeed += ((particles.mode === 'nebula' ? 0.045 : 0) - rig.idleSpeed) * 0.02;
+    rig.idleSpeed += ((particles.mode === 'nebula' ? motion.idleNebula : 0) - rig.idleSpeed) * 0.02;
     rig.idle += dt * rig.idleSpeed;
     // the logo must face the camera — unwind any accumulated spin
     if (particles.mode !== 'nebula') rig.idle *= Math.pow(0.25, dt);
@@ -574,12 +648,12 @@ export async function initGL(canvas) {
   });
 
   gsap.to(particles.uniforms.uOpacity, {
-    value: hash && hash !== '#intro' ? 0.34 : 1,
+    value: hash && hash !== '#intro' ? motion.workOpacity : 1,
     duration: 1.6, ease: 'sine.out', delay: 0.3,
   });
   if (!hash || hash === '#intro') {
-    particles.morphTo('logo', { duration: 3.4, stagger: 0.55 });
+    particles.morphTo('logo', { duration: motion.introMorph, stagger: motion.introStagger });
     const hint = document.getElementById('scrollHint');
-    gsap.delayedCall(2.8, () => hint?.classList.add('is-on'));
+    gsap.delayedCall(isMobile ? 2.0 : 2.8, () => hint?.classList.add('is-on'));
   }
 }

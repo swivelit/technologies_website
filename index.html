@@ -525,6 +525,78 @@
     </div>
   </div>
 
-  <script type="module" src="js/app.js"></script>
+  <script>
+    (() => {
+      if (location.protocol !== 'file:') {
+        const script = document.createElement('script');
+        script.type = 'module';
+        script.src = 'js/app.js';
+        document.body.appendChild(script);
+        return;
+      }
+
+      const html = document.documentElement;
+      let openOverlay = null;
+      html.classList.remove('gl', 'gl-loading', 'gl-mobile');
+      html.classList.add('no-gl');
+
+      const revealAll = () => {
+        document.querySelectorAll('[data-reveal]').forEach((el) => el.classList.add('in'));
+      };
+      const scrollToTarget = (sel, { immediate = false } = {}) => {
+        if (!sel || sel === '#') return false;
+        let id = sel.startsWith('#') ? sel.slice(1) : sel;
+        try { id = decodeURIComponent(id); } catch {}
+        const target = document.getElementById(id);
+        if (!target) return false;
+        const chrome = document.querySelector('.chrome--top');
+        const offset = Math.ceil((chrome?.getBoundingClientRect().height || 0) + 24);
+        const top = Math.max(0, target.getBoundingClientRect().top + scrollY - offset);
+        scrollTo({ top, left: 0, behavior: immediate ? 'auto' : 'smooth' });
+        return true;
+      };
+      const setPageLocked = (locked) => {
+        html.classList.toggle('overlay-open', locked);
+        document.body.classList.toggle('overlay-open', locked);
+      };
+      const setOverlay = (overlay, open) => {
+        if (!overlay) return;
+        if (open) {
+          if (openOverlay && openOverlay !== overlay) setOverlay(openOverlay, false);
+          clearTimeout(overlay._hideTimer);
+          overlay.hidden = false;
+          requestAnimationFrame(() => overlay.classList.add('is-open'));
+          openOverlay = overlay;
+          setPageLocked(true);
+        } else {
+          overlay.classList.remove('is-open');
+          clearTimeout(overlay._hideTimer);
+          overlay._hideTimer = setTimeout(() => { overlay.hidden = true; }, 480);
+          if (openOverlay === overlay) openOverlay = null;
+          setPageLocked(false);
+        }
+      };
+
+      document.getElementById('year')?.replaceChildren(String(new Date().getFullYear()));
+      document.querySelectorAll('[data-open]').forEach((btn) => {
+        btn.addEventListener('click', () => setOverlay(document.getElementById(btn.dataset.open), true));
+      });
+      document.querySelectorAll('[data-close]').forEach((el) => {
+        el.addEventListener('click', (event) => {
+          if (!el.matches('a[href^="#"]')) event.preventDefault();
+          setOverlay(el.closest('.overlay'), false);
+        });
+      });
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && openOverlay) setOverlay(openOverlay, false);
+      });
+      window.__swivelScrollTo = scrollToTarget;
+      requestAnimationFrame(revealAll);
+      requestAnimationFrame(() => {
+        if (location.hash) scrollToTarget(location.hash, { immediate: true });
+      });
+      setTimeout(revealAll, 600);
+    })();
+  </script>
 </body>
 </html>
