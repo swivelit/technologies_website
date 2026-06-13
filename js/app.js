@@ -6,6 +6,9 @@ import { initChrome } from './chrome.js';
 
 const html = document.documentElement;
 
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+if (!location.hash) window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const smallScreen = matchMedia('(max-width: 820px)').matches;
 
@@ -32,6 +35,9 @@ async function boot() {
 
   if (!wantGL) {
     html.classList.add('no-gl');
+    if (location.hash) {
+      requestAnimationFrame(() => window.__swivelScrollTo?.(location.hash, { immediate: true }));
+    }
     return;
   }
 

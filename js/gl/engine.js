@@ -370,13 +370,76 @@ export async function initGL(canvas) {
   html.classList.add('gl');
   html.classList.remove('gl-loading');
 
-  /* smooth scroll */
   let lenis = null;
-  if (window.Lenis) {
-    lenis = new window.Lenis({ lerp: 0.085, smoothWheel: true });
-    window.__swivelLenis = lenis;
-    lenis.on('scroll', ScrollTrigger.update);
+  let refreshFrame = 0;
+  const sceneFitQuery = matchMedia('(max-width: 1060px), (max-height: 720px), (hover: none), (pointer: coarse)');
+
+  function getHashTarget(hash) {
+    if (!hash || hash === '#') return null;
+    let id = hash.startsWith('#') ? hash.slice(1) : hash;
+    try { id = decodeURIComponent(id); } catch {}
+    return document.getElementById(id);
   }
+
+  function updateSceneStickiness() {
+    const viewportH = window.visualViewport?.height || innerHeight;
+    document.querySelectorAll('.scene').forEach((sceneEl) => {
+      const hold = sceneEl.querySelector('.scene__hold');
+      if (!hold || sceneEl.classList.contains('scene--contact')) return;
+      sceneEl.classList.remove('scene--unstick');
+      const contentTooTall = hold.scrollHeight > viewportH + 8;
+      sceneEl.classList.toggle('scene--unstick', contentTooTall);
+    });
+  }
+
+  function refreshScroll(safe = false) {
+    updateSceneStickiness();
+    try { lenis?.resize?.(); } catch (err) {
+      console.warn('[swivel] Lenis resize failed:', err);
+    }
+    ScrollTrigger.refresh(safe);
+  }
+
+  function queueRefresh(safe = false) {
+    cancelAnimationFrame(refreshFrame);
+    refreshFrame = requestAnimationFrame(() => refreshScroll(safe));
+  }
+
+  function scheduleSettledRefreshes() {
+    const refresh = () => {
+      queueRefresh(true);
+      setTimeout(() => queueRefresh(true), 160);
+    };
+    if (document.readyState === 'complete') refresh();
+    else addEventListener('load', refresh, { once: true });
+    document.fonts?.ready?.then(refresh).catch(() => {});
+  }
+
+  function disableLenis(err) {
+    console.warn('[swivel] Lenis disabled, falling back to native scroll:', err);
+    try { lenis?.destroy?.(); } catch {}
+    if (window.__swivelLenis === lenis) delete window.__swivelLenis;
+    lenis = null;
+    ScrollTrigger.update();
+  }
+
+  /* smooth scroll */
+  if (window.Lenis) {
+    try {
+      lenis = new window.Lenis({
+        lerp: 0.085,
+        smoothWheel: true,
+        syncTouch: false,
+        autoResize: false,
+        prevent: (node) => !!node?.closest?.('[data-lenis-prevent]'),
+      });
+      window.__swivelLenis = lenis;
+      lenis.on('scroll', () => ScrollTrigger.update());
+    } catch (err) {
+      disableLenis(err);
+    }
+  }
+  updateSceneStickiness();
 
   /* scroll choreography */
   const rig = { rotY: 0, idle: 0, idleSpeed: 0.008 };
@@ -414,17 +477,31 @@ export async function initGL(canvas) {
   });
 
   /* entry: deep links land formed; a fresh visit gets the intro */
-  const hash = location.hash && document.querySelector(location.hash) ? location.hash : null;
+  const hash = location.hash && getHashTarget(location.hash) ? location.hash : null;
   if (hash && hash !== '#intro') {
     particles.setImmediate('nebula');
     particles.uniforms.uOpacity.value = 0.34;
   } else {
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    lenis?.scrollTo?.(0, { immediate: true, force: true });
   }
 
-  ScrollTrigger.refresh();
+  refreshScroll(true);
+  scheduleSettledRefreshes();
   if (hash && hash !== '#intro') {
-    (lenis ? lenis.scrollTo(hash, { immediate: true }) : document.querySelector(hash).scrollIntoView());
+    requestAnimationFrame(() => {
+      if (typeof window.__swivelScrollTo === 'function') {
+        window.__swivelScrollTo(hash, { immediate: true });
+      } else {
+        const target = getHashTarget(hash);
+        if (target) {
+          const top = Math.max(0, target.getBoundingClientRect().top + window.scrollY);
+          if (lenis) lenis.scrollTo(top, { immediate: true, force: true });
+          else window.scrollTo({ top, left: 0, behavior: 'auto' });
+        }
+      }
+      ScrollTrigger.update();
+    });
   }
 
   /* pointer parallax (fine pointers only) */
@@ -445,19 +522,31 @@ export async function initGL(canvas) {
       renderer.setSize(innerWidth, innerHeight, false);
       particles.uniforms.uPixelRatio.value = d;
       fitCamera();
+      queueRefresh(true);
     }, 120);
   });
+  window.visualViewport?.addEventListener('resize', () => queueRefresh(true), { passive: true });
+  if (sceneFitQuery.addEventListener) sceneFitQuery.addEventListener('change', () => queueRefresh(true));
+  else sceneFitQuery.addListener?.(() => queueRefresh(true));
 
   canvas.addEventListener('webglcontextlost', (e) => {
     e.preventDefault();
     gsap.ticker.remove(tick);
+    try { lenis?.destroy?.(); } catch {}
+    if (window.__swivelLenis === lenis) delete window.__swivelLenis;
     html.classList.remove('gl');
     html.classList.add('no-gl');
   });
 
   /* render loop — gsap.ticker is a single shared rAF */
   function tick(time, deltaMS) {
-    if (lenis) lenis.raf(time * 1000);
+    if (lenis) {
+      try {
+        lenis.raf(time * 1000);
+      } catch (err) {
+        disableLenis(err);
+      }
+    }
     if (document.hidden) return;
     const dt = Math.min(deltaMS / 1000, 0.05);
 

@@ -83,12 +83,55 @@ function initReveals() {
 }
 
 /* ---------- smooth in-page navigation ---------- */
-function scrollToTarget(sel) {
-  const target = document.querySelector(sel);
-  if (!target) return;
+function hashTarget(sel) {
+  if (!sel || sel === '#') return null;
+  let id = sel.startsWith('#') ? sel.slice(1) : sel;
+  try { id = decodeURIComponent(id); } catch {}
+  return document.getElementById(id);
+}
+
+function chromeOffset() {
+  const chrome = document.querySelector('.chrome--top');
+  const h = chrome ? chrome.getBoundingClientRect().height : 0;
+  return Math.ceil(h + 24);
+}
+
+function scrollLimit() {
+  return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+}
+
+function scrollToY(y, { immediate = false, duration = 1.15 } = {}) {
+  const top = Math.min(scrollLimit(), Math.max(0, Math.round(y)));
   const lenis = window.__swivelLenis;
-  if (lenis) lenis.scrollTo(target, { duration: 1.6 });
-  else target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
+  const instant = immediate || reduceMotion;
+
+  if (lenis && typeof lenis.scrollTo === 'function') {
+    try {
+      lenis.resize?.();
+      lenis.scrollTo(top, {
+        duration: instant ? 0 : duration,
+        immediate: instant,
+        force: true,
+      });
+      return true;
+    } catch (err) {
+      console.warn('[swivel] Lenis scroll failed, using native scroll:', err);
+    }
+  }
+
+  window.scrollTo({
+    top,
+    left: 0,
+    behavior: instant ? 'auto' : 'smooth',
+  });
+  return true;
+}
+
+function scrollToTarget(sel, { immediate = false } = {}) {
+  const target = hashTarget(sel);
+  if (!target) return false;
+  const top = target.getBoundingClientRect().top + window.scrollY - chromeOffset();
+  return scrollToY(top, { immediate });
 }
 
 function initAnchors() {
@@ -98,9 +141,42 @@ function initAnchors() {
     const sel = a.getAttribute('href');
     if (sel.length < 2) return;
     e.preventDefault();
-    closeOverlays();
-    scrollToTarget(sel);
-    history.replaceState(null, '', sel);
+    const insideOverlay = !!a.closest('.overlay');
+    closeOverlays({ restoreFocus: !insideOverlay });
+
+    requestAnimationFrame(() => {
+      if (scrollToTarget(sel)) history.replaceState(null, '', sel);
+    });
+  });
+
+  window.__swivelScrollTo = scrollToTarget;
+
+  const settleHash = () => {
+    if (location.hash) scrollToTarget(location.hash, { immediate: true });
+  };
+  requestAnimationFrame(settleHash);
+  addEventListener('load', settleHash, { once: true });
+  document.fonts?.ready?.then(settleHash).catch(() => {});
+}
+
+function initKeyboardScroll() {
+  document.addEventListener('keydown', (e) => {
+    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || openOverlay) return;
+    if (e.target.closest?.('input, textarea, select, button, [contenteditable="true"], [role="textbox"]')) return;
+
+    const page = Math.max(320, window.innerHeight - chromeOffset() - 40);
+    let next = null;
+    if (e.key === 'PageDown') next = window.scrollY + page;
+    else if (e.key === 'PageUp') next = window.scrollY - page;
+    else if (e.key === 'ArrowDown') next = window.scrollY + 80;
+    else if (e.key === 'ArrowUp') next = window.scrollY - 80;
+    else if (e.key === ' ') next = window.scrollY + (e.shiftKey ? -page : page);
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = scrollLimit();
+    else return;
+
+    e.preventDefault();
+    scrollToY(next, { duration: 0.9 });
   });
 }
 
@@ -108,30 +184,43 @@ function initAnchors() {
 let openOverlay = null;
 let lastFocus = null;
 
-function setOverlay(overlay, open) {
+function setPageLocked(locked) {
+  document.documentElement.classList.toggle('overlay-open', locked);
+  document.body.classList.toggle('overlay-open', locked);
+  if (!locked) {
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
+  }
+}
+
+function setOverlay(overlay, open, { restoreFocus = true } = {}) {
   const lenis = window.__swivelLenis;
   if (open) {
-    if (openOverlay && openOverlay !== overlay) setOverlay(openOverlay, false);
+    if (openOverlay && openOverlay !== overlay) setOverlay(openOverlay, false, { restoreFocus: false });
     lastFocus = document.activeElement;
+    clearTimeout(overlay._hideTimer);
     overlay.hidden = false;
     requestAnimationFrame(() => overlay.classList.add('is-open'));
     openOverlay = overlay;
-    document.body.style.overflow = 'hidden';
-    lenis?.stop();
+    setPageLocked(true);
+    lenis?.stop?.();
     const first = overlay.querySelector('input, button:not([data-close]), a');
     first?.focus({ preventScroll: true });
   } else {
     overlay.classList.remove('is-open');
-    setTimeout(() => { overlay.hidden = true; }, 480);
+    clearTimeout(overlay._hideTimer);
+    overlay._hideTimer = setTimeout(() => { overlay.hidden = true; }, 480);
     if (openOverlay === overlay) openOverlay = null;
-    document.body.style.overflow = '';
-    lenis?.start();
-    lastFocus?.focus?.({ preventScroll: true });
+    setPageLocked(false);
+    lenis?.start?.();
+    requestAnimationFrame(() => window.ScrollTrigger?.refresh?.(true));
+    if (restoreFocus) lastFocus?.focus?.({ preventScroll: true });
+    lastFocus = null;
   }
 }
 
-function closeOverlays() {
-  if (openOverlay) setOverlay(openOverlay, false);
+function closeOverlays(options = {}) {
+  if (openOverlay) setOverlay(openOverlay, false, options);
 }
 
 function initOverlays() {
@@ -142,8 +231,12 @@ function initOverlays() {
     });
   });
   document.querySelectorAll('.overlay').forEach((overlay) => {
+    overlay.querySelector('.overlay__panel')?.setAttribute('data-lenis-prevent', '');
     overlay.querySelectorAll('[data-close]').forEach((el) => {
-      el.addEventListener('click', () => setOverlay(overlay, false));
+      el.addEventListener('click', () => {
+        if (el.matches('a[href^="#"]')) return;
+        setOverlay(overlay, false);
+      });
     });
   });
   document.addEventListener('keydown', (e) => {
@@ -208,6 +301,7 @@ export function initChrome({ reduceMotion: rm = false } = {}) {
   initWorkIndex();
   initReveals();
   initAnchors();
+  initKeyboardScroll();
   initOverlays();
   initContactForms();
 }
