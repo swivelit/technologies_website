@@ -4,7 +4,11 @@
    Deps (three / gsap / ScrollTrigger / lenis) are vendored locally and
    fall back to CDN. Everything is lazy: the static site never pays. */
 
-import { spawnFormation, logoFormation, nebulaFormation } from './formations.js';
+import {
+  spawnFormation, logoFormation, nebulaFormation,
+  goodOneFormation, swicoFormation, grabBasketFormation,
+  manasFormation, aiAssistantFormation, defectFormation,
+} from './formations.js';
 
 const CDN = {
   three: 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js',
@@ -167,6 +171,13 @@ const PROFILES = {
   spawn: { uTurbAmp: 0.8, uTurbFreq: 0.05, uTurbSpeed: 0.1, uSize: 2.0 },
   logo: { uTurbAmp: 0.5, uTurbFreq: 0.12, uTurbSpeed: 0.22, uSize: 2.3 },
   nebula: { uTurbAmp: 2.7, uTurbFreq: 0.035, uTurbSpeed: 0.05, uSize: 3.5 },
+  // per-product idle character — low amp keeps the detailed shapes legible
+  'good-one': { uTurbAmp: 0.7, uTurbFreq: 0.08, uTurbSpeed: 0.14, uSize: 2.6 },
+  'swico-ai': { uTurbAmp: 1.0, uTurbFreq: 0.07, uTurbSpeed: 0.2, uSize: 2.9 },
+  'grab-basket': { uTurbAmp: 0.7, uTurbFreq: 0.09, uTurbSpeed: 0.16, uSize: 2.7 },
+  manas: { uTurbAmp: 0.5, uTurbFreq: 0.05, uTurbSpeed: 0.07, uSize: 2.8 },         // calm
+  'ai-business-assistant': { uTurbAmp: 0.8, uTurbFreq: 0.07, uTurbSpeed: 0.16, uSize: 2.5 },
+  'defect-detector': { uTurbAmp: 0.6, uTurbFreq: 0.1, uTurbSpeed: 0.26, uSize: 2.4 }, // snappy
 };
 
 class Particles {
@@ -405,6 +416,13 @@ export async function initGL(canvas, options = {}) {
   /* formations */
   particles.formations.spawn = spawnFormation(particles.count);
   particles.formations.nebula = nebulaFormation(particles.count);
+  // per-product shapes — cheap CPU arrays, keyed to the section ids
+  particles.formations['good-one'] = goodOneFormation(particles.count);
+  particles.formations['swico-ai'] = swicoFormation(particles.count);
+  particles.formations['grab-basket'] = grabBasketFormation(particles.count);
+  particles.formations['manas'] = manasFormation(particles.count);
+  particles.formations['ai-business-assistant'] = aiAssistantFormation(particles.count);
+  particles.formations['defect-detector'] = defectFormation(particles.count);
   particles.formations.logo = await logoFormation('images/logo.png', particles.count, { width: LOGO_W });
   particles.setImmediate('spawn');
   particles.uniforms.uOpacity.value = 0;
@@ -495,7 +513,7 @@ export async function initGL(canvas, options = {}) {
         logoBurst: 0.18,
         introMorph: 2.5,
         introStagger: 0.38,
-        workOpacity: 0.36,
+        workOpacity: 0.4,
         contactOpacity: 0.4,
         dolly: 14,
         rotY: 0.58,
@@ -509,7 +527,7 @@ export async function initGL(canvas, options = {}) {
         logoBurst: 0.4,
         introMorph: 3.4,
         introStagger: 0.55,
-        workOpacity: 0.34,
+        workOpacity: 0.4,
         contactOpacity: 0.45,
         dolly: 26,
         rotY: 1.05,
@@ -533,10 +551,40 @@ export async function initGL(canvas, options = {}) {
       particles.morphTo('logo', { duration: motion.logoMorph, stagger: isMobile ? 0.28 : 0.35, burst: motion.logoBurst });
     },
   });
+  // dim the stage across the whole product run; restore to full above it
   ScrollTrigger.create({
     trigger: '#work', start: 'top 55%',
     onEnter: () => dim(motion.workOpacity), onLeaveBack: () => dim(1),
   });
+
+  /* per-product shape morphs — as each product scrolls into view the cloud
+     dissolves and re-forms into its shape. bake() makes every morph start
+     from whatever is on screen, so the first goes nebula→shape and the rest
+     go shape→shape. burst is kept gentle so transitions read, not thrash. */
+  const PRODUCTS = ['good-one', 'swico-ai', 'grab-basket', 'manas', 'ai-business-assistant', 'defect-detector'];
+  const productDur = motion.heroMorph * 0.8;
+  const productStagger = isMobile ? 0.38 : 0.5;
+  const productBurst = isMobile ? 0.3 : 0.62;
+  const toNebula = (burst) =>
+    particles.morphTo('nebula', { duration: productDur, stagger: productStagger, burst });
+
+  PRODUCTS.forEach((id, idx) => {
+    const morph = () => particles.morphTo(id, { duration: productDur, stagger: productStagger, burst: productBurst });
+    ScrollTrigger.create({
+      trigger: `#${id}`, start: 'top 58%',
+      onEnter: morph,
+      onEnterBack: morph,
+      // scrolling up out of the first product returns the stage to the nebula
+      onLeaveBack: idx === 0 ? () => toNebula(productBurst * 0.6) : undefined,
+    });
+  });
+
+  // after the products, the narrative scenes settle back into the nebula
+  ScrollTrigger.create({
+    trigger: '#about', start: 'top 64%',
+    onEnter: () => toNebula(productBurst * 0.5),
+  });
+
   ScrollTrigger.create({
     trigger: '#contact', start: 'top 75%',
     onEnter: () => dim(motion.contactOpacity), onLeaveBack: () => dim(motion.workOpacity),
@@ -553,7 +601,9 @@ export async function initGL(canvas, options = {}) {
   /* entry: deep links land formed; a fresh visit gets the intro */
   const hash = location.hash && getHashTarget(location.hash) ? location.hash : null;
   if (hash && hash !== '#intro') {
-    particles.setImmediate('nebula');
+    // a deep link to a product lands directly on that shape, else the nebula
+    const id = hash.slice(1);
+    particles.setImmediate(particles.formations[id] ? id : 'nebula');
     particles.uniforms.uOpacity.value = motion.workOpacity;
   } else {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });

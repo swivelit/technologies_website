@@ -221,3 +221,377 @@ export function nebulaFormation(count, { radius = 34 } = {}) {
 
   return { positions, colors };
 }
+
+/* ============================================================
+   Per-product formations. Each is a distinct ~36-44u shape on
+   the origin with a baked cinematic tilt, palette-coloured with
+   a handful of bright "spark" particles and ~3-4% orbiting dust.
+   Distributions are fractions of count so the device-scaled
+   budget always fills the shape.
+   ============================================================ */
+
+/* rotation closure (Y → X → Z) that writes straight into a buffer —
+   bakes a tilt into every shape with no per-particle garbage. */
+function tiltWriter(ax = 0, ay = 0, az = 0) {
+  const cx = Math.cos(ax), sx = Math.sin(ax);
+  const cy = Math.cos(ay), sy = Math.sin(ay);
+  const cz = Math.cos(az), sz = Math.sin(az);
+  return (out, i, x, y, z) => {
+    const x1 = x * cy + z * sy;
+    const z1 = z * cy - x * sy;
+    const y2 = y * cx - z1 * sx;
+    const z2 = y * sx + z1 * cx;
+    const o = i * 3;
+    out[o] = x1 * cz - y2 * sz;
+    out[o + 1] = x1 * sz + y2 * cz;
+    out[o + 2] = z2;
+  };
+}
+
+function setCol(colors, i, r, g, b) {
+  const o = i * 3;
+  colors[o] = r; colors[o + 1] = g; colors[o + 2] = b;
+}
+
+/* loose orbiting motes around a form so a freshly-morphed shape still
+   breathes; fills indices [0, n) with dim palette-tinted dust. */
+function scatterDust(positions, colors, n, place, col, spreadXY, spreadZ = 4) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * TAU;
+    const r = spreadXY * (0.7 + Math.random() * 0.6);
+    place(positions, i, Math.cos(a) * r, Math.sin(a) * r * 0.55 + gauss() * 2.2, gauss() * spreadZ);
+    const b = 0.1 + Math.random() * 0.28;
+    setCol(colors, i, col[0] * b, col[1] * b, col[2] * b);
+  }
+}
+
+/* ---------- 01 GOOD ONE — marketplace lattice ---------- */
+/* an undulating grid of product tiles with two highlighted buyer/seller
+   clusters linked by bright connection lines. ember → warm gold. */
+export function goodOneFormation(count) {
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const place = tiltWriter(-0.34, 0.0, 0.12);
+
+  const EMBER_C = [1.0, 0.46, 0.12];
+  const GOLD_C = [1.3, 0.85, 0.34];
+
+  const W = 38, H = 23, cols = 9, rows = 6;
+  const cellW = W / cols, cellH = H / rows;
+  const tone = new Float32Array(cols * rows);
+  const goldCell = new Uint8Array(cols * rows);
+  for (let c = 0; c < tone.length; c++) {
+    tone[c] = 0.55 + Math.random() * 0.65;
+    goldCell[c] = Math.random() < 0.22 ? 1 : 0;
+  }
+
+  // buyer (left) and seller (right) anchors, lifted toward the camera
+  const buyer = [-W * 0.34, H * 0.18, 5.5];
+  const seller = [W * 0.34, -H * 0.18, 5.5];
+
+  const dust = Math.floor(count * 0.035);
+  const c1 = dust + Math.floor(count * 0.05);          // connection lines
+  const c2 = c1 + Math.floor(count * 0.03);            // buyer cluster
+  const c3 = c2 + Math.floor(count * 0.03);            // seller cluster
+
+  scatterDust(positions, colors, dust, place, EMBER_C, W * 0.6, 4.5);
+
+  for (let i = dust; i < count; i++) {
+    if (i < c1) {
+      // two arced lines bowing toward the camera between the anchors
+      const line = i & 1;
+      const t = Math.random();
+      const x = buyer[0] + (seller[0] - buyer[0]) * t;
+      const y = buyer[1] + (seller[1] - buyer[1]) * t;
+      const arc = Math.sin(t * Math.PI) * (line ? 5.5 : 3);
+      place(positions, i, x, y + gauss() * 0.25 + (line ? 1.4 : -1.4) * Math.sin(t * Math.PI), buyer[2] + arc + gauss() * 0.25);
+      const b = 0.85 + Math.random() * 0.8;
+      setCol(colors, i, GOLD_C[0] * b, GOLD_C[1] * b, GOLD_C[2] * b);
+      continue;
+    }
+    if (i < c3) {
+      const anchor = i < c2 ? buyer : seller;
+      place(positions, i, anchor[0] + gauss() * 1.8, anchor[1] + gauss() * 1.8, anchor[2] + gauss() * 1.8);
+      const warm = anchor === buyer ? EMBER_C : GOLD_C;
+      const b = 0.75 + Math.random() * 0.7;
+      setCol(colors, i, warm[0] * b, warm[1] * b, warm[2] * b);
+      continue;
+    }
+    // grid tile — gaps between cells read as separate product tiles
+    const cxi = (Math.random() * cols) | 0;
+    const cyi = (Math.random() * rows) | 0;
+    const ci = cyi * cols + cxi;
+    const x = (cxi + 0.5) * cellW - W / 2 + (Math.random() - 0.5) * cellW * 0.72;
+    const y = (cyi + 0.5) * cellH - H / 2 + (Math.random() - 0.5) * cellH * 0.72;
+    const z = Math.sin(x * 0.17 + y * 0.12) * 2.6 + gauss() * 0.5;     // gentle undulation
+    place(positions, i, x, y, z);
+    const pal = goldCell[ci] ? GOLD_C : EMBER_C;
+    const b = tone[ci] * (0.5 + Math.random() * 0.4);
+    setCol(colors, i, pal[0] * b, pal[1] * b, pal[2] * b);
+  }
+  return { positions, colors };
+}
+
+/* ---------- 02 SWICO AI — voice orb ---------- */
+/* a bright violet core sphere ringed by expanding audio-wave bands around
+   its equator. violet → blue. */
+export function swicoFormation(count) {
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const place = tiltWriter(-0.5, 0.0, 0.06);
+
+  const CORE = [0.72, 0.42, 1.45];
+  const VIOLET = [0.5, 0.3, 1.15];
+  const BLUE = [0.26, 0.5, 1.25];
+  const rings = [13, 17.5, 22];
+
+  const dust = Math.floor(count * 0.035);
+  const c1 = dust + Math.floor(count * 0.5);           // core sphere
+
+  scatterDust(positions, colors, dust, place, VIOLET, 26, 5);
+
+  for (let i = dust; i < count; i++) {
+    if (i < c1) {
+      // glowing core, denser & brighter toward the middle
+      const r = 8.5 * Math.pow(Math.random(), 0.7);
+      const a = Math.random() * TAU;
+      const ph = Math.acos(2 * Math.random() - 1);
+      place(positions, i, r * Math.sin(ph) * Math.cos(a), r * Math.sin(ph) * Math.sin(a), r * Math.cos(ph));
+      const k = 1 - r / 8.5;                            // 1 at centre
+      const b = 0.4 + k * 1.1;
+      const col = k > 0.55 ? CORE : VIOLET;
+      setCol(colors, i, col[0] * b, col[1] * b, col[2] * b);
+      continue;
+    }
+    // equatorial wave rings (thin XZ bands), radius wobbling like a waveform
+    const ri = (i - c1) % rings.length;
+    const a = Math.random() * TAU;
+    const rr = rings[ri] + gauss() * 0.9 + Math.sin(a * 6) * 0.5;
+    place(positions, i, Math.cos(a) * rr, gauss() * 0.7, Math.sin(a) * rr);
+    const col = ri === 0 ? VIOLET : BLUE;
+    const b = (1.1 - ri * 0.22) * (0.45 + Math.random() * 0.5);
+    setCol(colors, i, col[0] * b, col[1] * b, col[2] * b);
+  }
+  return { positions, colors };
+}
+
+/* ---------- 03 GRAB BASKET — product cells ---------- */
+/* a stacked wall/column of small cube clusters, like shopping crates.
+   magenta → pink, hot-pink sparks. */
+export function grabBasketFormation(count) {
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const place = tiltWriter(-0.28, 0.42, 0.12);
+
+  const MAGENTA = [1.2, 0.2, 0.62];
+  const PINK = [1.25, 0.46, 0.78];
+  const HOT = [1.5, 0.32, 0.8];
+
+  const cols = 4, rows = 6, spacing = 4.8, cube = 3.1;
+  const wallW = cols * spacing, wallH = rows * spacing;
+  const nCells = cols * rows;
+  const cellZ = new Float32Array(nCells);
+  const tone = new Float32Array(nCells);
+  const hot = new Uint8Array(nCells);
+  for (let c = 0; c < nCells; c++) {
+    cellZ[c] = (Math.random() - 0.5) * 8;              // loose depth stacking
+    tone[c] = 0.55 + Math.random() * 0.6;
+    hot[c] = Math.random() < 0.16 ? 1 : 0;
+  }
+
+  const dust = Math.floor(count * 0.035);
+  scatterDust(positions, colors, dust, place, MAGENTA, wallW * 0.95, 6);
+
+  for (let i = dust; i < count; i++) {
+    const cell = (Math.random() * nCells) | 0;
+    const cxi = cell % cols, cyi = (cell / cols) | 0;
+    const x = (cxi + 0.5) * spacing - wallW / 2 + (Math.random() - 0.5) * cube;
+    const y = (cyi + 0.5) * spacing - wallH / 2 + (Math.random() - 0.5) * cube;
+    const z = cellZ[cell] + (Math.random() - 0.5) * cube;
+    place(positions, i, x, y, z);
+    const pal = hot[cell] ? HOT : (cyi % 2 ? PINK : MAGENTA);
+    const b = tone[cell] * (0.55 + Math.random() * 0.4);
+    setCol(colors, i, pal[0] * b, pal[1] * b, pal[2] * b);
+  }
+  return { positions, colors };
+}
+
+/* ---------- 04 MANAS — breathing mandala ---------- */
+/* concentric rings of evenly-spaced lotus petals around a luminous core;
+   calm, planar, serene. teal → soft cyan. */
+export function manasFormation(count) {
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const place = tiltWriter(-0.2, 0.0, 0.0);
+
+  const TEAL = [0.14, 1.05, 0.92];
+  const CYAN = [0.5, 1.1, 1.15];
+  const CORE = [0.62, 1.2, 1.1];
+
+  const rings = [
+    { r: 5, n: 6, len: 6.5, wid: 2.4 },
+    { r: 10, n: 12, len: 7, wid: 2.2 },
+    { r: 14.5, n: 18, len: 7.5, wid: 2.0 },
+    { r: 19, n: 24, len: 7.5, wid: 1.9 },
+  ];
+  const slots = [];
+  rings.forEach((ring, ri) => {
+    for (let p = 0; p < ring.n; p++) {
+      const ang = (p / ring.n) * TAU + (ri % 2) * (Math.PI / ring.n);   // interleave rings
+      slots.push({ ang, r: ring.r, len: ring.len, wid: ring.wid, ri });
+    }
+  });
+
+  const dust = Math.floor(count * 0.03);
+  const c1 = dust + Math.floor(count * 0.08);          // core flower
+
+  scatterDust(positions, colors, dust, place, CYAN, 26, 2.4);
+
+  for (let i = dust; i < count; i++) {
+    if (i < c1) {
+      const r = 4 * Math.pow(Math.random(), 0.5);
+      const a = Math.random() * TAU;
+      place(positions, i, Math.cos(a) * r, Math.sin(a) * r, gauss() * 0.4);
+      const b = 0.7 + Math.random() * 0.7;
+      setCol(colors, i, CORE[0] * b, CORE[1] * b, CORE[2] * b);
+      continue;
+    }
+    const s = slots[(Math.random() * slots.length) | 0];
+    const tt = Math.random();
+    const wid = Math.sin(tt * Math.PI);                // almond taper at both tips
+    const radial = s.r + (tt - 0.5) * s.len;
+    const across = (Math.random() - 0.5) * s.wid * wid;
+    const ca = Math.cos(s.ang), sa = Math.sin(s.ang);
+    const z = Math.cos(radial * 0.13) * 0.9 + gauss() * 0.3;            // gentle dome
+    place(positions, i, ca * radial - sa * across, sa * radial + ca * across, z);
+    const col = s.ri >= 2 ? CYAN : TEAL;
+    const b = 0.5 + Math.random() * 0.4;               // low variance, serene
+    setCol(colors, i, col[0] * b, col[1] * b, col[2] * b);
+  }
+  return { positions, colors };
+}
+
+/* ---------- 05 AI BUSINESS ASSISTANT — network graph ---------- */
+/* a branching node hierarchy wired by edge particles sampled along
+   parent→child segments. gold/amber, bright amber nodes. */
+export function aiAssistantFormation(count) {
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const place = tiltWriter(-0.32, 0.34, 0.1);
+
+  const AMBER = [1.3, 0.72, 0.2];
+  const ROOT = [1.55, 0.95, 0.4];
+  const EDGE = [0.9, 0.55, 0.2];
+
+  // build a small radial tree of nodes + edges
+  const nodes = [{ x: 0, y: 0, z: 0, r: 1.7, lvl: 0 }];
+  const edges = [];
+  const l1 = 5 + (Math.random() * 2 | 0);
+  for (let a = 0; a < l1; a++) {
+    const ang = (a / l1) * TAU + (Math.random() - 0.5) * 0.3;
+    const i1 = nodes.length;
+    nodes.push({ x: Math.cos(ang) * (8 + Math.random() * 2), y: Math.sin(ang) * (8 + Math.random() * 2) * 0.82, z: gauss() * 2, r: 1.15, lvl: 1 });
+    edges.push([0, i1]);
+    const l2 = 2 + (Math.random() * 2 | 0);
+    for (let b = 0; b < l2; b++) {
+      const ang2 = ang + (b - (l2 - 1) / 2) * 0.32 + (Math.random() - 0.5) * 0.12;
+      const rad2 = 15 + Math.random() * 2.5;
+      const i2 = nodes.length;
+      nodes.push({ x: Math.cos(ang2) * rad2, y: Math.sin(ang2) * rad2 * 0.82, z: gauss() * 3, r: 0.85, lvl: 2 });
+      edges.push([i1, i2]);
+      if (Math.random() < 0.5) {
+        const ang3 = ang2 + (Math.random() - 0.5) * 0.4;
+        const rad3 = 20.5 + Math.random() * 2.5;
+        edges.push([i2, nodes.length]);
+        nodes.push({ x: Math.cos(ang3) * rad3, y: Math.sin(ang3) * rad3 * 0.82, z: gauss() * 3.5, r: 0.7, lvl: 3 });
+      }
+    }
+  }
+
+  const dust = Math.floor(count * 0.035);
+  const c1 = dust + Math.floor(count * 0.4);           // node clusters
+
+  scatterDust(positions, colors, dust, place, AMBER, 30, 5);
+
+  for (let i = dust; i < count; i++) {
+    if (i < c1) {
+      const n = nodes[(Math.random() * nodes.length) | 0];
+      place(positions, i, n.x + gauss() * n.r, n.y + gauss() * n.r, n.z + gauss() * n.r);
+      const col = n.lvl === 0 ? ROOT : AMBER;
+      const b = n.lvl === 0 ? 1.2 : 0.7 + Math.random() * 0.6;
+      setCol(colors, i, col[0] * b, col[1] * b, col[2] * b);
+      continue;
+    }
+    // edge particle along a parent→child segment
+    const e = edges[(Math.random() * edges.length) | 0];
+    const a = nodes[e[0]], b2 = nodes[e[1]];
+    const t = Math.random();
+    place(positions, i, a.x + (b2.x - a.x) * t + gauss() * 0.35, a.y + (b2.y - a.y) * t + gauss() * 0.35, a.z + (b2.z - a.z) * t + gauss() * 0.35);
+    const b = 0.32 + Math.random() * 0.4;
+    setCol(colors, i, EDGE[0] * b, EDGE[1] * b, EDGE[2] * b);
+  }
+  return { positions, colors };
+}
+
+/* ---------- 06 DEFECT DETECTOR — inspection grid ---------- */
+/* a planar measurement grid with a bright central reticle and a few
+   bounding-box outlines. industrial red → orange, bright red reticle. */
+export function defectFormation(count) {
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const place = tiltWriter(-0.16, 0.0, 0.0);
+
+  const GRID = [0.7, 0.32, 0.14];
+  const ORANGE = [1.2, 0.5, 0.14];
+  const RETICLE = [1.6, 0.26, 0.16];
+
+  const W = 38, H = 26, cols = 15, rows = 10;
+  const boxes = [
+    { x: -8, y: 5, w: 9, h: 7, col: ORANGE },
+    { x: 9, y: -4, w: 8, h: 9, col: RETICLE },
+    { x: -3, y: -8.5, w: 7, h: 5, col: ORANGE },
+  ];
+
+  const dust = Math.floor(count * 0.035);
+  const c1 = dust + Math.floor(count * 0.6);           // grid dots
+  const c2 = c1 + Math.floor(count * 0.08);            // reticle
+
+  scatterDust(positions, colors, dust, place, ORANGE, W * 0.6, 3.5);
+
+  for (let i = dust; i < count; i++) {
+    if (i < c1) {
+      // dot clustered on a grid intersection
+      const ix = (Math.random() * (cols + 1)) | 0;
+      const iy = (Math.random() * (rows + 1)) | 0;
+      place(positions, i, ix * (W / cols) - W / 2 + gauss() * 0.35, iy * (H / rows) - H / 2 + gauss() * 0.35, gauss() * 0.35);
+      const b = 0.4 + Math.random() * 0.4;
+      setCol(colors, i, GRID[0] * b, GRID[1] * b, GRID[2] * b);
+      continue;
+    }
+    if (i < c2) {
+      // central crosshair + ring reticle
+      let x, y;
+      if (Math.random() < 0.6) {
+        if (Math.random() < 0.5) { x = (Math.random() - 0.5) * 9; y = gauss() * 0.16; }
+        else { x = gauss() * 0.16; y = (Math.random() - 0.5) * 9; }
+      } else {
+        const a = Math.random() * TAU, rr = 3.4 + gauss() * 0.18;
+        x = Math.cos(a) * rr; y = Math.sin(a) * rr;
+      }
+      place(positions, i, x, y, gauss() * 0.25);
+      const b = 0.9 + Math.random() * 0.8;
+      setCol(colors, i, RETICLE[0] * b, RETICLE[1] * b, RETICLE[2] * b);
+      continue;
+    }
+    // bounding-box outline (one of a few detected regions)
+    const box = boxes[(Math.random() * boxes.length) | 0];
+    const hw = box.w / 2, hh = box.h / 2;
+    let x, y;
+    if (Math.random() < 0.5) { x = box.x + (Math.random() - 0.5) * box.w; y = box.y + (Math.random() < 0.5 ? -hh : hh); }
+    else { x = box.x + (Math.random() < 0.5 ? -hw : hw); y = box.y + (Math.random() - 0.5) * box.h; }
+    place(positions, i, x + gauss() * 0.18, y + gauss() * 0.18, gauss() * 0.3);
+    const b = 0.7 + Math.random() * 0.7;
+    setCol(colors, i, box.col[0] * b, box.col[1] * b, box.col[2] * b);
+  }
+  return { positions, colors };
+}
