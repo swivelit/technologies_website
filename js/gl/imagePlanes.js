@@ -95,17 +95,106 @@ export const CORRIDOR_PRODUCTS = [
 ];
 
 /* layout slots inside one product "room", relative to the room centre.
-   index 0 is the big hero screen; the rest are smaller, angled and clustered
-   AROUND/BEHIND it (biased to the right) so they orbit the hero without
-   drifting across the left-hand product copy.
-     x,y,z = offset (world units)   ry = yaw (rad)   s = scale   op = base opacity */
-const SLOTS = [
-  { x: 0.0, y: 0.3, z: 0.0, ry: 0.0, s: 1.0, op: 1.0 },
-  { x: 4.6, y: 2.7, z: -4.8, ry: -0.34, s: 0.5, op: 0.6 },
-  { x: 4.2, y: -2.9, z: -3.8, ry: -0.3, s: 0.54, op: 0.64 },
-  { x: -3.2, y: 1.7, z: -6.8, ry: 0.4, s: 0.42, op: 0.44 },
-  { x: 5.8, y: 0.4, z: -8.6, ry: -0.46, s: 0.4, op: 0.42 },
+   index 0 is the hero screen; supporting screens orbit around/behind it.
+   x,y,z = offset   ry = yaw   rx/rz = tilt/roll   s = scale   op = opacity */
+const BASE_SLOTS = [
+  { x: 0.0, y: 0.24, z: 0.0, ry: 0.0, rx: 0.02, rz: 0.0, s: 1.0, op: 1.0 },
+  { x: 4.55, y: 2.65, z: -4.75, ry: -0.36, rx: -0.04, rz: 0.02, s: 0.5, op: 0.62 },
+  { x: 4.15, y: -2.9, z: -3.65, ry: -0.3, rx: 0.03, rz: -0.025, s: 0.55, op: 0.66 },
+  { x: -3.0, y: 1.8, z: -6.45, ry: 0.42, rx: -0.02, rz: -0.03, s: 0.43, op: 0.48 },
+  { x: 5.75, y: 0.35, z: -8.25, ry: -0.48, rx: 0.04, rz: 0.035, s: 0.4, op: 0.44 },
 ];
+
+const MOBILE_SLOTS = [
+  { x: 0.0, y: 0.06, z: 0.0, ry: 0.0, rx: 0.0, rz: 0.0, s: 0.9, op: 0.94 },
+  { x: 2.4, y: -1.25, z: -4.4, ry: -0.26, rx: 0.0, rz: -0.015, s: 0.46, op: 0.48 },
+];
+
+const PRODUCT_PROFILES = {
+  'good-one': {
+    kind: 1, bob: 0.92, orbit: 0.55, yaw: 0.82, drift: 0.45, opacity: 1.0,
+    distort: 0.52, glass: 0.7, scan: 0.16, glow: 0.74, trail: 0.42,
+    roomX: 1.2, roomY: 0.35,
+    slots: [
+      BASE_SLOTS[0],
+      { x: 4.25, y: 2.8, z: -4.1, ry: -0.28, rx: -0.02, rz: 0.025, s: 0.52, op: 0.66 },
+      { x: 4.95, y: -2.45, z: -4.9, ry: -0.42, rx: 0.04, rz: -0.03, s: 0.49, op: 0.58 },
+      { x: -2.95, y: 1.65, z: -6.8, ry: 0.38, rx: -0.02, rz: -0.025, s: 0.42, op: 0.46 },
+      { x: 5.9, y: 0.15, z: -8.4, ry: -0.52, rx: 0.03, rz: 0.03, s: 0.38, op: 0.42 },
+    ],
+  },
+  'swico-ai': {
+    kind: 2, bob: 1.25, orbit: 0.95, yaw: 1.05, drift: 0.62, opacity: 0.96,
+    distort: 0.7, glass: 0.76, scan: 0.2, glow: 0.8, trail: 0.46,
+    roomX: 1.0, roomY: 0.65,
+    slots: [
+      { ...BASE_SLOTS[0], y: 0.12 },
+      { x: 4.9, y: 2.35, z: -5.2, ry: -0.48, rx: -0.06, rz: 0.05, s: 0.48, op: 0.62 },
+      { x: 3.55, y: -2.95, z: -3.9, ry: -0.22, rx: 0.05, rz: -0.05, s: 0.54, op: 0.58 },
+      { x: -3.55, y: 2.2, z: -6.2, ry: 0.54, rx: -0.04, rz: -0.035, s: 0.4, op: 0.46 },
+      { x: 5.55, y: -0.05, z: -8.7, ry: -0.55, rx: 0.05, rz: 0.04, s: 0.38, op: 0.4 },
+    ],
+  },
+  'grab-basket': {
+    kind: 3, bob: 0.8, orbit: 0.48, yaw: 0.68, drift: 0.38, opacity: 1.0,
+    distort: 0.48, glass: 0.68, scan: 0.24, glow: 0.72, trail: 0.34,
+    roomX: 1.3, roomY: 0.25,
+    slots: [
+      { ...BASE_SLOTS[0], y: 0.32 },
+      { x: 4.4, y: 2.9, z: -3.6, ry: -0.22, rx: -0.02, rz: 0.0, s: 0.5, op: 0.64 },
+      { x: 5.15, y: -2.6, z: -4.35, ry: -0.4, rx: 0.02, rz: -0.02, s: 0.5, op: 0.6 },
+      { x: -2.7, y: -0.2, z: -6.1, ry: 0.36, rx: 0.0, rz: -0.025, s: 0.44, op: 0.48 },
+      { x: 5.95, y: 0.95, z: -8.1, ry: -0.5, rx: 0.02, rz: 0.025, s: 0.39, op: 0.42 },
+    ],
+  },
+  manas: {
+    kind: 4, bob: 0.55, orbit: 0.42, yaw: 0.42, drift: 0.28, opacity: 0.94,
+    distort: 0.34, glass: 0.62, scan: 0.08, glow: 0.66, trail: 0.22,
+    roomX: 0.72, roomY: 0.42,
+    slots: [
+      { ...BASE_SLOTS[0], y: 0.22 },
+      { x: 4.1, y: 2.15, z: -4.8, ry: -0.28, rx: -0.02, rz: 0.03, s: 0.48, op: 0.55 },
+      { x: 3.7, y: -2.5, z: -4.0, ry: -0.18, rx: 0.02, rz: -0.02, s: 0.52, op: 0.56 },
+      { x: -2.45, y: 1.35, z: -6.3, ry: 0.3, rx: -0.02, rz: -0.02, s: 0.4, op: 0.42 },
+      { x: 5.1, y: 0.3, z: -8.0, ry: -0.38, rx: 0.02, rz: 0.02, s: 0.37, op: 0.36 },
+    ],
+  },
+  'ai-business-assistant': {
+    kind: 5, bob: 0.72, orbit: 0.36, yaw: 0.58, drift: 0.34, opacity: 0.98,
+    distort: 0.42, glass: 0.7, scan: 0.32, glow: 0.78, trail: 0.34,
+    roomX: 1.15, roomY: 0.2,
+    slots: [
+      { ...BASE_SLOTS[0], y: 0.1, s: 1.05 },
+      { x: 4.7, y: 2.25, z: -4.6, ry: -0.32, rx: -0.035, rz: 0.01, s: 0.48, op: 0.56 },
+      { x: 4.95, y: -2.35, z: -4.2, ry: -0.34, rx: 0.025, rz: -0.02, s: 0.52, op: 0.58 },
+      { x: -2.75, y: 1.25, z: -6.8, ry: 0.36, rx: 0.0, rz: -0.02, s: 0.4, op: 0.44 },
+      { x: 5.75, y: -0.15, z: -8.6, ry: -0.44, rx: 0.03, rz: 0.02, s: 0.38, op: 0.4 },
+    ],
+  },
+  'defect-detector': {
+    kind: 6, bob: 0.62, orbit: 0.28, yaw: 0.5, drift: 0.22, opacity: 1.0,
+    distort: 0.38, glass: 0.66, scan: 0.55, glow: 0.86, trail: 0.52,
+    roomX: 0.95, roomY: 0.12,
+    slots: [
+      { ...BASE_SLOTS[0], y: 0.08, s: 1.05 },
+      { x: 4.55, y: 2.35, z: -4.25, ry: -0.34, rx: -0.02, rz: 0.0, s: 0.48, op: 0.58 },
+      { x: 4.75, y: -2.15, z: -4.5, ry: -0.32, rx: 0.02, rz: -0.015, s: 0.52, op: 0.6 },
+      { x: -2.55, y: 1.6, z: -6.2, ry: 0.32, rx: -0.015, rz: -0.02, s: 0.4, op: 0.44 },
+      { x: 5.5, y: 0.05, z: -8.4, ry: -0.42, rx: 0.02, rz: 0.02, s: 0.38, op: 0.4 },
+    ],
+  },
+};
+
+function productProfile(product) {
+  return PRODUCT_PROFILES[product.id] || PRODUCT_PROFILES['good-one'];
+}
+
+function productSlot(product, index, isMobile) {
+  const profile = productProfile(product);
+  const slots = isMobile ? (profile.mobileSlots || MOBILE_SLOTS) : (profile.slots || BASE_SLOTS);
+  const slot = slots[index] || slots[slots.length - 1] || BASE_SLOTS[0];
+  return { ...slot };
+}
 
 const SPACING = 15;     // depth between product rooms
 const VIEW = 10;        // how far in front of the active room the camera sits
@@ -122,12 +211,16 @@ const ANCHOR_Y = 0.02;  // vertical anchor in NDC (~viewport centre, card height
 const SCREEN_VERT = /* glsl */ `
 varying vec2 vUv;
 varying float vFog;
+varying float vViewZ;
+varying vec3 vViewPos;
 uniform float uFogNear;
 uniform float uFogFar;
 void main(){
   vUv = uv;
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  vFog = clamp((-mv.z - uFogNear) / max(0.001, uFogFar - uFogNear), 0.0, 1.0);
+  vViewPos = mv.xyz;
+  vViewZ = -mv.z;
+  vFog = clamp((vViewZ - uFogNear) / max(0.001, uFogFar - uFogNear), 0.0, 1.0);
   gl_Position = projectionMatrix * mv;
 }`;
 
@@ -135,15 +228,29 @@ const SCREEN_FRAG = /* glsl */ `
 precision highp float;
 varying vec2 vUv;
 varying float vFog;
+varying float vViewZ;
+varying vec3 vViewPos;
 uniform sampler2D uTex;
 uniform float uHasTex;
 uniform vec3 uAccent;
 uniform vec3 uFog;
 uniform float uOpacity;
 uniform float uRadius;
+uniform float uTime;
+uniform float uVelocity;
+uniform float uActive;
+uniform float uDistort;
+uniform float uGlass;
+uniform float uScan;
+uniform float uKind;
 float roundedRect(vec2 p, vec2 b, float r){
   vec2 q = abs(p) - b + r;
   return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+}
+float hash21(vec2 p){
+  p = fract(p * vec2(123.34, 345.45));
+  p += dot(p, p + 34.345);
+  return fract(p.x * p.y);
 }
 void main(){
   vec2 p = vUv - 0.5;
@@ -151,20 +258,95 @@ void main(){
   float mask = smoothstep(0.006, -0.006, d);
   if (mask < 0.003) discard;
 
+  float speed = clamp(abs(uVelocity), 0.0, 1.0);
+  float edgeZone = smoothstep(0.18, 0.62, length(p) * 1.35);
+  vec2 radial = normalize(p + 0.0001);
+  vec2 wave = vec2(
+    sin((vUv.y * 7.0 + uTime * 0.92) + sin(vUv.x * 9.0 + uTime * 0.35)),
+    cos((vUv.x * 8.0 - uTime * 0.72) + sin(vUv.y * 7.0))
+  );
+  float liquid = (0.0025 + speed * 0.0045) * uDistort;
+  vec2 warp = wave * liquid + radial * edgeZone * liquid * 0.8;
+  vec2 uv = clamp(vUv + warp, vec2(0.002), vec2(0.998));
+
   vec3 col = uHasTex > 0.5
-    ? texture2D(uTex, vUv).rgb
+    ? texture2D(uTex, uv).rgb
     : mix(uAccent * 0.16, uAccent * 0.46, vUv.y) + 0.02;
 
-  // soft inner vignette
-  float vig = smoothstep(1.15, 0.30, length(p) * 1.25);
-  col *= mix(0.74, 1.0, vig);
-  // accent rim glow hugging the rounded border
-  float rim = smoothstep(0.045, 0.0, abs(d));
-  col += uAccent * rim * 0.55;
-  // dissolve into the corridor's dark with distance
+  if (uHasTex > 0.5) {
+    float chroma = (0.0012 + speed * 0.0045) * edgeZone * uGlass;
+    float cr = texture2D(uTex, clamp(uv + radial * chroma, vec2(0.002), vec2(0.998))).r;
+    float cb = texture2D(uTex, clamp(uv - radial * chroma, vec2(0.002), vec2(0.998))).b;
+    col.r = mix(col.r, cr, edgeZone * 0.78);
+    col.b = mix(col.b, cb, edgeZone * 0.78);
+  }
+
+  float vig = smoothstep(1.08, 0.28, length(p) * 1.28);
+  col *= mix(0.68, 1.04, vig);
+
+  float rim = smoothstep(0.06, 0.0, abs(d));
+  float fresnel = pow(edgeZone, 2.4) * (0.42 + uActive * 0.45 + speed * 0.65);
+  col += uAccent * rim * (0.34 + uGlass * 0.46 + speed * 0.22);
+  col += uAccent * fresnel * 0.18;
+
+  float scanLine = smoothstep(0.985, 1.0, sin((vUv.y + uTime * 0.08) * 420.0) * 0.5 + 0.5);
+  float scanBand = smoothstep(0.06, 0.0, abs(fract(vUv.y * 1.24 - uTime * (0.08 + speed * 0.08)) - 0.5));
+  float gridX = smoothstep(0.987, 1.0, sin(vUv.x * 95.0) * 0.5 + 0.5);
+  float gridY = smoothstep(0.987, 1.0, sin(vUv.y * 78.0) * 0.5 + 0.5);
+  float grid = max(gridX, gridY) * step(4.5, uKind);
+  col += uAccent * (scanLine * 0.03 + scanBand * 0.18 + grid * 0.06) * uScan * (0.5 + uActive);
+
+  float sheen = smoothstep(0.08, 0.0, abs((vUv.x + vUv.y * 0.55) - fract(uTime * 0.085) * 1.65 + 0.32));
+  col += mix(vec3(0.6, 0.92, 1.0), uAccent, 0.35) * sheen * (0.055 + speed * 0.06) * uGlass;
+
+  float noise = hash21(floor(vUv * vec2(120.0, 80.0)) + floor(uTime * 16.0));
+  col += uAccent * (noise - 0.5) * 0.014 * uGlass;
+
   col = mix(col, uFog, vFog * 0.94);
 
   float a = mask * uOpacity * (1.0 - vFog * 0.10);
+  gl_FragColor = vec4(col, a);
+}`;
+
+const AURA_VERT = /* glsl */ `
+varying vec2 vUv;
+varying float vFog;
+uniform float uFogNear;
+uniform float uFogFar;
+void main(){
+  vUv = uv;
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  float viewZ = -mv.z;
+  vFog = clamp((viewZ - uFogNear) / max(0.001, uFogFar - uFogNear), 0.0, 1.0);
+  gl_Position = projectionMatrix * mv;
+}`;
+
+const AURA_FRAG = /* glsl */ `
+precision highp float;
+varying vec2 vUv;
+varying float vFog;
+uniform vec3 uAccent;
+uniform vec3 uFog;
+uniform float uOpacity;
+uniform float uRadius;
+uniform float uTime;
+uniform float uVelocity;
+uniform float uGlow;
+float roundedRect(vec2 p, vec2 b, float r){
+  vec2 q = abs(p) - b + r;
+  return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+}
+void main(){
+  vec2 p = vUv - 0.5;
+  float d = roundedRect(p, vec2(0.5), uRadius);
+  float mask = smoothstep(0.04, -0.012, d);
+  float edge = smoothstep(0.18, 0.0, abs(d));
+  float core = smoothstep(0.62, 0.08, length(p));
+  float breathe = 0.78 + 0.22 * sin(uTime * 1.3);
+  float speed = clamp(abs(uVelocity), 0.0, 1.0);
+  vec3 col = mix(uAccent * 0.42, uAccent * 1.22, edge + speed * 0.35);
+  col = mix(col, uFog, vFog * 0.88);
+  float a = mask * (edge * 0.75 + core * 0.2) * uOpacity * uGlow * breathe * (1.0 - vFog * 0.45);
   gl_FragColor = vec4(col, a);
 }`;
 
@@ -244,11 +426,11 @@ export function createCorridor(THREE, opts = {}) {
     mobile = false,
     reducedMotion = false,
     maxAnisotropy = 1,
-    masterOpacity = mobile ? 0.5 : 0.62,
+    masterOpacity = mobile ? 0.46 : 0.72,
   } = opts;
 
-  const planesPerRoom = mobile ? 2 : 4;
-  const maxDim = mobile ? 540 : 820;
+  const planesPerRoom = mobile ? 2 : 5;
+  const maxDim = mobile ? 540 : 940;
   // default horizontal anchor in NDC: desktop pushes the rooms toward the
   // right-hand product-card column (text sits on the left); mobile stacks the
   // layout, so keep the corridor centred behind the content.
@@ -265,22 +447,23 @@ export function createCorridor(THREE, opts = {}) {
 
   const fogColor = new THREE.Color(0x05060a);
   const unit = new THREE.PlaneGeometry(1, 1);
-  const rooms = [];     // { group, z, planes:[{ mesh, mat, slot, basePos, phase }] }
+  const rooms = [];     // { group, z, base, profile, planes:[{ mesh, aura, trails, ... }] }
   const allPlanes = []; // flat list for loading/disposal
 
   CORRIDOR_PRODUCTS.forEach((product, ri) => {
+    const profile = productProfile(product);
     const group = new THREE.Group();
     const rz = -ri * SPACING;
     // gentle per-room drift so the corridor isn't a dead-straight pipe
-    const rx = Math.sin(ri * 1.3) * 1.4;
-    const ry = Math.cos(ri * 0.7) * 0.9;
+    const rx = Math.sin(ri * 1.3) * profile.roomX;
+    const ry = Math.cos(ri * 0.7) * profile.roomY;
     group.position.set(rx, ry, rz);
     anchorGroup.add(group);
 
     const accent = new THREE.Color(product.accent);
     const planes = [];
     for (let i = 0; i < planesPerRoom; i++) {
-      const slot = SLOTS[i] || SLOTS[SLOTS.length - 1];
+      const slot = productSlot(product, i, mobile);
       const mat = new THREE.ShaderMaterial({
         uniforms: {
           uTex: { value: null },
@@ -291,6 +474,13 @@ export function createCorridor(THREE, opts = {}) {
           uRadius: { value: 0.045 },
           uFogNear: { value: FOG_NEAR },
           uFogFar: { value: FOG_FAR },
+          uTime: { value: 0 },
+          uVelocity: { value: 0 },
+          uActive: { value: 0 },
+          uDistort: { value: profile.distort },
+          uGlass: { value: profile.glass },
+          uScan: { value: profile.scan },
+          uKind: { value: profile.kind },
         },
         vertexShader: SCREEN_VERT,
         fragmentShader: SCREEN_FRAG,
@@ -300,34 +490,87 @@ export function createCorridor(THREE, opts = {}) {
       });
       const mesh = new THREE.Mesh(unit, mat);
       mesh.frustumCulled = false;
-      mesh.rotation.y = slot.ry;
+      mesh.rotation.set(slot.rx || 0, slot.ry || 0, slot.rz || 0);
       // no renderOrder override — three sorts transparent meshes back-to-front
       // by distance, so within a room the deeper siblings paint before the hero
       const basePos = new THREE.Vector3(slot.x, slot.y, slot.z);
       mesh.position.copy(basePos);
-      // provisional size from orientation; refined when the texture arrives
-      sizePlane(mesh, slot, product.orient === 'portrait' ? 0.46 : 1.6, mobile);
+
+      const auraMat = new THREE.ShaderMaterial({
+        uniforms: {
+          uAccent: { value: accent },
+          uFog: { value: fogColor },
+          uOpacity: { value: 0 },
+          uRadius: { value: 0.06 },
+          uTime: { value: 0 },
+          uVelocity: { value: 0 },
+          uGlow: { value: profile.glow },
+          uFogNear: { value: FOG_NEAR },
+          uFogFar: { value: FOG_FAR },
+        },
+        vertexShader: AURA_VERT,
+        fragmentShader: AURA_FRAG,
+        transparent: true,
+        depthWrite: false,
+        depthTest: false,
+        blending: THREE.AdditiveBlending,
+      });
+      const aura = new THREE.Mesh(unit, auraMat);
+      aura.frustumCulled = false;
+      aura.position.copy(basePos).add(new THREE.Vector3(0, 0, -0.05));
+      aura.rotation.copy(mesh.rotation);
+      group.add(aura);
       group.add(mesh);
 
+      const trails = [];
+      if (!mobile && !reducedMotion && i === 0) {
+        for (let k = 0; k < 2; k++) {
+          const trailMat = auraMat.clone();
+          trailMat.uniforms = {
+            uAccent: { value: accent },
+            uFog: { value: fogColor },
+            uOpacity: { value: 0 },
+            uRadius: { value: 0.065 },
+            uTime: { value: 0 },
+            uVelocity: { value: 0 },
+            uGlow: { value: profile.glow * (0.65 - k * 0.14) },
+            uFogNear: { value: FOG_NEAR },
+            uFogFar: { value: FOG_FAR },
+          };
+          const trail = new THREE.Mesh(unit, trailMat);
+          trail.frustumCulled = false;
+          trail.position.copy(basePos).add(new THREE.Vector3(0, 0, -0.28 - k * 0.34));
+          trail.rotation.copy(mesh.rotation);
+          trails.push({ mesh: trail, mat: trailMat, lag: k + 1 });
+          group.add(trail);
+        }
+      }
+
       const plane = {
-        mesh, mat, slot, basePos,
+        mesh, mat, aura, auraMat, trails, slot, slotIndex: i, basePos,
         phase: Math.random() * Math.PI * 2,
         url: product.images[i],
-        product,
+        product, profile,
       };
+      // provisional size from orientation; refined when the texture arrives
+      sizePlane(plane, product.orient === 'portrait' ? 0.46 : 1.6, mobile);
       planes.push(plane);
       allPlanes.push(plane);
     }
-    rooms.push({ group, z: rz, planes });
+    rooms.push({ group, z: rz, base: new THREE.Vector3(rx, ry, rz), profile, planes });
   });
 
-  function sizePlane(mesh, slot, aspect, isMobile) {
-    const portraitH = isMobile ? 7.0 : 8.5;
-    const landscapeW = isMobile ? 9.5 : 11.0;
+  function sizePlane(plane, aspect, isMobile) {
+    const portraitH = isMobile ? 6.4 : 7.25;
+    const landscapeW = isMobile ? 8.4 : 9.6;
     let w, h;
     if (aspect < 1) { h = portraitH; w = h * aspect; }
     else { w = landscapeW; h = w / aspect; }
-    mesh.scale.set(w * slot.s, h * slot.s, 1);
+    const sx = w * plane.slot.s;
+    const sy = h * plane.slot.s;
+    plane.mesh.scale.set(sx, sy, 1);
+    plane.aura.scale.set(sx * 1.1, sy * 1.1, 1);
+    for (const trail of plane.trails) trail.mesh.scale.set(sx * (1.08 + trail.lag * 0.045), sy * (1.08 + trail.lag * 0.045), 1);
   }
 
   const api = {
@@ -344,6 +587,8 @@ export function createCorridor(THREE, opts = {}) {
     _loaded: false,
     _anchorX: defaultAnchorX,
     _anchorTargetX: defaultAnchorX,
+    _prevHead: 0,
+    _velocity: 0,
 
     /* explicit control surface (engine ↔ corridor) */
     setActive(i) { this.targetHead = clamp(i, 0, this.count - 1); },
@@ -361,7 +606,7 @@ export function createCorridor(THREE, opts = {}) {
       if (this._loaded) return;
       this._loaded = true;
       // hero screens (slot 0) first, then the rest
-      const queue = [...allPlanes].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
+      const queue = [...allPlanes].sort((a, b) => a.slotIndex - b.slotIndex);
       const pool = mobile ? 2 : 4;
       let cursor = 0;
       const worker = async () => {
@@ -372,7 +617,7 @@ export function createCorridor(THREE, opts = {}) {
             plane.mat.uniforms.uTex.value = tex;
             plane.mat.uniforms.uHasTex.value = 1;
             plane.tex = tex;
-            sizePlane(plane.mesh, plane.slot, aspect, mobile);
+            sizePlane(plane, aspect, mobile);
           } catch (err) {
             const tex = labelTexture(THREE, plane.product.name, plane.product.accent);
             plane.mat.uniforms.uTex.value = tex;
@@ -399,6 +644,10 @@ export function createCorridor(THREE, opts = {}) {
 
       // ease the fractional active room toward the section the engine reports
       this.head += (this.targetHead - this.head) * Math.min(1, dt * 4.5);
+      const rawVelocity = (this.head - this._prevHead) / Math.max(dt, 1 / 60);
+      this._prevHead = this.head;
+      this._velocity += (rawVelocity * 0.22 - this._velocity) * Math.min(1, dt * 7);
+      const vel = clamp(Math.abs(this._velocity), 0, 1);
       const head = clamp(this.head, -0.6, (N - 1) + 0.6);
       const camZ = VIEW - head * SPACING;
 
@@ -413,8 +662,9 @@ export function createCorridor(THREE, opts = {}) {
       // camera looks straight down the corridor; the anchorGroup offset (not the
       // camera) is what slides the rooms toward the card area. Subtle parallax.
       const par = reducedMotion ? 0 : 1;
-      camera.position.set(px * 0.22 * par, py * 0.18 * par, camZ);
-      camera.lookAt(camera.position.x, camera.position.y, camZ - 14);
+      camera.position.set(px * 0.18 * par, py * 0.14 * par, camZ + Math.sin(t * 0.18) * 0.12 * par);
+      camera.lookAt(px * 0.06 * par, py * 0.04 * par, camZ - 15.5);
+      camera.rotation.z += -px * 0.0016 * par;
 
       for (let i = 0; i < N; i++) {
         const room = rooms[i];
@@ -427,20 +677,61 @@ export function createCorridor(THREE, opts = {}) {
         // recede into depth rather than competing with the active product
         const focus = clamp(1 - Math.abs(i - head) * 0.62, 0.12, 1);
         const behind = smoothstep(-SPACING * 0.6, 2, ahead);
-        const roomOpacity = this.master * focus * behind;
+        const roomOpacity = this.master * focus * behind * room.profile.opacity;
+        const roomWob = reducedMotion ? 0 : room.profile.drift;
+        room.group.position.set(
+          room.base.x + Math.sin(t * 0.22 + i * 1.7) * roomWob + px * 0.018 * focus * par,
+          room.base.y + Math.cos(t * 0.18 + i * 1.1) * roomWob * 0.55 + py * 0.014 * focus * par,
+          room.base.z
+        );
+        room.group.rotation.y = Math.sin(t * 0.2 + i) * 0.018 * room.profile.yaw * par + (i - head) * 0.018;
+        room.group.rotation.x = Math.cos(t * 0.17 + i * 0.7) * 0.012 * room.profile.drift * par;
 
         for (const plane of room.planes) {
           const wob = reducedMotion ? 0 : 1;
-          const bobY = Math.sin(t * 0.6 + plane.phase) * 0.28 * wob;
-          const bobX = Math.cos(t * 0.45 + plane.phase) * 0.18 * wob;
+          const support = plane.slotIndex === 0 ? 0.35 : 1;
+          const bobY = Math.sin(t * (0.44 + plane.profile.bob * 0.12) + plane.phase) * 0.28 * plane.profile.bob * support * wob;
+          const bobX = Math.cos(t * (0.32 + plane.profile.orbit * 0.1) + plane.phase) * 0.2 * plane.profile.orbit * support * wob;
+          const bobZ = Math.sin(t * 0.28 + plane.phase * 0.7) * 0.28 * plane.profile.orbit * support * wob;
+          const scrollLean = this._velocity * (plane.slotIndex === 0 ? 0.18 : 0.32);
           plane.mesh.position.set(
             plane.basePos.x + bobX,
             plane.basePos.y + bobY,
-            plane.basePos.z
+            plane.basePos.z + bobZ
           );
-          plane.mesh.rotation.z = Math.sin(t * 0.4 + plane.phase) * 0.02 * wob;
-          plane.mesh.rotation.y = plane.slot.ry + Math.sin(t * 0.3 + plane.phase) * 0.04 * wob;
-          plane.mat.uniforms.uOpacity.value = roomOpacity * plane.slot.op;
+          plane.mesh.rotation.x = (plane.slot.rx || 0) + Math.cos(t * 0.22 + plane.phase) * 0.018 * plane.profile.bob * support * wob;
+          plane.mesh.rotation.z = (plane.slot.rz || 0) + Math.sin(t * 0.34 + plane.phase) * 0.024 * plane.profile.orbit * support * wob;
+          plane.mesh.rotation.y = plane.slot.ry + Math.sin(t * 0.27 + plane.phase) * 0.05 * plane.profile.yaw * support * wob + scrollLean;
+
+          const planeOpacity = roomOpacity * plane.slot.op * (plane.slotIndex === 0 ? 1 : 0.88);
+          const u = plane.mat.uniforms;
+          u.uTime.value = t + plane.phase;
+          u.uVelocity.value = vel;
+          u.uActive.value = focus;
+          u.uDistort.value = plane.profile.distort * (plane.slotIndex === 0 ? 1 : 0.72);
+          u.uGlass.value = plane.profile.glass;
+          u.uScan.value = plane.profile.scan * (plane.slotIndex === 0 ? 1 : 0.72);
+          u.uOpacity.value = planeOpacity;
+
+          plane.aura.position.copy(plane.mesh.position);
+          plane.aura.position.z -= 0.06 + vel * 0.08;
+          plane.aura.rotation.copy(plane.mesh.rotation);
+          const au = plane.auraMat.uniforms;
+          au.uTime.value = t + plane.phase;
+          au.uVelocity.value = vel;
+          au.uOpacity.value = planeOpacity * plane.profile.glow * (plane.slotIndex === 0 ? 0.26 : 0.14) * (0.75 + vel * 0.75);
+
+          for (const trail of plane.trails) {
+            trail.mesh.position.copy(plane.mesh.position);
+            trail.mesh.position.x -= this._velocity * (0.32 + trail.lag * 0.22);
+            trail.mesh.position.y += Math.sin(t * 0.9 + trail.lag) * 0.04;
+            trail.mesh.position.z -= 0.34 + trail.lag * 0.42 + vel * 0.42;
+            trail.mesh.rotation.copy(plane.mesh.rotation);
+            trail.mesh.rotation.y -= this._velocity * 0.08 * trail.lag;
+            trail.mat.uniforms.uTime.value = t + plane.phase + trail.lag;
+            trail.mat.uniforms.uVelocity.value = vel;
+            trail.mat.uniforms.uOpacity.value = planeOpacity * plane.profile.trail * vel * (0.32 / trail.lag);
+          }
         }
       }
     },
@@ -454,6 +745,8 @@ export function createCorridor(THREE, opts = {}) {
       for (const plane of allPlanes) {
         plane.tex?.dispose?.();
         plane.mat.dispose();
+        plane.auraMat.dispose();
+        for (const trail of plane.trails) trail.mat.dispose();
       }
       unit.dispose();
       scene.remove(anchorGroup);

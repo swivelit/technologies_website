@@ -107,16 +107,25 @@ attribute vec3 aFrom;
 attribute vec3 aTo;
 attribute vec3 aColFrom;
 attribute vec3 aColTo;
+attribute float aSizeFrom;
+attribute float aSizeTo;
 attribute vec4 aSeed;
 uniform float uOpacity;
 uniform float uSize;
 uniform float uPixelRatio;
+uniform float uBootEnergy;
+uniform float uHubGlow;
 varying vec3 vColor;
 varying float vAlpha;
+varying float vHub;
 void main(){
   float t = morphProg(aSeed.w);
   vec3 pos = particlePos(aFrom, aTo, aSeed);
   float burst = sin(t * 3.14159265) * uBurst;
+  float sizeMul = mix(aSizeFrom, aSizeTo, t);
+  float hub = smoothstep(1.42, 3.2, sizeMul);
+  float hubPulse = 1.0 + hub * (0.12 + uBootEnergy * 0.26)
+    * (0.5 + 0.5 * sin(uTime * (1.6 + aSeed.y * 0.7) + aSeed.x * 6.28318));
 
   vec4 mv = modelViewMatrix * vec4(pos, 1.0);
   gl_Position = projectionMatrix * mv;
@@ -124,25 +133,27 @@ void main(){
   float spark = step(0.965, aSeed.x);
   float ps = uSize * mix(0.5, 1.7, aSeed.z) * (1.0 + spark * 0.9)
            * uPixelRatio * (100.0 / max(1.0, -mv.z));
-  ps *= 1.0 + burst * 0.15;
+  ps *= sizeMul * hubPulse * (1.0 + burst * 0.15);
   gl_PointSize = clamp(ps, 1.0, 40.0 * uPixelRatio);
 
   float twinkle = 0.72 + 0.28 * sin(uTime * (1.2 + aSeed.y * 2.6) + aSeed.x * 6.28318);
-  vAlpha = uOpacity * twinkle * smoothstep(0.0, 1.0, ps);
-  vColor = mix(aColFrom, aColTo, t) * (1.0 + spark * 0.6 + burst * 0.3);
+  vHub = hub;
+  vAlpha = uOpacity * twinkle * smoothstep(0.0, 1.0, ps) * (1.0 + hub * (0.18 + uBootEnergy * 0.28));
+  vColor = mix(aColFrom, aColTo, t) * (1.0 + spark * 0.6 + burst * 0.3 + hub * (uHubGlow + uBootEnergy * 0.55));
 }`;
 
 const FRAG = /* glsl */ `
 precision highp float;
 varying vec3 vColor;
 varying float vAlpha;
+varying float vHub;
 void main(){
   vec2 uv = gl_PointCoord - 0.5;
   float d = length(uv) * 2.0;
   if (d > 1.0) discard;
   float core = smoothstep(1.0, 0.0, d);
   float a = core * core * (0.55 + 0.45 * core);
-  gl_FragColor = vec4(vColor * (1.0 + core * 0.7), a * vAlpha);
+  gl_FragColor = vec4(vColor * (1.0 + core * (0.7 + vHub * 0.6)), a * vAlpha);
 }`;
 
 /* network mesh — faint accent-tinted segments between nearest nodes. Shares the
@@ -168,9 +179,10 @@ const LINE_FRAG = /* glsl */ `
 precision highp float;
 uniform vec3 uLineColor;
 uniform float uLineOpacity;
+uniform float uBootEnergy;
 varying float vAlpha;
 void main(){
-  gl_FragColor = vec4(uLineColor, vAlpha * uLineOpacity);
+  gl_FragColor = vec4(uLineColor * (1.0 + uBootEnergy * 0.38), vAlpha * uLineOpacity * (1.0 + uBootEnergy * 0.9));
 }`;
 
 /* data pulses — a few bright motes streaming node→node along the edges. Each
@@ -189,30 +201,35 @@ uniform float uOpacity;
 uniform float uMeshFade;
 uniform float uSize;
 uniform float uPixelRatio;
+uniform float uPulseSpeed;
+uniform float uPulseIntensity;
+uniform float uBootEnergy;
 varying float vAlpha;
 void main(){
   vec3 pa = particlePos(aFromA, aToA, aSeedA);
   vec3 pb = particlePos(aFromB, aToB, aSeedB);
-  float tt = fract(uTime * 0.16 + aPhase);
+  float tt = fract(uTime * uPulseSpeed * (1.0 + uBootEnergy * 1.7) + aPhase);
   vec3 pos = mix(pa, pb, tt);
   vec4 mv = modelViewMatrix * vec4(pos, 1.0);
   gl_Position = projectionMatrix * mv;
   float ps = uSize * 2.3 * uPixelRatio * (100.0 / max(1.0, -mv.z));
-  gl_PointSize = clamp(ps, 1.5, 26.0 * uPixelRatio);
+  ps *= 1.0 + uBootEnergy * 0.42;
+  gl_PointSize = clamp(ps, 1.5, 28.0 * uPixelRatio);
   float life = sin(tt * 3.14159265);                  // fade in/out at the nodes
-  vAlpha = uOpacity * uMeshFade * (0.2 + 0.8 * life);
+  vAlpha = uOpacity * uMeshFade * uPulseIntensity * (1.0 + uBootEnergy * 1.15) * (0.2 + 0.8 * life);
 }`;
 
 const PULSE_FRAG = /* glsl */ `
 precision highp float;
 uniform vec3 uPulseColor;
+uniform float uBootEnergy;
 varying float vAlpha;
 void main(){
   vec2 uv = gl_PointCoord - 0.5;
   float d = length(uv) * 2.0;
   if (d > 1.0) discard;
   float core = smoothstep(1.0, 0.0, d);
-  gl_FragColor = vec4(uPulseColor * (0.6 + core), core * core * vAlpha);
+  gl_FragColor = vec4(uPulseColor * (0.6 + core + uBootEnergy * 0.5), core * core * vAlpha);
 }`;
 
 /* ---------------- dependency loading ---------------- */
@@ -311,6 +328,8 @@ class Particles {
     geo.setAttribute('aTo', new THREE.BufferAttribute(zeros(), 3));
     geo.setAttribute('aColFrom', new THREE.BufferAttribute(zeros(), 3));
     geo.setAttribute('aColTo', new THREE.BufferAttribute(zeros(), 3));
+    geo.setAttribute('aSizeFrom', new THREE.BufferAttribute(new Float32Array(count), 1));
+    geo.setAttribute('aSizeTo', new THREE.BufferAttribute(new Float32Array(count), 1));
     geo.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 4));
 
     this.uniforms = {
@@ -325,6 +344,8 @@ class Particles {
       uTurbFreq: { value: PROFILES.spawn.uTurbFreq },
       uTurbSpeed: { value: PROFILES.spawn.uTurbSpeed },
       uMeshFade: { value: 1 },     // dips during a morph so the mesh re-knits
+      uBootEnergy: { value: 0 },
+      uHubGlow: { value: mobile ? 0.18 : 0.28 },
     };
 
     const mat = new THREE.ShaderMaterial({
@@ -358,7 +379,7 @@ class Particles {
     return {
       uTime: u.uTime, uMorph: u.uMorph, uStagger: u.uStagger, uBurst: u.uBurst,
       uTurbAmp: u.uTurbAmp, uTurbFreq: u.uTurbFreq, uTurbSpeed: u.uTurbSpeed,
-      uOpacity: u.uOpacity, uMeshFade: u.uMeshFade,
+      uOpacity: u.uOpacity, uMeshFade: u.uMeshFade, uBootEnergy: u.uBootEnergy,
     };
   }
 
@@ -420,6 +441,8 @@ class Particles {
       ...this._shared(),
       uSize: this.uniforms.uSize,
       uPixelRatio: this.uniforms.uPixelRatio,
+      uPulseSpeed: { value: this.mobile ? 0.18 : 0.22 },
+      uPulseIntensity: { value: this.mobile ? 0.62 : 0.82 },
       uPulseColor: { value: new THREE.Color(0x4fe3ff) },   // bright cyan data pulses
     };
     this.pulses = new THREE.Points(pgeo, new THREE.ShaderMaterial({
@@ -437,12 +460,26 @@ class Particles {
 
   setEdges(name, edges) { this.edges[name] = edges; }
 
+  _sizes(name) {
+    const s = this.formations[name]?.sizes;
+    if (s && s.length === this.count) return s;
+    if (!this._defaultSizes) {
+      this._defaultSizes = new Float32Array(this.count);
+      this._defaultSizes.fill(1);
+    }
+    return this._defaultSizes;
+  }
+
   /* point the mesh at the active formation: swap the line index to its edge
      set, retint to its accent, and re-seat the pulses onto those edges */
   _applyMesh(name) {
     if (!this.lines) return;
     const accent = this.accents[name] || this.accents.nebula;
     if (accent) this.lineUniforms.uLineColor.value.copy(accent);
+    if (accent && this.pulseUniforms) {
+      const ice = new THREE.Color(name === 'defect-detector' ? 0xffc2b8 : 0x8ff7ff);
+      this.pulseUniforms.uPulseColor.value.copy(accent).lerp(ice, name === 'manas' ? 0.45 : 0.28);
+    }
     const edges = this.edges[name];
     if (!edges || edges.length < 2) {
       this.lgeo.setDrawRange(0, 0);
@@ -495,6 +532,11 @@ class Particles {
       this.geo.attributes[a].array.set(src);
       this.geo.attributes[a].needsUpdate = true;
     }
+    const sizes = this._sizes(name);
+    this.geo.attributes.aSizeFrom.array.set(sizes);
+    this.geo.attributes.aSizeTo.array.set(sizes);
+    this.geo.attributes.aSizeFrom.needsUpdate = true;
+    this.geo.attributes.aSizeTo.needsUpdate = true;
     this.uniforms.uMorph.value = 1;
     this.uniforms.uMeshFade.value = 1;
     this._applyProfile(name, 0);
@@ -505,11 +547,12 @@ class Particles {
   /* freeze the in-flight interpolation into aFrom so a new morph can
      start from exactly what is on screen */
   bake() {
-    const { aFrom, aTo, aColFrom, aColTo, aSeed } = this.geo.attributes;
+    const { aFrom, aTo, aColFrom, aColTo, aSizeFrom, aSizeTo, aSeed } = this.geo.attributes;
     const m = this.uniforms.uMorph.value;
     const st = this.uniforms.uStagger.value;
     const from = aFrom.array, to = aTo.array;
     const cf = aColFrom.array, ct = aColTo.array, sd = aSeed.array;
+    const sf = aSizeFrom.array, stz = aSizeTo.array;
     for (let i = 0; i < this.count; i++) {
       let t = m * (1 + st) - sd[i * 4 + 3] * st;
       t = t < 0 ? 0 : t > 1 ? 1 : t;
@@ -521,9 +564,11 @@ class Particles {
       cf[o] += (ct[o] - cf[o]) * t;
       cf[o + 1] += (ct[o + 1] - cf[o + 1]) * t;
       cf[o + 2] += (ct[o + 2] - cf[o + 2]) * t;
+      sf[i] += (stz[i] - sf[i]) * t;
     }
     aFrom.needsUpdate = true;
     aColFrom.needsUpdate = true;
+    aSizeFrom.needsUpdate = true;
   }
 
   morphTo(name, { duration = 2.6, stagger = 0.42, burst = 0 } = {}) {
@@ -534,8 +579,10 @@ class Particles {
     this.bake();
     this.geo.attributes.aTo.array.set(f.positions);
     this.geo.attributes.aColTo.array.set(f.colors);
+    this.geo.attributes.aSizeTo.array.set(this._sizes(name));
     this.geo.attributes.aTo.needsUpdate = true;
     this.geo.attributes.aColTo.needsUpdate = true;
+    this.geo.attributes.aSizeTo.needsUpdate = true;
 
     this.uniforms.uMorph.value = 0;
     this.uniforms.uStagger.value = stagger;
@@ -613,10 +660,10 @@ function particleBudget({ mobile = false } = {}) {
   }
 
   const dpr = Math.min(devicePixelRatio || 1, 2);
-  let n = (innerWidth * innerHeight) * 0.028;
+  let n = (innerWidth * innerHeight) * 0.018;
   if (dpr > 1.5) n *= 0.8;
   if ((navigator.hardwareConcurrency || 8) <= 4) n *= 0.65;
-  return Math.round(Math.min(48000, Math.max(12000, n)));
+  return Math.round(Math.min(30000, Math.max(10000, n)));
 }
 
 /* network-mesh budget — capped hard, and scaled down / skipped on weaker
@@ -626,12 +673,12 @@ function meshBudget({ mobile = false, reducedMotion = false } = {}) {
   const memory = navigator.deviceMemory || 4;
   if (mobile) {
     if (cores <= 4 || memory <= 3) return { nodes: 0, k: 0, maxSegments: 0, pulses: 0, lineOpacity: 0 };
-    return { nodes: 300, k: 2, maxSegments: 640, pulses: reducedMotion ? 0 : 14, lineOpacity: 0.3 };
+    return { nodes: 320, k: 2, maxSegments: 700, pulses: reducedMotion ? 0 : 18, lineOpacity: 0.32 };
   }
   if (cores <= 4 || memory <= 4) {
-    return { nodes: 520, k: 3, maxSegments: 1200, pulses: reducedMotion ? 0 : 28, lineOpacity: 0.34 };
+    return { nodes: 520, k: 3, maxSegments: 1200, pulses: reducedMotion ? 0 : 32, lineOpacity: 0.34 };
   }
-  return { nodes: 820, k: 3, maxSegments: 2000, pulses: reducedMotion ? 0 : 46, lineOpacity: 0.36 };
+  return { nodes: 700, k: 3, maxSegments: 1550, pulses: reducedMotion ? 0 : 46, lineOpacity: 0.34 };
 }
 
 export async function initGL(canvas, options = {}) {
@@ -828,7 +875,7 @@ export async function initGL(canvas, options = {}) {
         logoBurst: 0.06,
         introMorph: 2.5,
         introStagger: 0.32,
-        workOpacity: 0.26,
+        workOpacity: 0.22,
         contactOpacity: 0.34,
         dolly: 14,
         rotY: 0.5,
@@ -842,7 +889,7 @@ export async function initGL(canvas, options = {}) {
         logoBurst: 0.1,
         introMorph: 3.4,
         introStagger: 0.4,
-        workOpacity: 0.28,
+        workOpacity: 0.22,
         contactOpacity: 0.4,
         dolly: 26,
         rotY: 0.85,
@@ -852,6 +899,7 @@ export async function initGL(canvas, options = {}) {
   const rig = { rotY: 0, idle: 0, idleSpeed: isMobile ? 0.003 : 0.005 };
   const dim = (v, d = 1.4) =>
     gsap.to(particles.uniforms.uOpacity, { value: v, duration: d, ease: 'sine.inOut', overwrite: 'auto' });
+  const pu = particles.pulseUniforms;                // undefined when pulse budget is disabled
 
   const hintEl = document.getElementById('scrollHint');
   ScrollTrigger.create({
@@ -875,7 +923,7 @@ export async function initGL(canvas, options = {}) {
   // dim the stage across the whole product run; restore to full above it
   ScrollTrigger.create({
     trigger: '#work', start: 'top 55%',
-    onEnter: () => dim(motion.workOpacity), onLeaveBack: () => dim(1),
+    onEnter: () => dim(motion.workOpacity), onLeaveBack: () => dim(isMobile ? 0.7 : 0.78),
   });
 
   /* corridor: bind the active 3D room to the product section near the viewport
@@ -918,6 +966,14 @@ export async function initGL(canvas, options = {}) {
      from whatever is on screen, so the first goes nebula→shape and the rest
      go shape→shape. burst is kept gentle so transitions read, not thrash. */
   const PRODUCTS = ['good-one', 'swico-ai', 'grab-basket', 'manas', 'ai-business-assistant', 'defect-detector'];
+  const productPulse = {
+    'good-one': { speed: isMobile ? 0.18 : 0.24, intensity: isMobile ? 0.58 : 0.88, energy: 0.14 },
+    'swico-ai': { speed: isMobile ? 0.26 : 0.34, intensity: isMobile ? 0.72 : 1.05, energy: 0.18 },
+    'grab-basket': { speed: isMobile ? 0.2 : 0.27, intensity: isMobile ? 0.62 : 0.94, energy: 0.15 },
+    manas: { speed: isMobile ? 0.13 : 0.17, intensity: isMobile ? 0.46 : 0.64, energy: 0.1 },
+    'ai-business-assistant': { speed: isMobile ? 0.22 : 0.3, intensity: isMobile ? 0.66 : 0.98, energy: 0.16 },
+    'defect-detector': { speed: isMobile ? 0.28 : 0.38, intensity: isMobile ? 0.78 : 1.14, energy: 0.22 },
+  };
   const productDur = motion.heroMorph * 0.82;
   const productStagger = isMobile ? 0.46 : 0.6;     // higher stagger = a wave sweeps through
   const productBurst = isMobile ? 0.14 : 0.26;
@@ -925,7 +981,15 @@ export async function initGL(canvas, options = {}) {
     particles.morphTo('nebula', { duration: productDur, stagger: productStagger, burst });
 
   PRODUCTS.forEach((id, idx) => {
-    const morph = () => particles.morphTo(id, { duration: productDur, stagger: productStagger, burst: productBurst });
+    const morph = () => {
+      particles.morphTo(id, { duration: productDur, stagger: productStagger, burst: productBurst });
+      const p = productPulse[id];
+      if (p && pu) {
+        gsap.to(pu.uPulseSpeed, { value: p.speed, duration: 1.0, ease: 'sine.inOut', overwrite: 'auto' });
+        gsap.to(pu.uPulseIntensity, { value: p.intensity, duration: 1.0, ease: 'sine.inOut', overwrite: 'auto' });
+      }
+      if (p) gsap.to(particles.uniforms.uBootEnergy, { value: p.energy, duration: 0.9, ease: 'sine.inOut', overwrite: 'auto' });
+    };
     ScrollTrigger.create({
       trigger: `#${id}`, start: 'top 58%',
       onEnter: morph,
@@ -938,7 +1002,14 @@ export async function initGL(canvas, options = {}) {
   // after the products, the narrative scenes settle back into the nebula
   ScrollTrigger.create({
     trigger: '#about', start: 'top 64%',
-    onEnter: () => toNebula(productBurst * 0.5),
+    onEnter: () => {
+      toNebula(productBurst * 0.5);
+      if (pu) {
+        gsap.to(pu.uPulseSpeed, { value: isMobile ? 0.18 : 0.22, duration: 1.2, ease: 'sine.inOut', overwrite: 'auto' });
+        gsap.to(pu.uPulseIntensity, { value: isMobile ? 0.58 : 0.78, duration: 1.2, ease: 'sine.inOut', overwrite: 'auto' });
+      }
+      gsap.to(particles.uniforms.uBootEnergy, { value: 0.12, duration: 1.1, ease: 'sine.inOut', overwrite: 'auto' });
+    },
   });
 
   ScrollTrigger.create({
@@ -961,6 +1032,20 @@ export async function initGL(canvas, options = {}) {
     const id = hash.slice(1);
     particles.setImmediate(particles.formations[id] ? id : 'nebula');
     particles.uniforms.uOpacity.value = motion.workOpacity;
+    const productIndex = PRODUCTS.indexOf(id);
+    if (productIndex >= 0) {
+      const p = productPulse[id];
+      corridor?.setHead(productIndex);
+      if (corridor) {
+        corridor.head = productIndex;
+        corridor.setVisible(true);
+      }
+      if (p && pu) {
+        pu.uPulseSpeed.value = p.speed;
+        pu.uPulseIntensity.value = p.intensity;
+      }
+      if (p) particles.uniforms.uBootEnergy.value = p.energy;
+    }
   } else {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     lenis?.scrollTo?.(0, { immediate: true, force: true });
@@ -1095,7 +1180,8 @@ export async function initGL(canvas, options = {}) {
     // simplified, mostly-static: a calm neural field resolves, HTML wordmark in
     particles.setImmediate('nebula');
     if (lu) lu.uLineOpacity.value = 0.26;
-    gsap.to(particles.uniforms.uOpacity, { value: 1, duration: 1.0, ease: 'sine.out' });
+    particles.uniforms.uBootEnergy.value = 0.08;
+    gsap.to(particles.uniforms.uOpacity, { value: 0.74, duration: 1.0, ease: 'sine.out' });
     revealWordmark();
     bootStatus(['systems online'], 0.25, 0.5);
     gsap.delayedCall(1.2, () => hint?.classList.add('is-on'));
@@ -1105,24 +1191,45 @@ export async function initGL(canvas, options = {}) {
     // the top. No giant particle logo — the network stays the background.
     const T = isMobile ? 0.82 : 1;                    // mild speed-up on mobile
     // Stage 1 — nodes fade in and WIRE together into a gently rotating neural net
-    gsap.to(particles.uniforms.uOpacity, { value: 1, duration: 1.4 * T, ease: 'sine.out', delay: 0.15 });
+    gsap.to(particles.uniforms.uOpacity, { value: 0.82, duration: 1.4 * T, ease: 'sine.out', delay: 0.15 });
+    gsap.to(particles.uniforms.uBootEnergy, { value: 1.0, duration: 1.05 * T, ease: 'sine.out', delay: 0.1 });
+    gsap.to(particles.uniforms.uHubGlow, { value: isMobile ? 0.32 : 0.48, duration: 1.2 * T, ease: 'sine.out' });
     if (lu) gsap.to(lu.uLineOpacity, { value: 0.66, duration: 1.0 * T, ease: 'sine.out' });
+    if (pu) {
+      gsap.to(pu.uPulseIntensity, { value: isMobile ? 1.25 : 1.8, duration: 1.1 * T, ease: 'sine.out' });
+      gsap.to(pu.uPulseSpeed, { value: isMobile ? 0.36 : 0.58, duration: 1.1 * T, ease: 'sine.out' });
+    }
     particles.morphTo('nebula', { duration: 1.9 * T, stagger: 0.4, burst: 0.05 });
 
     // Stage 2 — the synapses pulse brighter as the engine "comes online"
     gsap.delayedCall(1.6 * T, () => {
       if (lu) gsap.to(lu.uLineOpacity, { value: 0.78, duration: 0.7 * T, ease: 'sine.inOut', yoyo: true, repeat: 1 });
+      gsap.to(particles.uniforms.uBootEnergy, { value: 1.35, duration: 0.6 * T, ease: 'sine.inOut', yoyo: true, repeat: 1 });
     });
 
     // Stage 3 — the HTML wordmark resolves + boot status types
     gsap.delayedCall(1.9 * T, () => {
       revealWordmark();
-      bootStatus(['initializing neural engine …', 'training · linking nodes …', 'systems online'], 0, 0.6 * T);
+      bootStatus([
+        'initializing neural engine',
+        'mapping synaptic graph',
+        'routing intelligence layer',
+        'linking product systems',
+        'systems online',
+      ], 0, 0.48 * T);
     });
 
     // Stage 4 — settle the live mesh to its idle glow, scroll hint on
-    if (lu) gsap.delayedCall(3.4 * T, () =>
-      gsap.to(lu.uLineOpacity, { value: 0.32, duration: 1.1, ease: 'sine.out' }));
+    gsap.delayedCall(3.4 * T, () => {
+      if (lu) gsap.to(lu.uLineOpacity, { value: 0.34, duration: 1.1, ease: 'sine.out' });
+      if (pu) {
+        gsap.to(pu.uPulseIntensity, { value: isMobile ? 0.62 : 0.86, duration: 1.2, ease: 'sine.out' });
+        gsap.to(pu.uPulseSpeed, { value: isMobile ? 0.18 : 0.22, duration: 1.2, ease: 'sine.out' });
+      }
+      gsap.to(particles.uniforms.uBootEnergy, { value: 0.16, duration: 1.35, ease: 'sine.out' });
+      gsap.to(particles.uniforms.uHubGlow, { value: isMobile ? 0.18 : 0.28, duration: 1.2, ease: 'sine.out' });
+      gsap.to(particles.uniforms.uOpacity, { value: 0.76, duration: 1.35, ease: 'sine.out' });
+    });
     gsap.delayedCall(isMobile ? 3.4 : 3.8, () => hint?.classList.add('is-on'));
   }
 }

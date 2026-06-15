@@ -165,6 +165,7 @@ export async function logoFormation(url, count, { width = 30 } = {}) {
 export function nebulaFormation(count, { radius = 30 } = {}) {
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
   const place = tiltWriter(-0.18, 0.0, 0.08);
 
   // scatter neuron centres through a gently flattened ellipsoid
@@ -180,6 +181,9 @@ export function nebulaFormation(count, { radius = 30 } = {}) {
     cz[n] = r * Math.cos(ph) * 0.6;
     cw[n] = 0.4 + Math.random() * Math.random();           // a few hubs are denser
   }
+  const hubOrder = Array.from({ length: NC }, (_, i) => i)
+    .sort((a, b) => cw[b] - cw[a])
+    .slice(0, 12);
   let tot = 0; for (let n = 0; n < NC; n++) tot += cw[n];
   const cum = new Float32Array(NC);
   let acc = 0; for (let n = 0; n < NC; n++) { acc += cw[n] / tot; cum[n] = acc; }
@@ -201,8 +205,9 @@ export function nebulaFormation(count, { radius = 30 } = {}) {
     near[a] = bi;
   }
 
-  const halo = Math.floor(count * 0.14);
-  const fil = halo + Math.floor(count * 0.22);
+  const halo = Math.floor(count * 0.12);
+  const hubCore = halo + Math.floor(count * 0.032);
+  const fil = hubCore + Math.floor(count * 0.24);
 
   for (let i = 0; i < count; i++) {
     let x, y, z, b, col;
@@ -216,6 +221,21 @@ export function nebulaFormation(count, { radius = 30 } = {}) {
       z = r * Math.cos(ph) * 0.6;
       b = 0.06 + Math.random() * 0.12;
       col = ICE;
+      sizes[i] = 0.72 + Math.random() * 0.28;
+    } else if (i < hubCore) {
+      // visible neuron hubs: tight, brighter cores that the point shader scales
+      // up and breathes during the AI boot sequence.
+      const a = hubOrder[(Math.random() * hubOrder.length) | 0];
+      const spread = 0.65 + Math.random() * 1.15;
+      x = cx[a] + gauss() * spread;
+      y = cy[a] + gauss() * spread;
+      z = cz[a] + gauss() * spread * 0.65;
+      const r = Math.random();
+      if (r < 0.52) col = ICE;
+      else if (r < 0.94) col = coolMix(0.45 + Math.random() * 0.55);
+      else col = SPARK;
+      b = 0.54 + Math.random() * 0.46;
+      sizes[i] = 1.65 + Math.random() * 1.25;
     } else if (i < fil) {
       // filament — strung between a centre and its nearest neighbour. These are
       // the proto-wiring, so they carry the blue/cyan tech accent.
@@ -226,6 +246,7 @@ export function nebulaFormation(count, { radius = 30 } = {}) {
       z = cz[a] + (cz[c] - cz[a]) * s + gauss() * 0.6;
       b = 0.14 + Math.random() * 0.26;
       col = coolMix(0.35 + Math.random() * 0.65);
+      sizes[i] = 0.72 + Math.random() * 0.28;
     } else {
       // neuron — gaussian blob around a weighted centre, dominant cool-white
       const a = pickNode();
@@ -234,17 +255,18 @@ export function nebulaFormation(count, { radius = 30 } = {}) {
       y = cy[a] + gauss() * spread;
       z = cz[a] + gauss() * spread * 0.8;
       const r = Math.random();
-      if (r < 0.12) { col = ICE; b = 1.05 + Math.random() * 0.5; }        // bright core
+      if (r < 0.12) { col = ICE; b = 0.72 + Math.random() * 0.34; }        // bright core
       else if (r < 0.24) { col = coolMix(Math.random()); b = 0.4 + Math.random() * 0.5; }
       else if (r < 0.265) { col = SPARK; b = 0.5 + Math.random() * 0.5; } // rare warm
       else { col = ICE; b = 0.38 + Math.random() * 0.5; }
+      sizes[i] = r < 0.12 ? 1.14 + Math.random() * 0.5 : 0.82 + Math.random() * 0.32;
     }
 
     place(positions, i, x, y, z);
     setCol(colors, i, col[0] * b, col[1] * b, col[2] * b);
   }
 
-  return { positions, colors };
+  return { positions, colors, sizes };
 }
 
 /* ============================================================
