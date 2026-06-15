@@ -5,12 +5,13 @@
 
 const TAU = Math.PI * 2;
 
-/* cool "AI / software / data" palette — electric blue + cyan with
-   ice-white highlights. A warm spark survives only as a rare accent.
-   Values can exceed 1.0; the additive blend reads that as glow. */
-const BLUE = [0.231, 0.510, 0.965];   // #3b82f6 electric blue
-const CYAN = [0.133, 0.827, 0.933];   // #22d3ee cyan
-const ICE = [0.78, 0.92, 1.12];       // cool white-blue highlight
+/* crisp white-on-black "AI / software / data" palette. ICE (cool-white) is the
+   DOMINANT particle colour; electric blue + cyan are reserved as the tech
+   accent (mostly the network edges/pulses, plus sparse highlights). A warm
+   spark survives only rarely. Values can exceed 1.0 → additive glow. */
+const BLUE = [0.231, 0.510, 0.965];   // #3b82f6 electric blue  (accent)
+const CYAN = [0.133, 0.827, 0.933];   // #22d3ee cyan           (accent)
+const ICE = [0.90, 0.96, 1.12];       // dominant cool-white
 const SPARK = [1.3, 0.55, 0.16];      // rare warm "data spark"
 
 /* blend the two primaries: t=0 → blue, t=1 → cyan */
@@ -49,8 +50,9 @@ export function spawnFormation(count, radius = 95) {
     positions[i * 3] = r * Math.sin(ph) * Math.cos(th);
     positions[i * 3 + 1] = r * Math.sin(ph) * Math.sin(th) * 0.7;
     positions[i * 3 + 2] = r * Math.cos(ph) * 0.6;
-    const c = coolMix(Math.random());
-    const b = 0.08 + Math.random() * 0.16;
+    // dim cool-white motes, a few faintly blue
+    const c = Math.random() < 0.2 ? coolMix(Math.random()) : ICE;
+    const b = 0.06 + Math.random() * 0.14;
     colors[i * 3] = c[0] * b;
     colors[i * 3 + 1] = c[1] * b;
     colors[i * 3 + 2] = c[2] * b;
@@ -114,8 +116,6 @@ export async function logoFormation(url, count, { width = 30 } = {}) {
   const colors = new Float32Array(count * 3);
   const strays = Math.floor(count * 0.035); // cool dust orbiting the mark
 
-  const ELEC = [0.34, 0.64, 1.3]; // electric blue the wordmark recolours to
-
   for (let i = 0; i < count; i++) {
     if (i < strays) {
       const a = Math.random() * TAU;
@@ -123,8 +123,8 @@ export async function logoFormation(url, count, { width = 30 } = {}) {
       positions[i * 3] = Math.cos(a) * r;
       positions[i * 3 + 1] = Math.sin(a) * r * 0.45 + gauss() * 2;
       positions[i * 3 + 2] = gauss() * 3;
-      const b = 0.22 + Math.random() * 0.4;
-      const c = Math.random() < 0.06 ? SPARK : coolMix(Math.random());
+      const b = 0.2 + Math.random() * 0.38;
+      const c = Math.random() < 0.05 ? SPARK : (Math.random() < 0.3 ? coolMix(Math.random()) : ICE);
       colors[i * 3] = c[0] * b;
       colors[i * 3 + 1] = c[1] * b;
       colors[i * 3 + 2] = c[2] * b;
@@ -136,19 +136,20 @@ export async function logoFormation(url, count, { width = 30 } = {}) {
     positions[i * 3 + 1] = (cy - (py[k] + Math.random() - 0.5)) * scale;
     positions[i * 3 + 2] = gauss() * 0.5;
 
-    // recolour the warm source mark to cool electric blue; edges glow ice-white,
-    // with a rare warm spark threaded through for life
-    let r = pr[k] + (ELEC[0] - pr[k]) * 0.82;
-    let g = pg[k] + (ELEC[1] - pg[k]) * 0.82;
-    let b = pb[k] + (ELEC[2] - pb[k]) * 0.82;
+    // recolour the warm source mark to crisp cool-white; edges glow brighter,
+    // a few % carry a faint blue tint and a rare warm spark threads through
+    let r = pr[k] + (ICE[0] - pr[k]) * 0.9;
+    let g = pg[k] + (ICE[1] - pg[k]) * 0.9;
+    let b = pb[k] + (ICE[2] - pb[k]) * 0.9;
     if (pe[k]) {
-      r = (r + ICE[0] * 0.5) * 1.4;
-      g = (g + ICE[1] * 0.5) * 1.4;
-      b = (b + ICE[2] * 0.5) * 1.4;
-    } else if (Math.random() < 0.03) {
+      r *= 1.45; g *= 1.45; b *= 1.5;            // ice-white edge glow
+    } else if (Math.random() < 0.04) {
+      const c = coolMix(Math.random());          // faint blue/cyan flecks
+      r = c[0]; g = c[1]; b = c[2];
+    } else if (Math.random() < 0.025) {
       r = SPARK[0]; g = SPARK[1]; b = SPARK[2];
     }
-    const v = 0.75 + Math.random() * 0.45;
+    const v = 0.78 + Math.random() * 0.42;
     colors[i * 3] = Math.min(r * v, 1.7);
     colors[i * 3 + 1] = Math.min(g * v, 1.7);
     colors[i * 3 + 2] = Math.min(b * v, 1.7);
@@ -204,42 +205,41 @@ export function nebulaFormation(count, { radius = 30 } = {}) {
   const fil = halo + Math.floor(count * 0.22);
 
   for (let i = 0; i < count; i++) {
-    let x, y, z, t, b;
+    let x, y, z, b, col;
     if (i < halo) {
-      // sparse, dim outer halo dust
+      // sparse, dim outer halo dust — cool-white
       const r = radius * 2.0 * Math.cbrt(Math.random());
       const th = Math.random() * TAU;
       const ph = Math.acos(2 * Math.random() - 1);
       x = r * Math.sin(ph) * Math.cos(th) * 1.2;
       y = r * Math.sin(ph) * Math.sin(th) * 0.72;
       z = r * Math.cos(ph) * 0.6;
-      t = Math.random();
-      b = 0.07 + Math.random() * 0.13;
+      b = 0.06 + Math.random() * 0.12;
+      col = ICE;
     } else if (i < fil) {
-      // filament — strung between a centre and its nearest neighbour
+      // filament — strung between a centre and its nearest neighbour. These are
+      // the proto-wiring, so they carry the blue/cyan tech accent.
       const a = pickNode(), c = near[a];
       const s = Math.random();
       x = cx[a] + (cx[c] - cx[a]) * s + gauss() * 0.6;
       y = cy[a] + (cy[c] - cy[a]) * s + gauss() * 0.6;
       z = cz[a] + (cz[c] - cz[a]) * s + gauss() * 0.6;
-      t = 0.4 + Math.random() * 0.6;                        // filaments lean cyan
-      b = 0.16 + Math.random() * 0.28;
+      b = 0.14 + Math.random() * 0.26;
+      col = coolMix(0.35 + Math.random() * 0.65);
     } else {
-      // neuron — gaussian blob around a weighted centre
+      // neuron — gaussian blob around a weighted centre, dominant cool-white
       const a = pickNode();
       const spread = 1.6 + Math.random() * 1.8;
       x = cx[a] + gauss() * spread;
       y = cy[a] + gauss() * spread;
       z = cz[a] + gauss() * spread * 0.8;
-      const core = Math.random();
-      t = core < 0.12 ? -1 : Math.random();                // flag bright cores → ice
-      b = core < 0.12 ? 1.05 + Math.random() * 0.5 : 0.4 + Math.random() * 0.5;
+      const r = Math.random();
+      if (r < 0.12) { col = ICE; b = 1.05 + Math.random() * 0.5; }        // bright core
+      else if (r < 0.24) { col = coolMix(Math.random()); b = 0.4 + Math.random() * 0.5; }
+      else if (r < 0.265) { col = SPARK; b = 0.5 + Math.random() * 0.5; } // rare warm
+      else { col = ICE; b = 0.38 + Math.random() * 0.5; }
     }
 
-    let col;
-    if (t < 0) col = ICE;
-    else if (Math.random() < 0.025) col = SPARK;           // rare warm data spark
-    else col = coolMix(t);
     place(positions, i, x, y, z);
     setCol(colors, i, col[0] * b, col[1] * b, col[2] * b);
   }
@@ -278,17 +278,22 @@ function setCol(colors, i, r, g, b) {
   colors[o] = r; colors[o + 1] = g; colors[o + 2] = b;
 }
 
-/* cool base colour (electric blue → cyan) at brightness b, with a rare warm
-   data-spark. t selects the blue↔cyan blend; this is the bulk-particle colour
-   so every product cloud sits on the same cool base. */
+/* bulk-particle colour: dominant cool-WHITE on the near-black base, with a
+   minority of faint blue/cyan flecks (t selects the blend) and a rare warm
+   spark. Keeps every product cloud crisp white-on-black; the blue/cyan tech
+   accent lives mostly in the network edges/pulses. */
 function setBase(colors, i, t, b) {
-  if (Math.random() < 0.03) {
+  const r = Math.random();
+  if (r < 0.025) {
     const s = b * (1.15 + Math.random() * 0.6);
     setCol(colors, i, SPARK[0] * s, SPARK[1] * s, SPARK[2] * s);
-    return;
+  } else if (r < 0.18) {
+    const c = coolMix(t);                                  // faint blue/cyan fleck
+    setCol(colors, i, c[0] * b, c[1] * b, c[2] * b);
+  } else {
+    const w = 0.9 + Math.random() * 0.28;                  // cool-white
+    setCol(colors, i, ICE[0] * b * w, ICE[1] * b * w, ICE[2] * b * w);
   }
-  const c = coolMix(t);
-  setCol(colors, i, c[0] * b, c[1] * b, c[2] * b);
 }
 
 /* loose orbiting motes around a form so a freshly-morphed shape still
@@ -380,7 +385,7 @@ export function goodOneFormation(count) {
   const c2 = c1 + Math.floor(count * 0.03);            // buyer cluster
   const c3 = c2 + Math.floor(count * 0.03);            // seller cluster
 
-  scatterDust(positions, colors, dust, place, coolMix(0.1), W * 0.6, 4.5);
+  scatterDust(positions, colors, dust, place, ICE, W * 0.6, 4.5);
 
   for (let i = dust; i < count; i++) {
     if (i < c1) {
@@ -432,7 +437,7 @@ export function swicoFormation(count) {
   const dust = Math.floor(count * 0.035);
   const c1 = dust + Math.floor(count * 0.5);           // core sphere
 
-  scatterDust(positions, colors, dust, place, ACCENT, 26, 5);
+  scatterDust(positions, colors, dust, place, ICE, 26, 5);
 
   for (let i = dust; i < count; i++) {
     if (i < c1) {
@@ -481,7 +486,7 @@ export function grabBasketFormation(count) {
   }
 
   const dust = Math.floor(count * 0.035);
-  scatterDust(positions, colors, dust, place, coolMix(0.3), wallW * 0.95, 6);
+  scatterDust(positions, colors, dust, place, ICE, wallW * 0.95, 6);
 
   for (let i = dust; i < count; i++) {
     const cell = (Math.random() * nCells) | 0;
@@ -524,7 +529,7 @@ export function manasFormation(count) {
   const dust = Math.floor(count * 0.03);
   const c1 = dust + Math.floor(count * 0.08);          // core flower
 
-  scatterDust(positions, colors, dust, place, coolMix(0.8), 26, 2.4);
+  scatterDust(positions, colors, dust, place, ICE, 26, 2.4);
 
   for (let i = dust; i < count; i++) {
     if (i < c1) {
@@ -543,8 +548,9 @@ export function manasFormation(count) {
     const across = (Math.random() - 0.5) * s.wid * wid;
     const ca = Math.cos(s.ang), sa = Math.sin(s.ang);
     const z = Math.cos(radial * 0.13) * 0.9 + gauss() * 0.3;            // gentle dome
+    place(positions, i, ca * radial - sa * across, sa * radial + ca * across, z);
     const b = 0.5 + Math.random() * 0.4;               // low variance, serene
-    // inner rings teal-accented, outer rings settle onto the cyan base
+    // inner rings teal-accented, outer rings settle onto the cool-white base
     if (s.ri < 2) setCol(colors, i, ACCENT[0] * b, ACCENT[1] * b, ACCENT[2] * b);
     else setBase(colors, i, 0.7 + Math.random() * 0.3, b);
   }
@@ -589,7 +595,7 @@ export function aiAssistantFormation(count) {
   const dust = Math.floor(count * 0.035);
   const c1 = dust + Math.floor(count * 0.4);           // node clusters
 
-  scatterDust(positions, colors, dust, place, ACCENT, 30, 5);
+  scatterDust(positions, colors, dust, place, ICE, 30, 5);
 
   for (let i = dust; i < count; i++) {
     if (i < c1) {
@@ -632,7 +638,7 @@ export function defectFormation(count) {
   const c1 = dust + Math.floor(count * 0.6);           // grid dots
   const c2 = c1 + Math.floor(count * 0.08);            // reticle
 
-  scatterDust(positions, colors, dust, place, coolMix(0.15), W * 0.6, 3.5);
+  scatterDust(positions, colors, dust, place, ICE, W * 0.6, 3.5);
 
   for (let i = dust; i < count; i++) {
     if (i < c1) {

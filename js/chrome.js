@@ -104,6 +104,37 @@ function initReveals() {
   setTimeout(revealAll, isMobile ? 1400 : 2200);
 }
 
+/* ---------- product card galleries (cross-fade, pause when off-screen) ---------- */
+function initGalleries() {
+  if (reduceMotion) return;                 // honour prefers-reduced-motion: show first frame
+  const galleries = [...document.querySelectorAll('[data-gallery]')]
+    .filter((g) => g.querySelectorAll('img').length > 1);
+  if (!galleries.length) return;
+
+  const visible = new WeakSet();
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => e.isIntersecting ? visible.add(e.target) : visible.delete(e.target)),
+      { threshold: 0.25 }
+    );
+    galleries.forEach((g) => io.observe(g));
+  } else {
+    galleries.forEach((g) => visible.add(g));
+  }
+
+  galleries.forEach((g) => {
+    const imgs = [...g.querySelectorAll('img')];
+    let i = 0;
+    // slight per-card desync so the cards don't all flip in unison
+    setInterval(() => {
+      if (!visible.has(g) || document.hidden) return;
+      imgs[i].classList.remove('is-active');
+      i = (i + 1) % imgs.length;
+      imgs[i].classList.add('is-active');
+    }, 3600 + Math.floor(Math.random() * 900));
+  });
+}
+
 /* ---------- smooth in-page navigation ---------- */
 function hashTarget(sel) {
   if (!sel || sel === '#') return null;
@@ -322,6 +353,7 @@ export function initChrome({ reduceMotion: rm = false } = {}) {
   initProgress();
   initWorkIndex();
   initReveals();
+  initGalleries();
   initAnchors();
   initKeyboardScroll();
   initOverlays();

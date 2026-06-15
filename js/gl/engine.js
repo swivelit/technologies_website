@@ -10,6 +10,7 @@ import {
   manasFormation, aiAssistantFormation, defectFormation,
   buildEdges,
 } from './formations.js';
+import { scramble } from '../scramble.js';
 
 const CDN = {
   three: 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js',
@@ -266,6 +267,7 @@ const PROFILES = {
 // scene accents (cool, considered, distinct) — mirror the CSS --accent per
 // product. Used to tint the network mesh; nebula leans electric blue.
 const ACCENTS = {
+  logo: 0x6cc6ff,     // intro circuit / idle-logo mesh — crisp electric blue
   nebula: 0x4aa8ff,
   'good-one': 0x38bdf8,
   'swico-ai': 0x818cf8,
@@ -415,7 +417,7 @@ class Particles {
       ...this._shared(),
       uSize: this.uniforms.uSize,
       uPixelRatio: this.uniforms.uPixelRatio,
-      uPulseColor: { value: new THREE.Color(0xdbe7ff) },
+      uPulseColor: { value: new THREE.Color(0x4fe3ff) },   // bright cyan data pulses
     };
     this.pulses = new THREE.Points(pgeo, new THREE.ShaderMaterial({
       uniforms: this.pulseUniforms,
@@ -695,11 +697,15 @@ export async function initGL(canvas, options = {}) {
   particles.formations.logo = await logoFormation('images/logo.png', particles.count, { width: LOGO_W });
 
   // precompute a nearest-neighbour network for the nebula + each product so the
-  // mesh roughly follows the active shape (logo/spawn stay a clean wordmark)
+  // mesh roughly follows the active shape
   if (mesh.nodes > 0) {
     for (const name of ['nebula', 'good-one', 'swico-ai', 'grab-basket', 'manas', 'ai-business-assistant', 'defect-detector']) {
       particles.setEdges(name, buildEdges(particles.formations[name].positions, particles.count, mesh));
     }
+    // the logo carries a sparse circuit so the intro can collapse the mesh into
+    // the wordmark and the idle logo keeps a faint live mesh + the odd pulse
+    const logoMesh = { nodes: Math.min(mesh.nodes, 360), k: 2, maxSegments: Math.min(mesh.maxSegments, 600) };
+    particles.setEdges('logo', buildEdges(particles.formations.logo.positions, particles.count, logoMesh));
   }
 
   particles.setImmediate('spawn');
@@ -824,6 +830,10 @@ export async function initGL(canvas, options = {}) {
     start: 'top 70%',
     onEnter: () => {
       hintEl?.classList.remove('is-on');
+      // restore the mesh to its standard scene opacity (intro left it faint)
+      if (particles.lineUniforms) {
+        gsap.to(particles.lineUniforms.uLineOpacity, { value: mesh.lineOpacity, duration: 1.0, ease: 'sine.out', overwrite: 'auto' });
+      }
       particles.morphTo('nebula', { duration: motion.heroMorph, stagger: isMobile ? 0.34 : 0.45, burst: motion.heroBurst });
     },
     onLeaveBack: () => {
@@ -971,19 +981,64 @@ export async function initGL(canvas, options = {}) {
   gsap.ticker.add(tick);
   gsap.ticker.lagSmoothing(0);
 
-  /* loader out, intro in */
+  /* loader out → "a neural network boots up and becomes the brand" intro */
   gsap.to(progress, {
     v: 100, duration: 0.4, ease: 'power1.in', overwrite: true, onUpdate: paintProgress,
     onComplete: () => loader?.classList.add('is-done'),
   });
 
-  gsap.to(particles.uniforms.uOpacity, {
-    value: hash && hash !== '#intro' ? motion.workOpacity : 1,
-    duration: 1.6, ease: 'sine.out', delay: 0.3,
-  });
-  if (!hash || hash === '#intro') {
-    particles.morphTo('logo', { duration: motion.introMorph, stagger: motion.introStagger });
-    const hint = document.getElementById('scrollHint');
-    gsap.delayedCall(isMobile ? 2.0 : 2.8, () => hint?.classList.add('is-on'));
+  const hint = document.getElementById('scrollHint');
+  const bootEl = document.querySelector('.intro__boot');
+  const decodeEl = document.querySelector('.intro__decode');
+  const statusEl = document.getElementById('bootStatus');
+  const lu = particles.lineUniforms;                 // undefined on low-end (no mesh)
+
+  // type a boot-style status line through a couple of states, scrambling each
+  const bootStatus = (states, start, step) =>
+    states.forEach((s, i) => gsap.delayedCall(start + i * step, () => {
+      if (!statusEl) return;
+      statusEl.textContent = s;
+      if (!reducedMotion) scramble(statusEl, { duration: 420 });
+    }));
+  const revealWordmark = (decodeDur) => {
+    bootEl?.classList.add('is-on');
+    if (!decodeEl) return;
+    if (reducedMotion) decodeEl.textContent = 'SWIVEL TECHNOLOGIES';
+    else scramble(decodeEl, { duration: decodeDur, holdEmpty: true });
+  };
+
+  if (hash && hash !== '#intro') {
+    // deep link — skip the intro, just fade the stage in
+    gsap.to(particles.uniforms.uOpacity, { value: motion.workOpacity, duration: 1.4, ease: 'sine.out', delay: 0.2 });
+  } else if (reducedMotion) {
+    // simplified, mostly-static: logo resolves, wordmark decodes, no racing pulses
+    particles.setImmediate('logo');
+    if (lu) lu.uLineOpacity.value = 0.2;
+    gsap.to(particles.uniforms.uOpacity, { value: 1, duration: 1.0, ease: 'sine.out' });
+    revealWordmark(700);
+    bootStatus(['systems online'], 0.25, 0.5);
+    gsap.delayedCall(1.2, () => hint?.classList.add('is-on'));
+  } else {
+    // staged: scattered → networked (mesh + pulses prominent) → converge → logo
+    const T = isMobile ? 0.82 : 1;                    // mild speed-up on mobile
+    // Stage 1 — nodes fade in and WIRE together into a gently rotating neural net
+    gsap.to(particles.uniforms.uOpacity, { value: 1, duration: 1.3 * T, ease: 'sine.out', delay: 0.15 });
+    if (lu) gsap.to(lu.uLineOpacity, { value: 0.62, duration: 0.9 * T, ease: 'sine.out' });
+    particles.morphTo('nebula', { duration: 1.7 * T, stagger: 0.55, burst: 0.06 });
+
+    // Stage 2 — the network converges and snaps inward, forming the SWIVEL logo
+    gsap.delayedCall(2.0 * T, () =>
+      particles.morphTo('logo', { duration: 1.7 * T, stagger: 0.5, burst: isMobile ? 0.3 : 0.45 }));
+
+    // Stage 3 — the wordmark decodes + boot status types as the logo resolves
+    gsap.delayedCall(2.7 * T, () => {
+      revealWordmark(1200);
+      bootStatus(['initializing neural engine …', 'training · linking nodes …', 'systems online'], 0, 0.62 * T);
+    });
+
+    // Stage 4 — settle into the idle logo (faint live mesh + the odd pulse), hint on
+    if (lu) gsap.delayedCall(3.7 * T, () =>
+      gsap.to(lu.uLineOpacity, { value: 0.22, duration: 1.1, ease: 'sine.out' }));
+    gsap.delayedCall(isMobile ? 3.6 : 4.0, () => hint?.classList.add('is-on'));
   }
 }

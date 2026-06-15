@@ -190,7 +190,7 @@ html.gl-loading .loader, html.gl .loader { display: flex; }
 .brand { display: flex; flex-direction: column; line-height: 1; gap: 4px; }
 .brand__main {
   font-weight: 700; font-size: 1.06rem; letter-spacing: 0.06em;
-  background: linear-gradient(120deg, #7dd3fc 10%, var(--ember) 60%, #2563eb);
+  background: linear-gradient(120deg, #ffffff 35%, #bcd4ff);
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;
 }
@@ -340,13 +340,38 @@ h1, h2, h3 { font-weight: 700; line-height: 1.02; letter-spacing: -0.025em; }
 .intro__wordmark {
   font-weight: 700; line-height: 1;
   font-size: clamp(3.4rem, 13vw, 8.5rem); letter-spacing: -0.01em;
-  background: linear-gradient(170deg, #a5d8ff 20%, var(--ember) 58%, #2563eb);
+  background: linear-gradient(180deg, #ffffff 28%, #c3d6ff);
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;
 }
 .intro__wordsub { margin-top: 18px; color: var(--dim); letter-spacing: 0.5em; }
 html.gl .intro__logo { display: none; }    /* particles draw the logo instead */
 html.no-gl .scene--intro { display: none; } /* static fallback opens on the hero */
+
+/* GL-only intro caption — decodes the wordmark + a boot status line beneath the
+   particle logo as the network converges (engine adds .is-on) */
+.intro__boot { display: none; }
+html.gl .intro__boot {
+  display: block;
+  position: absolute; left: 50%; bottom: 16vh; transform: translateX(-50%);
+  width: max-content; max-width: 92vw; text-align: center;
+  opacity: 0; transition: opacity 0.8s ease;
+}
+html.gl .intro__boot.is-on { opacity: 1; }
+.intro__decode {
+  font-size: clamp(0.6rem, 1.3vw, 0.86rem);
+  letter-spacing: 0.5em; text-indent: 0.5em;
+  color: #fff; font-weight: 500;
+}
+.intro__status { margin-top: 13px; font-size: 0.62rem; letter-spacing: 0.16em; color: var(--accent); }
+.intro__status .intro__prompt { color: var(--faint); margin-right: 2px; }
+.intro__caret {
+  display: inline-block; width: 0.55em; height: 0.95em; margin-left: 3px;
+  background: var(--accent); vertical-align: -0.1em;
+  box-shadow: 0 0 8px var(--accent);
+  animation: caret-blink 1s steps(1) infinite;
+}
+@keyframes caret-blink { 50% { opacity: 0; } }
 
 .scroll-hint {
   position: absolute; left: 50%; bottom: 7vh; transform: translateX(-50%);
@@ -485,7 +510,43 @@ html.gl .scroll-hint.is-on { opacity: 1; animation: hint-pulse 2.6s ease-in-out 
   display: flex; align-items: center; justify-content: center;
 }
 
-/* placeholder cover until per-product procedural mockups land */
+/* ---------- product device previews (real screenshots) ---------- */
+.device { position: relative; z-index: 1; }
+.device__sc { position: relative; overflow: hidden; background: #05060a; }
+.device__sc img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: center;
+  opacity: 0; transition: opacity 0.9s ease;
+}
+.device__sc img.is-active,
+.device__sc img:only-child { opacity: 1; }
+
+/* phone frame — portrait app screenshots */
+.device--phone {
+  height: 95%; aspect-ratio: 9 / 19.5; max-width: 62%;
+  padding: 6px; border-radius: 28px;
+  background: linear-gradient(160deg, #1a1d27, #07090f);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 26px 60px -26px rgba(0, 0, 0, 0.9),
+    0 0 46px -18px color-mix(in srgb, var(--accent) 75%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.device--phone .device__sc { width: 100%; height: 100%; border-radius: 22px; }
+.device--phone .device__notch {
+  position: absolute; top: 7px; left: 50%; transform: translateX(-50%);
+  width: 32%; height: 12px; border-radius: 0 0 11px 11px;
+  background: #07090f; z-index: 3;
+}
+/* pre-framed mockups (Manas, Swico) — zoom past their baked-in device bezel */
+.device--inset .device__sc img { transform: scale(1.13); }
+
+/* browser-style screen — landscape dashboards fill the card window, with the
+   card__bar acting as the browser chrome */
+.device--screen { position: absolute; inset: 0; }
+.device--screen .device__sc { width: 100%; height: 100%; }
+
+/* legacy placeholder cover (no longer rendered) */
 .card__cover { text-align: center; position: relative; z-index: 1; }
 .card__cover .big {
   font-family: var(--f-mono); font-weight: 700;
@@ -596,7 +657,7 @@ html.gl .scroll-hint.is-on { opacity: 1; animation: hint-pulse 2.6s ease-in-out 
 .stat-strip strong {
   display: block;
   font-size: clamp(1.6rem, 3vw, 2.6rem); font-weight: 700; letter-spacing: -0.02em;
-  background: linear-gradient(120deg, #7dd3fc, var(--ember));
+  background: linear-gradient(120deg, #ffffff, #bcd4ff);
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;
 }
