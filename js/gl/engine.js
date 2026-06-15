@@ -8,6 +8,7 @@ import {
   spawnFormation, logoFormation, nebulaFormation,
   goodOneFormation, swicoFormation, grabBasketFormation,
   manasFormation, aiAssistantFormation, defectFormation,
+  buildEdges,
 } from './formations.js';
 
 const CDN = {
@@ -67,47 +68,58 @@ float snoise(vec3 v){
   return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
 }`;
 
+/* shared transform: per-particle staggered morph + mid-transition burst +
+   simplex turbulence. The points, the network mesh and the data pulses all
+   call this, so every layer moves in exact lockstep. */
+const PARTICLE_GLSL = /* glsl */ `
+${NOISE_GLSL}
+uniform float uTime;
+uniform float uMorph;
+uniform float uStagger;
+uniform float uBurst;
+uniform float uTurbAmp;
+uniform float uTurbFreq;
+uniform float uTurbSpeed;
+float morphProg(float rank){
+  float t = clamp(uMorph * (1.0 + uStagger) - rank * uStagger, 0.0, 1.0);
+  return t * t * (3.0 - 2.0 * t);
+}
+vec3 particlePos(vec3 from, vec3 to, vec4 seed){
+  float t = morphProg(seed.w);
+  vec3 pos = mix(from, to, t);
+  float burst = sin(t * 3.14159265) * uBurst;
+  if (burst > 0.001) {
+    vec3 dir = normalize(pos + (seed.xyz - 0.5) * 4.0 + vec3(0.001));
+    pos += dir * burst * (7.0 + seed.x * 24.0);
+  }
+  float spark = step(0.965, seed.x);
+  float amp = uTurbAmp * (0.45 + seed.y * 0.9) * (1.0 + spark * 2.6);
+  vec3 np = pos * uTurbFreq + vec3(uTime * uTurbSpeed);
+  pos += amp * vec3(snoise(np), snoise(np + 31.416), snoise(np - 47.853));
+  return pos;
+}`;
+
 const VERT = /* glsl */ `
+${PARTICLE_GLSL}
 attribute vec3 aFrom;
 attribute vec3 aTo;
 attribute vec3 aColFrom;
 attribute vec3 aColTo;
 attribute vec4 aSeed;
-uniform float uTime;
-uniform float uMorph;
-uniform float uStagger;
-uniform float uBurst;
 uniform float uOpacity;
 uniform float uSize;
 uniform float uPixelRatio;
-uniform float uTurbAmp;
-uniform float uTurbFreq;
-uniform float uTurbSpeed;
 varying vec3 vColor;
 varying float vAlpha;
-${NOISE_GLSL}
 void main(){
-  // per-particle staggered, eased morph progress
-  float t = clamp(uMorph * (1.0 + uStagger) - aSeed.w * uStagger, 0.0, 1.0);
-  t = t * t * (3.0 - 2.0 * t);
-  vec3 pos = mix(aFrom, aTo, t);
-
-  // radial explosion mid-transition
+  float t = morphProg(aSeed.w);
+  vec3 pos = particlePos(aFrom, aTo, aSeed);
   float burst = sin(t * 3.14159265) * uBurst;
-  if (burst > 0.001) {
-    vec3 dir = normalize(pos + (aSeed.xyz - 0.5) * 4.0 + vec3(0.001));
-    pos += dir * burst * (7.0 + aSeed.x * 24.0);
-  }
-
-  // simplex turbulence; a few % of particles are wilder "sparks"
-  float spark = step(0.965, aSeed.x);
-  float amp = uTurbAmp * (0.45 + aSeed.y * 0.9) * (1.0 + spark * 2.6);
-  vec3 np = pos * uTurbFreq + vec3(uTime * uTurbSpeed);
-  pos += amp * vec3(snoise(np), snoise(np + 31.416), snoise(np - 47.853));
 
   vec4 mv = modelViewMatrix * vec4(pos, 1.0);
   gl_Position = projectionMatrix * mv;
 
+  float spark = step(0.965, aSeed.x);
   float ps = uSize * mix(0.5, 1.7, aSeed.z) * (1.0 + spark * 0.9)
            * uPixelRatio * (100.0 / max(1.0, -mv.z));
   ps *= 1.0 + burst * 0.15;
@@ -129,6 +141,76 @@ void main(){
   float core = smoothstep(1.0, 0.0, d);
   float a = core * core * (0.55 + 0.45 * core);
   gl_FragColor = vec4(vColor * (1.0 + core * 0.7), a * vAlpha);
+}`;
+
+/* network mesh — faint accent-tinted segments between nearest nodes. Shares the
+   points' vertex attributes through an indexed geometry, so it morphs and
+   turbulates exactly with the cloud. uMeshFade dips during a morph so the mesh
+   re-knits rather than snapping. */
+const LINE_VERT = /* glsl */ `
+${PARTICLE_GLSL}
+attribute vec3 aFrom;
+attribute vec3 aTo;
+attribute vec4 aSeed;
+uniform float uOpacity;
+uniform float uMeshFade;
+varying float vAlpha;
+void main(){
+  vec3 pos = particlePos(aFrom, aTo, aSeed);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+  float tw = 0.78 + 0.32 * sin(uTime * 1.4 + aSeed.x * 6.28318);
+  vAlpha = uOpacity * uMeshFade * tw;
+}`;
+
+const LINE_FRAG = /* glsl */ `
+precision highp float;
+uniform vec3 uLineColor;
+uniform float uLineOpacity;
+varying float vAlpha;
+void main(){
+  gl_FragColor = vec4(uLineColor, vAlpha * uLineOpacity);
+}`;
+
+/* data pulses — a few bright motes streaming node→node along the edges. Each
+   pulse vertex carries both endpoints' attributes and rides between their
+   shader-computed positions, so it stays exactly on the live, morphing mesh. */
+const PULSE_VERT = /* glsl */ `
+${PARTICLE_GLSL}
+attribute vec3 aFromA;
+attribute vec3 aToA;
+attribute vec4 aSeedA;
+attribute vec3 aFromB;
+attribute vec3 aToB;
+attribute vec4 aSeedB;
+attribute float aPhase;
+uniform float uOpacity;
+uniform float uMeshFade;
+uniform float uSize;
+uniform float uPixelRatio;
+varying float vAlpha;
+void main(){
+  vec3 pa = particlePos(aFromA, aToA, aSeedA);
+  vec3 pb = particlePos(aFromB, aToB, aSeedB);
+  float tt = fract(uTime * 0.16 + aPhase);
+  vec3 pos = mix(pa, pb, tt);
+  vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+  gl_Position = projectionMatrix * mv;
+  float ps = uSize * 2.3 * uPixelRatio * (100.0 / max(1.0, -mv.z));
+  gl_PointSize = clamp(ps, 1.5, 26.0 * uPixelRatio);
+  float life = sin(tt * 3.14159265);                  // fade in/out at the nodes
+  vAlpha = uOpacity * uMeshFade * (0.2 + 0.8 * life);
+}`;
+
+const PULSE_FRAG = /* glsl */ `
+precision highp float;
+uniform vec3 uPulseColor;
+varying float vAlpha;
+void main(){
+  vec2 uv = gl_PointCoord - 0.5;
+  float d = length(uv) * 2.0;
+  if (d > 1.0) discard;
+  float core = smoothstep(1.0, 0.0, d);
+  gl_FragColor = vec4(uPulseColor * (0.6 + core), core * core * vAlpha);
 }`;
 
 /* ---------------- dependency loading ---------------- */
@@ -166,25 +248,40 @@ async function loadDeps({ lenis = true } = {}) {
 
 /* ---------------- particle system ---------------- */
 
-// idle character of each formation
+// idle character of each formation. Turbulence is deliberately low — shapes
+// should hold and breathe like a computed diagram, not billow like smoke.
 const PROFILES = {
-  spawn: { uTurbAmp: 0.8, uTurbFreq: 0.05, uTurbSpeed: 0.1, uSize: 2.0 },
-  logo: { uTurbAmp: 0.5, uTurbFreq: 0.12, uTurbSpeed: 0.22, uSize: 2.3 },
-  nebula: { uTurbAmp: 2.7, uTurbFreq: 0.035, uTurbSpeed: 0.05, uSize: 3.5 },
+  spawn: { uTurbAmp: 0.55, uTurbFreq: 0.05, uTurbSpeed: 0.09, uSize: 2.0 },
+  logo: { uTurbAmp: 0.32, uTurbFreq: 0.12, uTurbSpeed: 0.18, uSize: 2.3 },
+  nebula: { uTurbAmp: 1.0, uTurbFreq: 0.04, uTurbSpeed: 0.04, uSize: 3.1 },
   // per-product idle character — low amp keeps the detailed shapes legible
-  'good-one': { uTurbAmp: 0.7, uTurbFreq: 0.08, uTurbSpeed: 0.14, uSize: 2.6 },
-  'swico-ai': { uTurbAmp: 1.0, uTurbFreq: 0.07, uTurbSpeed: 0.2, uSize: 2.9 },
-  'grab-basket': { uTurbAmp: 0.7, uTurbFreq: 0.09, uTurbSpeed: 0.16, uSize: 2.7 },
-  manas: { uTurbAmp: 0.5, uTurbFreq: 0.05, uTurbSpeed: 0.07, uSize: 2.8 },         // calm
-  'ai-business-assistant': { uTurbAmp: 0.8, uTurbFreq: 0.07, uTurbSpeed: 0.16, uSize: 2.5 },
-  'defect-detector': { uTurbAmp: 0.6, uTurbFreq: 0.1, uTurbSpeed: 0.26, uSize: 2.4 }, // snappy
+  'good-one': { uTurbAmp: 0.42, uTurbFreq: 0.08, uTurbSpeed: 0.11, uSize: 2.6 },
+  'swico-ai': { uTurbAmp: 0.58, uTurbFreq: 0.07, uTurbSpeed: 0.13, uSize: 2.9 },
+  'grab-basket': { uTurbAmp: 0.44, uTurbFreq: 0.09, uTurbSpeed: 0.12, uSize: 2.7 },
+  manas: { uTurbAmp: 0.32, uTurbFreq: 0.05, uTurbSpeed: 0.06, uSize: 2.8 },        // calm
+  'ai-business-assistant': { uTurbAmp: 0.48, uTurbFreq: 0.07, uTurbSpeed: 0.12, uSize: 2.5 },
+  'defect-detector': { uTurbAmp: 0.4, uTurbFreq: 0.1, uTurbSpeed: 0.16, uSize: 2.4 },
+};
+
+// scene accents (cool, considered, distinct) — mirror the CSS --accent per
+// product. Used to tint the network mesh; nebula leans electric blue.
+const ACCENTS = {
+  nebula: 0x4aa8ff,
+  'good-one': 0x38bdf8,
+  'swico-ai': 0x818cf8,
+  'grab-basket': 0xc084fc,
+  manas: 0x2dd4bf,
+  'ai-business-assistant': 0x34d399,
+  'defect-detector': 0xf76d6d,
 };
 
 class Particles {
-  constructor(count, { mobile = false } = {}) {
+  constructor(count, { mobile = false, mesh = null, reducedMotion = false } = {}) {
     this.count = count;
     this.mobile = mobile;
     this.formations = {};
+    this.edges = {};            // formation name → Uint32Array of vertex-index pairs
+    this.accents = {};          // formation name → THREE.Color (mesh tint)
     this.mode = 'spawn';
 
     const geo = new THREE.BufferGeometry();
@@ -222,6 +319,7 @@ class Particles {
       uTurbAmp: { value: PROFILES.spawn.uTurbAmp },
       uTurbFreq: { value: PROFILES.spawn.uTurbFreq },
       uTurbSpeed: { value: PROFILES.spawn.uTurbSpeed },
+      uMeshFade: { value: 1 },     // dips during a morph so the mesh re-knits
     };
 
     const mat = new THREE.ShaderMaterial({
@@ -237,6 +335,149 @@ class Particles {
     this.points = new THREE.Points(geo, mat);
     this.points.frustumCulled = false;
     this.geo = geo;
+
+    // points + network mesh + pulses ride together in one group so they share
+    // the scroll-driven rotation and the camera dolly
+    this.group = new THREE.Group();
+    this.group.add(this.points);
+
+    this.lines = null;
+    this.pulses = null;
+    if (mesh && mesh.nodes > 0 && mesh.maxSegments > 0) this._buildMesh(mesh, reducedMotion);
+  }
+
+  /* line/pulse materials reuse the live morph/turbulence uniforms, so one tween
+     drives every layer in lockstep */
+  _shared() {
+    const u = this.uniforms;
+    return {
+      uTime: u.uTime, uMorph: u.uMorph, uStagger: u.uStagger, uBurst: u.uBurst,
+      uTurbAmp: u.uTurbAmp, uTurbFreq: u.uTurbFreq, uTurbSpeed: u.uTurbSpeed,
+      uOpacity: u.uOpacity, uMeshFade: u.uMeshFade,
+    };
+  }
+
+  /* the network layer: a LineSegments that shares the points' vertex attributes
+     through its own index buffer (so it morphs/turbulates identically), plus a
+     small pool of travelling data pulses. */
+  _buildMesh(mesh, reducedMotion) {
+    const a = this.geo.attributes;
+
+    const lgeo = new THREE.BufferGeometry();
+    lgeo.setAttribute('position', a.position);
+    lgeo.setAttribute('aFrom', a.aFrom);
+    lgeo.setAttribute('aTo', a.aTo);
+    lgeo.setAttribute('aSeed', a.aSeed);
+    this._lineIdx = new Uint32Array(mesh.maxSegments * 2);
+    this._lineIdxAttr = new THREE.BufferAttribute(this._lineIdx, 1);
+    this._lineIdxAttr.setUsage(THREE.DynamicDrawUsage);
+    lgeo.setIndex(this._lineIdxAttr);
+    lgeo.setDrawRange(0, 0);
+    this.lgeo = lgeo;
+
+    this.lineUniforms = {
+      ...this._shared(),
+      uLineColor: { value: new THREE.Color(ACCENTS.nebula) },
+      uLineOpacity: { value: mesh.lineOpacity },
+    };
+    this.lines = new THREE.LineSegments(lgeo, new THREE.ShaderMaterial({
+      uniforms: this.lineUniforms,
+      vertexShader: LINE_VERT,
+      fragmentShader: LINE_FRAG,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+    }));
+    this.lines.frustumCulled = false;
+    this.group.add(this.lines);
+
+    if (reducedMotion || mesh.pulses <= 0) return;     // static mesh only
+
+    const P = mesh.pulses;
+    const dyn3 = () => new THREE.BufferAttribute(new Float32Array(P * 3), 3).setUsage(THREE.DynamicDrawUsage);
+    const dyn4 = () => new THREE.BufferAttribute(new Float32Array(P * 4), 4).setUsage(THREE.DynamicDrawUsage);
+    const pgeo = new THREE.BufferGeometry();
+    pgeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(P * 3), 3));
+    pgeo.setAttribute('aFromA', dyn3());
+    pgeo.setAttribute('aToA', dyn3());
+    pgeo.setAttribute('aSeedA', dyn4());
+    pgeo.setAttribute('aFromB', dyn3());
+    pgeo.setAttribute('aToB', dyn3());
+    pgeo.setAttribute('aSeedB', dyn4());
+    const phase = new Float32Array(P);
+    for (let i = 0; i < P; i++) phase[i] = Math.random();
+    pgeo.setAttribute('aPhase', new THREE.BufferAttribute(phase, 1));
+    pgeo.setDrawRange(0, 0);
+    this.pgeo = pgeo;
+
+    this.pulseUniforms = {
+      ...this._shared(),
+      uSize: this.uniforms.uSize,
+      uPixelRatio: this.uniforms.uPixelRatio,
+      uPulseColor: { value: new THREE.Color(0xdbe7ff) },
+    };
+    this.pulses = new THREE.Points(pgeo, new THREE.ShaderMaterial({
+      uniforms: this.pulseUniforms,
+      vertexShader: PULSE_VERT,
+      fragmentShader: PULSE_FRAG,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+    }));
+    this.pulses.frustumCulled = false;
+    this.group.add(this.pulses);
+  }
+
+  setEdges(name, edges) { this.edges[name] = edges; }
+
+  /* point the mesh at the active formation: swap the line index to its edge
+     set, retint to its accent, and re-seat the pulses onto those edges */
+  _applyMesh(name) {
+    if (!this.lines) return;
+    const accent = this.accents[name] || this.accents.nebula;
+    if (accent) this.lineUniforms.uLineColor.value.copy(accent);
+    const edges = this.edges[name];
+    if (!edges || edges.length < 2) {
+      this.lgeo.setDrawRange(0, 0);
+      if (this.pulses) this.pgeo.setDrawRange(0, 0);
+      return;
+    }
+    const n = Math.min(edges.length, this._lineIdx.length);
+    this._lineIdx.set(n === edges.length ? edges : edges.subarray(0, n));
+    this._lineIdxAttr.needsUpdate = true;
+    this.lgeo.setDrawRange(0, n);
+    this._assignPulses(edges);
+  }
+
+  /* seat each pulse on a random edge, copying both endpoints' (post-bake) morph
+     attributes so the pulse rides the live, morphing segment */
+  _assignPulses(edges) {
+    if (!this.pulses) return;
+    const segs = edges.length / 2;
+    const A = this.pgeo.attributes;
+    const P = A.aPhase.count;
+    const sf = this.geo.attributes.aFrom.array;
+    const st = this.geo.attributes.aTo.array;
+    const ss = this.geo.attributes.aSeed.array;
+    const FA = A.aFromA.array, TA = A.aToA.array, SA = A.aSeedA.array;
+    const FB = A.aFromB.array, TB = A.aToB.array, SB = A.aSeedB.array;
+    for (let p = 0; p < P; p++) {
+      const s = (Math.random() * segs) | 0;
+      const ia = edges[s * 2], ib = edges[s * 2 + 1];
+      const o3 = p * 3, o4 = p * 4;
+      for (let c = 0; c < 3; c++) {
+        FA[o3 + c] = sf[ia * 3 + c]; TA[o3 + c] = st[ia * 3 + c];
+        FB[o3 + c] = sf[ib * 3 + c]; TB[o3 + c] = st[ib * 3 + c];
+      }
+      for (let c = 0; c < 4; c++) {
+        SA[o4 + c] = ss[ia * 4 + c]; SB[o4 + c] = ss[ib * 4 + c];
+      }
+    }
+    A.aFromA.needsUpdate = A.aToA.needsUpdate = A.aSeedA.needsUpdate = true;
+    A.aFromB.needsUpdate = A.aToB.needsUpdate = A.aSeedB.needsUpdate = true;
+    this.pgeo.setDrawRange(0, P);
   }
 
   setImmediate(name) {
@@ -250,8 +491,10 @@ class Particles {
       this.geo.attributes[a].needsUpdate = true;
     }
     this.uniforms.uMorph.value = 1;
+    this.uniforms.uMeshFade.value = 1;
     this._applyProfile(name, 0);
     this.mode = name;
+    this._applyMesh(name);
   }
 
   /* freeze the in-flight interpolation into aFrom so a new morph can
@@ -292,9 +535,13 @@ class Particles {
     this.uniforms.uMorph.value = 0;
     this.uniforms.uStagger.value = stagger;
     this.mode = name;
+    this._applyMesh(name);                       // re-seat mesh + pulses on the target
 
     this._tl = gsap.timeline();
     this._tl.to(this.uniforms.uMorph, { value: 1, duration, ease: 'power2.inOut' }, 0);
+    // fade the mesh down and back so it re-knits into the new shape, not snaps
+    this.uniforms.uMeshFade.value = 0.18;
+    this._tl.to(this.uniforms.uMeshFade, { value: 1, duration: duration * 0.9, ease: 'power2.out' }, 0);
     this._applyProfile(name, duration * 0.85, this._tl);
     if (burst > 0) {
       this._tl.fromTo(
@@ -367,6 +614,21 @@ function particleBudget({ mobile = false } = {}) {
   return Math.round(Math.min(48000, Math.max(12000, n)));
 }
 
+/* network-mesh budget — capped hard, and scaled down / skipped on weaker
+   devices so the line layer and pulses never tank the framerate. */
+function meshBudget({ mobile = false, reducedMotion = false } = {}) {
+  const cores = navigator.hardwareConcurrency || (mobile ? 6 : 8);
+  const memory = navigator.deviceMemory || 4;
+  if (mobile) {
+    if (cores <= 4 || memory <= 3) return { nodes: 0, k: 0, maxSegments: 0, pulses: 0, lineOpacity: 0 };
+    return { nodes: 300, k: 2, maxSegments: 640, pulses: reducedMotion ? 0 : 14, lineOpacity: 0.3 };
+  }
+  if (cores <= 4 || memory <= 4) {
+    return { nodes: 520, k: 3, maxSegments: 1200, pulses: reducedMotion ? 0 : 28, lineOpacity: 0.34 };
+  }
+  return { nodes: 820, k: 3, maxSegments: 2000, pulses: reducedMotion ? 0 : 46, lineOpacity: 0.36 };
+}
+
 export async function initGL(canvas, options = {}) {
   const isMobile = !!options.mobile;
   await loadDeps({ lenis: !isMobile });
@@ -409,9 +671,16 @@ export async function initGL(canvas, options = {}) {
   fitCamera();
   camera.position.set(0, 0, cam.baseZ);
 
-  const particles = new Particles(particleBudget({ mobile: isMobile }), { mobile: isMobile });
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const mesh = meshBudget({ mobile: isMobile, reducedMotion });
+  const particles = new Particles(particleBudget({ mobile: isMobile }), {
+    mobile: isMobile, mesh, reducedMotion,
+  });
   particles.uniforms.uPixelRatio.value = dpr;
-  scene.add(particles.points);
+  scene.add(particles.group);
+
+  // mesh tints mirror the per-scene CSS accents
+  for (const [name, hex] of Object.entries(ACCENTS)) particles.accents[name] = new THREE.Color(hex);
 
   /* formations */
   particles.formations.spawn = spawnFormation(particles.count);
@@ -424,6 +693,15 @@ export async function initGL(canvas, options = {}) {
   particles.formations['ai-business-assistant'] = aiAssistantFormation(particles.count);
   particles.formations['defect-detector'] = defectFormation(particles.count);
   particles.formations.logo = await logoFormation('images/logo.png', particles.count, { width: LOGO_W });
+
+  // precompute a nearest-neighbour network for the nebula + each product so the
+  // mesh roughly follows the active shape (logo/spawn stay a clean wordmark)
+  if (mesh.nodes > 0) {
+    for (const name of ['nebula', 'good-one', 'swico-ai', 'grab-basket', 'manas', 'ai-business-assistant', 'defect-detector']) {
+      particles.setEdges(name, buildEdges(particles.formations[name].positions, particles.count, mesh));
+    }
+  }
+
   particles.setImmediate('spawn');
   particles.uniforms.uOpacity.value = 0;
 
@@ -505,34 +783,36 @@ export async function initGL(canvas, options = {}) {
   updateSceneStickiness();
 
   /* scroll choreography */
+  // bursts are deliberately small — particles reflow/settle into the next
+  // formation (a wave sweeping through) rather than exploding outward
   const motion = isMobile
     ? {
-        heroMorph: 2.2,
-        heroBurst: 0.38,
-        logoMorph: 1.8,
-        logoBurst: 0.18,
+        heroMorph: 2.3,
+        heroBurst: 0.16,
+        logoMorph: 1.9,
+        logoBurst: 0.08,
         introMorph: 2.5,
-        introStagger: 0.38,
-        workOpacity: 0.4,
+        introStagger: 0.42,
+        workOpacity: 0.42,
         contactOpacity: 0.4,
         dolly: 14,
         rotY: 0.58,
         scrub: 0.75,
-        idleNebula: 0.025,
+        idleNebula: 0.02,
       }
     : {
-        heroMorph: 3.0,
-        heroBurst: 1,
-        logoMorph: 2.2,
-        logoBurst: 0.4,
+        heroMorph: 3.1,
+        heroBurst: 0.32,
+        logoMorph: 2.3,
+        logoBurst: 0.18,
         introMorph: 3.4,
-        introStagger: 0.55,
-        workOpacity: 0.4,
+        introStagger: 0.6,
+        workOpacity: 0.42,
         contactOpacity: 0.45,
         dolly: 26,
         rotY: 1.05,
         scrub: 1.3,
-        idleNebula: 0.045,
+        idleNebula: 0.035,
       };
   const rig = { rotY: 0, idle: 0, idleSpeed: isMobile ? 0.004 : 0.008 };
   const dim = (v, d = 1.4) =>
@@ -562,9 +842,9 @@ export async function initGL(canvas, options = {}) {
      from whatever is on screen, so the first goes nebula→shape and the rest
      go shape→shape. burst is kept gentle so transitions read, not thrash. */
   const PRODUCTS = ['good-one', 'swico-ai', 'grab-basket', 'manas', 'ai-business-assistant', 'defect-detector'];
-  const productDur = motion.heroMorph * 0.8;
-  const productStagger = isMobile ? 0.38 : 0.5;
-  const productBurst = isMobile ? 0.3 : 0.62;
+  const productDur = motion.heroMorph * 0.82;
+  const productStagger = isMobile ? 0.46 : 0.6;     // higher stagger = a wave sweeps through
+  const productBurst = isMobile ? 0.14 : 0.26;
   const toNebula = (burst) =>
     particles.morphTo('nebula', { duration: productDur, stagger: productStagger, burst });
 
@@ -679,7 +959,7 @@ export async function initGL(canvas, options = {}) {
     rig.idle += dt * rig.idleSpeed;
     // the logo must face the camera — unwind any accumulated spin
     if (particles.mode !== 'nebula') rig.idle *= Math.pow(0.25, dt);
-    particles.points.rotation.y = rig.rotY + rig.idle;
+    particles.group.rotation.y = rig.rotY + rig.idle;
 
     cam.px += (cam.tx - cam.px) * 0.045;
     cam.py += (cam.ty - cam.py) * 0.045;
