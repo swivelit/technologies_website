@@ -253,9 +253,11 @@ async function loadDeps({ lenis = true } = {}) {
 // idle character of each formation. Turbulence is deliberately low — shapes
 // should hold and breathe like a computed diagram, not billow like smoke.
 const PROFILES = {
-  spawn: { uTurbAmp: 0.55, uTurbFreq: 0.05, uTurbSpeed: 0.09, uSize: 2.0 },
-  logo: { uTurbAmp: 0.32, uTurbFreq: 0.12, uTurbSpeed: 0.18, uSize: 2.3 },
-  nebula: { uTurbAmp: 1.0, uTurbFreq: 0.04, uTurbSpeed: 0.04, uSize: 3.1 },
+  spawn: { uTurbAmp: 0.5, uTurbFreq: 0.05, uTurbSpeed: 0.08, uSize: 2.0 },
+  logo: { uTurbAmp: 0.18, uTurbFreq: 0.1, uTurbSpeed: 0.1, uSize: 2.3 },
+  // calm neural field — low turbulence so the network reads as a stable
+  // node/synapse diagram, not a wavy smoke cloud
+  nebula: { uTurbAmp: 0.34, uTurbFreq: 0.05, uTurbSpeed: 0.05, uSize: 2.7 },
   // per-product idle character — low amp keeps the detailed shapes legible
   'good-one': { uTurbAmp: 0.42, uTurbFreq: 0.08, uTurbSpeed: 0.11, uSize: 2.6 },
   'swico-ai': { uTurbAmp: 0.58, uTurbFreq: 0.07, uTurbSpeed: 0.13, uSize: 2.9 },
@@ -821,33 +823,33 @@ export async function initGL(canvas, options = {}) {
   const motion = isMobile
     ? {
         heroMorph: 2.3,
-        heroBurst: 0.16,
+        heroBurst: 0.1,
         logoMorph: 1.9,
-        logoBurst: 0.08,
+        logoBurst: 0.06,
         introMorph: 2.5,
-        introStagger: 0.42,
-        workOpacity: 0.42,
-        contactOpacity: 0.4,
+        introStagger: 0.32,
+        workOpacity: 0.26,
+        contactOpacity: 0.34,
         dolly: 14,
-        rotY: 0.58,
+        rotY: 0.5,
         scrub: 0.75,
-        idleNebula: 0.02,
+        idleNebula: 0.012,
       }
     : {
         heroMorph: 3.1,
-        heroBurst: 0.32,
+        heroBurst: 0.16,
         logoMorph: 2.3,
-        logoBurst: 0.18,
+        logoBurst: 0.1,
         introMorph: 3.4,
-        introStagger: 0.6,
-        workOpacity: 0.42,
-        contactOpacity: 0.45,
+        introStagger: 0.4,
+        workOpacity: 0.28,
+        contactOpacity: 0.4,
         dolly: 26,
-        rotY: 1.05,
+        rotY: 0.85,
         scrub: 1.3,
-        idleNebula: 0.035,
+        idleNebula: 0.018,
       };
-  const rig = { rotY: 0, idle: 0, idleSpeed: isMobile ? 0.004 : 0.008 };
+  const rig = { rotY: 0, idle: 0, idleSpeed: isMobile ? 0.003 : 0.005 };
   const dim = (v, d = 1.4) =>
     gsap.to(particles.uniforms.uOpacity, { value: v, duration: d, ease: 'sine.inOut', overwrite: 'auto' });
 
@@ -864,8 +866,10 @@ export async function initGL(canvas, options = {}) {
       particles.morphTo('nebula', { duration: motion.heroMorph, stagger: isMobile ? 0.34 : 0.45, burst: motion.heroBurst });
     },
     onLeaveBack: () => {
+      // scrolling back up to the intro keeps the calm neural field (no particle
+      // wordmark) — the readable SWIVEL TECHNOLOGIES is HTML over the top
       hintEl?.classList.add('is-on');
-      particles.morphTo('logo', { duration: motion.logoMorph, stagger: isMobile ? 0.28 : 0.35, burst: motion.logoBurst });
+      particles.morphTo('nebula', { duration: motion.heroMorph, stagger: isMobile ? 0.3 : 0.4, burst: motion.heroBurst });
     },
   });
   // dim the stage across the whole product run; restore to full above it
@@ -874,14 +878,39 @@ export async function initGL(canvas, options = {}) {
     onEnter: () => dim(motion.workOpacity), onLeaveBack: () => dim(1),
   });
 
-  /* corridor: scrub the camera through the six product rooms across the full
-     height of #work. The corridor's own update() derives its fade in/out from
-     this progress, so it appears only during the product run. */
+  /* corridor: bind the active 3D room to the product section near the viewport
+     centre, and anchor the planes to the right-hand product-card column so each
+     screenshot reads as part of that exact product, not a floating centrepiece. */
+  let anchorToCard = () => {};
   if (corridor) {
-    gsap.to(corridor, {
-      progress: 1, ease: 'none',
-      scrollTrigger: { trigger: '#work', start: 'top top', end: 'bottom bottom', scrub: motion.scrub },
+    const FIRST = '#good-one';
+    const LAST = '#defect-detector';
+
+    // visibility: on only while the product run is on screen
+    ScrollTrigger.create({
+      trigger: FIRST, start: 'top 80%',
+      endTrigger: LAST, end: 'bottom 20%',
+      onToggle: (self) => corridor.setVisible(self.isActive),
     });
+
+    // continuous active-room head: progress 0 at Good One's centre → 1 at Defect
+    // Detector's centre, mapped onto room indices 0…count-1. Stays correct on
+    // deep-links and refreshes (onRefresh re-reads progress).
+    const setHead = (self) => { corridor.targetHead = self.progress * (corridor.count - 1); };
+    ScrollTrigger.create({
+      trigger: FIRST, start: 'center center',
+      endTrigger: LAST, end: 'center center',
+      onUpdate: setHead, onRefresh: setHead,
+    });
+
+    // anchor the corridor to the product card area (all product cards share the
+    // right-hand column, so one measurement keeps every room on spot)
+    anchorToCard = () => {
+      const card = document.querySelector(`${FIRST} .product__card-wrap`);
+      if (card) corridor.setAnchorRect(card.getBoundingClientRect());
+    };
+    anchorToCard();
+    ScrollTrigger.addEventListener?.('refreshInit', anchorToCard);
   }
 
   /* per-product shape morphs — as each product scrolls into view the cloud
@@ -974,6 +1003,7 @@ export async function initGL(canvas, options = {}) {
       particles.uniforms.uPixelRatio.value = d;
       fitCamera();
       corridor?.resize(innerWidth, innerHeight);
+      anchorToCard();
       queueRefresh(true);
     }, 120);
   });
@@ -1049,45 +1079,50 @@ export async function initGL(canvas, options = {}) {
       statusEl.textContent = s;
       if (!reducedMotion) scramble(statusEl, { duration: 420 });
     }));
-  const revealWordmark = (decodeDur) => {
+  // the readable SWIVEL TECHNOLOGIES is real HTML (.intro__logo) — the WebGL
+  // only draws the neural field behind it. reveal = fade the HTML wordmark in
+  // and switch on the boot-status line.
+  const logoEl = document.querySelector('.intro__logo');
+  const revealWordmark = () => {
+    logoEl?.classList.add('is-on');
     bootEl?.classList.add('is-on');
-    if (!decodeEl) return;
-    if (reducedMotion) decodeEl.textContent = 'SWIVEL TECHNOLOGIES';
-    else scramble(decodeEl, { duration: decodeDur, holdEmpty: true });
   };
 
   if (hash && hash !== '#intro') {
     // deep link — skip the intro, just fade the stage in
     gsap.to(particles.uniforms.uOpacity, { value: motion.workOpacity, duration: 1.4, ease: 'sine.out', delay: 0.2 });
   } else if (reducedMotion) {
-    // simplified, mostly-static: logo resolves, wordmark decodes, no racing pulses
-    particles.setImmediate('logo');
-    if (lu) lu.uLineOpacity.value = 0.2;
+    // simplified, mostly-static: a calm neural field resolves, HTML wordmark in
+    particles.setImmediate('nebula');
+    if (lu) lu.uLineOpacity.value = 0.26;
     gsap.to(particles.uniforms.uOpacity, { value: 1, duration: 1.0, ease: 'sine.out' });
-    revealWordmark(700);
+    revealWordmark();
     bootStatus(['systems online'], 0.25, 0.5);
     gsap.delayedCall(1.2, () => hint?.classList.add('is-on'));
   } else {
-    // staged: scattered → networked (mesh + pulses prominent) → converge → logo
+    // staged "AI system boot": scattered nodes → wire into a neural network
+    // (synapse lines + data pulses prominent) → the HTML wordmark resolves over
+    // the top. No giant particle logo — the network stays the background.
     const T = isMobile ? 0.82 : 1;                    // mild speed-up on mobile
     // Stage 1 — nodes fade in and WIRE together into a gently rotating neural net
-    gsap.to(particles.uniforms.uOpacity, { value: 1, duration: 1.3 * T, ease: 'sine.out', delay: 0.15 });
-    if (lu) gsap.to(lu.uLineOpacity, { value: 0.62, duration: 0.9 * T, ease: 'sine.out' });
-    particles.morphTo('nebula', { duration: 1.7 * T, stagger: 0.55, burst: 0.06 });
+    gsap.to(particles.uniforms.uOpacity, { value: 1, duration: 1.4 * T, ease: 'sine.out', delay: 0.15 });
+    if (lu) gsap.to(lu.uLineOpacity, { value: 0.66, duration: 1.0 * T, ease: 'sine.out' });
+    particles.morphTo('nebula', { duration: 1.9 * T, stagger: 0.4, burst: 0.05 });
 
-    // Stage 2 — the network converges and snaps inward, forming the SWIVEL logo
-    gsap.delayedCall(2.0 * T, () =>
-      particles.morphTo('logo', { duration: 1.7 * T, stagger: 0.5, burst: isMobile ? 0.3 : 0.45 }));
-
-    // Stage 3 — the wordmark decodes + boot status types as the logo resolves
-    gsap.delayedCall(2.7 * T, () => {
-      revealWordmark(1200);
-      bootStatus(['initializing neural engine …', 'training · linking nodes …', 'systems online'], 0, 0.62 * T);
+    // Stage 2 — the synapses pulse brighter as the engine "comes online"
+    gsap.delayedCall(1.6 * T, () => {
+      if (lu) gsap.to(lu.uLineOpacity, { value: 0.78, duration: 0.7 * T, ease: 'sine.inOut', yoyo: true, repeat: 1 });
     });
 
-    // Stage 4 — settle into the idle logo (faint live mesh + the odd pulse), hint on
-    if (lu) gsap.delayedCall(3.7 * T, () =>
-      gsap.to(lu.uLineOpacity, { value: 0.22, duration: 1.1, ease: 'sine.out' }));
-    gsap.delayedCall(isMobile ? 3.6 : 4.0, () => hint?.classList.add('is-on'));
+    // Stage 3 — the HTML wordmark resolves + boot status types
+    gsap.delayedCall(1.9 * T, () => {
+      revealWordmark();
+      bootStatus(['initializing neural engine …', 'training · linking nodes …', 'systems online'], 0, 0.6 * T);
+    });
+
+    // Stage 4 — settle the live mesh to its idle glow, scroll hint on
+    if (lu) gsap.delayedCall(3.4 * T, () =>
+      gsap.to(lu.uLineOpacity, { value: 0.32, duration: 1.1, ease: 'sine.out' }));
+    gsap.delayedCall(isMobile ? 3.4 : 3.8, () => hint?.classList.add('is-on'));
   }
 }

@@ -35,11 +35,11 @@ export const CORRIDOR_PRODUCTS = [
   {
     id: 'good-one', name: 'GOOD ONE', accent: 0x38bdf8, orient: 'portrait',
     images: [
-      'projects/goodone/Screenshot%202026-06-15%20at%201.18.12%E2%80%AFam.png',
-      'projects/goodone/Screenshot%202026-06-15%20at%201.19.04%E2%80%AFam.png',
-      'projects/goodone/Screenshot%202026-06-15%20at%201.17.12%E2%80%AFam.png',
-      'projects/goodone/Screenshot%202026-06-15%20at%201.18.51%E2%80%AFam.png',
-      'projects/goodone/Screenshot%202026-06-15%20at%201.19.28%E2%80%AFam.png',
+      'projects/goodone/goodone_03.png',
+      'projects/goodone/goodone_08.png',
+      'projects/goodone/goodone_01.png',
+      'projects/goodone/goodone_07.png',
+      'projects/goodone/goodone_11.png',
     ],
   },
   {
@@ -95,21 +95,23 @@ export const CORRIDOR_PRODUCTS = [
 ];
 
 /* layout slots inside one product "room", relative to the room centre.
-   index 0 is the big hero screen; the rest are smaller, angled and pushed
-   back/aside so each product reads as its own little 3D space.
+   index 0 is the big hero screen; the rest are smaller, angled and clustered
+   AROUND/BEHIND it (biased to the right) so they orbit the hero without
+   drifting across the left-hand product copy.
      x,y,z = offset (world units)   ry = yaw (rad)   s = scale   op = base opacity */
 const SLOTS = [
-  { x: 0.0, y: 0.4, z: 0.0, ry: 0.0, s: 1.0, op: 1.0 },
-  { x: -8.6, y: 2.6, z: -3.6, ry: 0.40, s: 0.58, op: 0.7 },
-  { x: 8.4, y: -1.7, z: -2.9, ry: -0.38, s: 0.62, op: 0.74 },
-  { x: -6.6, y: -3.7, z: -6.6, ry: 0.50, s: 0.48, op: 0.52 },
-  { x: 7.0, y: 3.9, z: -7.6, ry: -0.52, s: 0.46, op: 0.5 },
+  { x: 0.0, y: 0.3, z: 0.0, ry: 0.0, s: 1.0, op: 1.0 },
+  { x: 4.6, y: 2.7, z: -4.8, ry: -0.34, s: 0.5, op: 0.6 },
+  { x: 4.2, y: -2.9, z: -3.8, ry: -0.3, s: 0.54, op: 0.64 },
+  { x: -3.2, y: 1.7, z: -6.8, ry: 0.4, s: 0.42, op: 0.44 },
+  { x: 5.8, y: 0.4, z: -8.6, ry: -0.46, s: 0.4, op: 0.42 },
 ];
 
 const SPACING = 15;     // depth between product rooms
 const VIEW = 10;        // how far in front of the active room the camera sits
 const FOG_NEAR = 9;     // view-space distance where planes start fading to bg
 const FOG_FAR = 50;     // …and where they're fully absorbed by the dark
+const ANCHOR_Y = 0.02;  // vertical anchor in NDC (~viewport centre, card height)
 
 /* ------------------------------------------------------------------ *
  * glass-screen shader — texture + rounded corners + soft inner vignette,
@@ -247,10 +249,19 @@ export function createCorridor(THREE, opts = {}) {
 
   const planesPerRoom = mobile ? 2 : 4;
   const maxDim = mobile ? 540 : 820;
+  // default horizontal anchor in NDC: desktop pushes the rooms toward the
+  // right-hand product-card column (text sits on the left); mobile stacks the
+  // layout, so keep the corridor centred behind the content.
+  const defaultAnchorX = mobile ? 0.0 : 0.42;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 260);
   camera.position.set(0, 0, VIEW);
+
+  // anchorGroup offsets every room toward the product-card area without moving
+  // the camera, so the active hero screen lands beside the product copy
+  const anchorGroup = new THREE.Group();
+  scene.add(anchorGroup);
 
   const fogColor = new THREE.Color(0x05060a);
   const unit = new THREE.PlaneGeometry(1, 1);
@@ -264,7 +275,7 @@ export function createCorridor(THREE, opts = {}) {
     const rx = Math.sin(ri * 1.3) * 1.4;
     const ry = Math.cos(ri * 0.7) * 0.9;
     group.position.set(rx, ry, rz);
-    scene.add(group);
+    anchorGroup.add(group);
 
     const accent = new THREE.Color(product.accent);
     const planes = [];
@@ -311,8 +322,8 @@ export function createCorridor(THREE, opts = {}) {
   });
 
   function sizePlane(mesh, slot, aspect, isMobile) {
-    const portraitH = isMobile ? 7.4 : 9.0;
-    const landscapeW = isMobile ? 10.5 : 13.5;
+    const portraitH = isMobile ? 7.0 : 8.5;
+    const landscapeW = isMobile ? 9.5 : 11.0;
     let w, h;
     if (aspect < 1) { h = portraitH; w = h * aspect; }
     else { w = landscapeW; h = w / aspect; }
@@ -321,12 +332,28 @@ export function createCorridor(THREE, opts = {}) {
 
   const api = {
     scene, camera,
-    progress: 0,          // 0..1, driven by ScrollTrigger
+    count: CORRIDOR_PRODUCTS.length,
+    // active product as a fractional index: 0=Good One … 5=Defect Detector.
+    // engine sets targetHead from the visible product section; head eases to it.
+    head: 0,
+    targetHead: 0,
+    visible: false,
     ready: true,
     master: 0,
-    masterTarget: 0,
     _time: 0,
     _loaded: false,
+    _anchorX: defaultAnchorX,
+    _anchorTargetX: defaultAnchorX,
+
+    /* explicit control surface (engine ↔ corridor) */
+    setActive(i) { this.targetHead = clamp(i, 0, this.count - 1); },
+    setHead(v) { this.targetHead = v; },
+    setVisible(on) { this.visible = !!on; },
+    setAnchorRect(rect) {
+      if (!rect || !rect.width || mobile) return;   // mobile stays centred
+      const cx = rect.left + rect.width / 2;
+      this._anchorTargetX = clamp((cx / Math.max(1, innerWidth)) * 2 - 1, -0.85, 0.85);
+    },
 
     /* lazy texture load — prioritises hero planes, small concurrency pool so
        it never stampedes the network or blocks the page. */
@@ -358,13 +385,11 @@ export function createCorridor(THREE, opts = {}) {
     },
 
     update(dt, px = 0, py = 0) {
-      // master fade is derived purely from scroll progress: ramp in as the work
-      // section starts, ramp out as it ends. This stays correct on deep-links
-      // and ScrollTrigger refreshes without needing discrete enter/leave events.
-      const edge = smoothstep(0.0, 0.05, this.progress) * (1 - smoothstep(0.95, 1.0, this.progress));
-      this.masterTarget = masterOpacity * edge;
-      this.master += (this.masterTarget - this.master) * Math.min(1, dt * 3);
-      if (this.master < 0.002 && this.masterTarget < 0.002) {
+      // master fade follows the engine's visibility flag (set across the product
+      // run), so the corridor only appears during the product sections.
+      const mTarget = this.visible ? masterOpacity : 0;
+      this.master += (mTarget - this.master) * Math.min(1, dt * 3);
+      if (this.master < 0.002 && mTarget === 0) {
         this.master = 0;
         return; // fully hidden — engine skips the render pass
       }
@@ -372,13 +397,24 @@ export function createCorridor(THREE, opts = {}) {
       const t = this._time;
       const N = rooms.length;
 
-      // fractional active room — head=i when product i's scene is centred
-      const head = clamp(this.progress * N - 0.5, -0.6, N - 0.4);
+      // ease the fractional active room toward the section the engine reports
+      this.head += (this.targetHead - this.head) * Math.min(1, dt * 4.5);
+      const head = clamp(this.head, -0.6, (N - 1) + 0.6);
       const camZ = VIEW - head * SPACING;
-      const sway = Math.sin(this.progress * Math.PI * 2) * 1.5;
+
+      // anchor the corridor beside the product card: convert the NDC anchor into
+      // a world offset at the active room's depth and shift every room there.
+      this._anchorX += (this._anchorTargetX - this._anchorX) * Math.min(1, dt * 4);
+      const halfH = Math.tan((camera.fov * Math.PI) / 360) * VIEW;
+      const halfW = halfH * camera.aspect;
+      anchorGroup.position.x = this._anchorX * halfW;
+      anchorGroup.position.y = ANCHOR_Y * halfH;
+
+      // camera looks straight down the corridor; the anchorGroup offset (not the
+      // camera) is what slides the rooms toward the card area. Subtle parallax.
       const par = reducedMotion ? 0 : 1;
-      camera.position.set(sway + px * 0.35 * par, py * 0.28 * par, camZ);
-      camera.lookAt(camera.position.x * 0.4, camera.position.y * 0.4, camZ - 14);
+      camera.position.set(px * 0.22 * par, py * 0.18 * par, camZ);
+      camera.lookAt(camera.position.x, camera.position.y, camZ - 14);
 
       for (let i = 0; i < N; i++) {
         const room = rooms[i];
@@ -387,7 +423,9 @@ export function createCorridor(THREE, opts = {}) {
         room.group.visible = visible;
         if (!visible) continue;
 
-        const focus = clamp(1 - Math.abs(i - head) * 0.5, 0.16, 1);
+        // active room reads at full strength; neighbours fall off fast so they
+        // recede into depth rather than competing with the active product
+        const focus = clamp(1 - Math.abs(i - head) * 0.62, 0.12, 1);
         const behind = smoothstep(-SPACING * 0.6, 2, ahead);
         const roomOpacity = this.master * focus * behind;
 
@@ -418,7 +456,7 @@ export function createCorridor(THREE, opts = {}) {
         plane.mat.dispose();
       }
       unit.dispose();
-      rooms.forEach((r) => scene.remove(r.group));
+      scene.remove(anchorGroup);
     },
   };
 
