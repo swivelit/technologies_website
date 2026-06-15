@@ -11,6 +11,7 @@ import {
   buildEdges,
 } from './formations.js';
 import { scramble } from '../scramble.js';
+import { createCorridor } from './imagePlanes.js';
 
 const CDN = {
   three: 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js',
@@ -684,6 +685,32 @@ export async function initGL(canvas, options = {}) {
   // mesh tints mirror the per-scene CSS accents
   for (const [name, hex] of Object.entries(ACCENTS)) particles.accents[name] = new THREE.Color(hex);
 
+  /* product image corridor — a second, self-contained render pass that floats
+     the real screenshots as a 3D tunnel behind the readable HTML copy. Skipped
+     on weaker phones (the HTML product cards already carry the screenshots).
+     Any failure here must never take down the particle stage. */
+  let corridor = null;
+  const corridorOK = (() => {
+    if (!isMobile) return true;
+    const cores = navigator.hardwareConcurrency || 6;
+    const memory = navigator.deviceMemory || 4;
+    return cores > 4 && memory > 3;
+  })();
+  if (corridorOK) {
+    try {
+      corridor = createCorridor(THREE, {
+        mobile: isMobile,
+        reducedMotion,
+        maxAnisotropy: renderer.capabilities.getMaxAnisotropy(),
+      });
+      corridor.resize(innerWidth, innerHeight);
+      corridor.load().catch((err) => console.warn('[swivel] corridor textures:', err));
+    } catch (err) {
+      console.warn('[swivel] image corridor unavailable:', err);
+      corridor = null;
+    }
+  }
+
   /* formations */
   particles.formations.spawn = spawnFormation(particles.count);
   particles.formations.nebula = nebulaFormation(particles.count);
@@ -847,6 +874,16 @@ export async function initGL(canvas, options = {}) {
     onEnter: () => dim(motion.workOpacity), onLeaveBack: () => dim(1),
   });
 
+  /* corridor: scrub the camera through the six product rooms across the full
+     height of #work. The corridor's own update() derives its fade in/out from
+     this progress, so it appears only during the product run. */
+  if (corridor) {
+    gsap.to(corridor, {
+      progress: 1, ease: 'none',
+      scrollTrigger: { trigger: '#work', start: 'top top', end: 'bottom bottom', scrub: motion.scrub },
+    });
+  }
+
   /* per-product shape morphs — as each product scrolls into view the cloud
      dissolves and re-forms into its shape. bake() makes every morph start
      from whatever is on screen, so the first goes nebula→shape and the rest
@@ -936,6 +973,7 @@ export async function initGL(canvas, options = {}) {
       renderer.setSize(innerWidth, innerHeight, false);
       particles.uniforms.uPixelRatio.value = d;
       fitCamera();
+      corridor?.resize(innerWidth, innerHeight);
       queueRefresh(true);
     }, 120);
   });
@@ -947,6 +985,7 @@ export async function initGL(canvas, options = {}) {
     e.preventDefault();
     gsap.ticker.remove(tick);
     try { lenis?.destroy?.(); } catch {}
+    try { corridor?.dispose(); } catch {}
     if (window.__swivelLenis === lenis) delete window.__swivelLenis;
     html.classList.remove('gl', 'gl-mobile');
     html.classList.add('no-gl');
@@ -977,6 +1016,16 @@ export async function initGL(canvas, options = {}) {
     camera.lookAt(0, 0, -6);
 
     renderer.render(scene, camera);
+
+    // second pass — the product image corridor, layered over the particles
+    if (corridor) {
+      corridor.update(dt, cam.px, cam.py);
+      if (corridor.master > 0.002) {
+        renderer.autoClear = false;
+        renderer.render(corridor.scene, corridor.camera);
+        renderer.autoClear = true;
+      }
+    }
   }
   gsap.ticker.add(tick);
   gsap.ticker.lagSmoothing(0);
