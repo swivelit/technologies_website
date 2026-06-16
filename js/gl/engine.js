@@ -1552,6 +1552,34 @@ export async function initGL(canvas, options = {}) {
     };
     anchorToCard();
     ScrollTrigger.addEventListener?.('refreshInit', anchorToCard);
+
+    // swipe / drag-to-scrub (touch) — a horizontal swipe over the product run
+    // scrubs the active room's screenshot carousel. Available on every touch
+    // device where the corridor exists; vertical gestures still scroll the page.
+    let dragX = 0, dragY = 0, dragging = false, dragApplied = 0, dragAxis = 0;
+    const SWIPE_PX = isMobile ? 90 : 150;     // horizontal px per screenshot
+    addEventListener('touchstart', (e) => {
+      const t = e.touches[0];
+      dragging = true; dragAxis = 0; dragApplied = 0;
+      dragX = t.clientX; dragY = t.clientY;
+    }, { passive: true });
+    addEventListener('touchmove', (e) => {
+      if (!dragging || !corridor.visible) return;
+      const t = e.touches[0];
+      const dx = t.clientX - dragX, dy = t.clientY - dragY;
+      if (dragAxis === 0) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;        // wait for intent
+        dragAxis = Math.abs(dx) > Math.abs(dy) * 1.2 ? 1 : -1;   // 1 = horizontal scrub
+        if (dragAxis === -1) { dragging = false; return; }       // vertical → let it scroll
+      }
+      e.preventDefault();                                        // own the horizontal gesture
+      const images = -dx / SWIPE_PX;
+      corridor.scrubActive(images - dragApplied);
+      dragApplied = images;
+    }, { passive: false });
+    const endDrag = () => { dragging = false; };
+    addEventListener('touchend', endDrag, { passive: true });
+    addEventListener('touchcancel', endDrag, { passive: true });
   }
 
   /* per-product shape morphs — as each product scrolls into view the cloud

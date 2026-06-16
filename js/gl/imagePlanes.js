@@ -263,8 +263,9 @@ void main(){
 
   float rim = smoothstep(0.06, 0.0, abs(d));
   float fresnel = pow(edgeZone, 2.4) * (0.42 + uActive * 0.45 + speed * 0.65);
-  col += uAccent * rim * (0.34 + uGlass * 0.46 + speed * 0.22);
-  col += uAccent * fresnel * 0.18;
+  // accent rim-light — pronounced on the active/hero plane, faint on the rack
+  col += uAccent * rim * (0.34 + uGlass * 0.46 + speed * 0.22 + uActive * 0.9);
+  col += uAccent * fresnel * (0.18 + uActive * 0.4);
   col = mix(col, col * 1.08 + uAccent * 0.035, activeClear * 0.72);
 
   float scanLine = smoothstep(0.985, 1.0, sin((vUv.y + uTime * 0.08) * 420.0) * 0.5 + 0.5);
@@ -283,7 +284,9 @@ void main(){
   float fogStrength = mix(1.04, 0.54, activeClear);
   col = mix(col, uFog, vFog * fogStrength);
 
-  float a = mask * uOpacity * (1.0 - vFog * mix(0.22, 0.05, activeClear));
+  // stronger depth fade on far / inactive planes so distance reads clearly,
+  // while the active hero stays crisp (its fog alpha-loss stays minimal)
+  float a = mask * uOpacity * (1.0 - vFog * mix(0.42, 0.05, activeClear));
   gl_FragColor = vec4(col, a);
 }`;
 
@@ -327,6 +330,43 @@ void main(){
   col = mix(col, uFog, vFog * 0.88);
   float a = mask * (edge * 0.75 + core * 0.2) * uOpacity * uGlow * breathe * (1.0 - vFog * 0.45);
   gl_FragColor = vec4(col, a);
+}`;
+
+/* soft floor reflection — a vertically-mirrored, downward-fading echo of the
+   hero plane on an implied glass floor. Desktop-only + quality-gated (built only
+   when !mobile && !reducedMotion, shown only for the active plane). Normal alpha
+   blend (a reflection is a dimmed mirror image, not a glow). */
+const REFLECTION_VERT = /* glsl */ `
+varying vec2 vUv;
+void main(){
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+
+const REFLECTION_FRAG = /* glsl */ `
+precision highp float;
+varying vec2 vUv;
+uniform sampler2D uTex;
+uniform float uHasTex;
+uniform vec3 uAccent;
+uniform vec3 uFog;
+uniform float uOpacity;
+uniform float uRadius;
+float roundedRect(vec2 p, vec2 b, float r){
+  vec2 q = abs(p) - b + r;
+  return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+}
+void main(){
+  vec2 p = vUv - 0.5;
+  float d = roundedRect(p, vec2(0.5), uRadius);
+  float mask = smoothstep(0.014, -0.014, d);
+  if (mask < 0.003) discard;
+  // sample mirrored in Y; fade strongest at the seam (vUv.y→1) to nothing below
+  vec3 col = uHasTex > 0.5 ? texture2D(uTex, vec2(vUv.x, 1.0 - vUv.y)).rgb : uAccent * 0.2;
+  float fade = pow(clamp(vUv.y, 0.0, 1.0), 1.7);
+  col = mix(uFog, col, 0.1 + fade * 0.85);     // recede into the background
+  col += uAccent * 0.05 * fade;
+  gl_FragColor = vec4(col, mask * uOpacity * fade);
 }`;
 
 /* labelled placeholder texture (used when a screenshot is missing) */
@@ -545,6 +585,7 @@ export function createCorridor(THREE, opts = {}) {
       targetImageHead: 0,
       scrollHead: 0,        // driven by local scroll (a partial cycle)
       idleHead: 0,          // slow drift while active → eventually shows the rest
+      manualHead: 0,        // swipe/drag-to-scrub offset (touch), persists
       localProgress: 0,
       activeHeroImageIndex: 0,
       visibleImageIndices: [],
@@ -629,8 +670,32 @@ export function createCorridor(THREE, opts = {}) {
         }
       }
 
+      // soft floor reflection (desktop + motion only; shown for the hero plane)
+      let reflection = null, reflectionMat = null;
+      if (!mobile && !reducedMotion) {
+        reflectionMat = new THREE.ShaderMaterial({
+          uniforms: {
+            uTex: { value: null },
+            uHasTex: { value: 0 },
+            uAccent: { value: accent },
+            uFog: { value: fogColor },
+            uOpacity: { value: 0 },
+            uRadius: { value: 0.05 },
+          },
+          vertexShader: REFLECTION_VERT,
+          fragmentShader: REFLECTION_FRAG,
+          transparent: true,
+          depthWrite: false,
+          depthTest: false,
+        });
+        reflection = new THREE.Mesh(unit, reflectionMat);
+        reflection.frustumCulled = false;
+        reflection.visible = false;
+        group.add(reflection);
+      }
+
       const plane = {
-        mesh, mat, aura, auraMat, trails, imageIndex: i, basePos,
+        mesh, mat, aura, auraMat, trails, reflection, reflectionMat, imageIndex: i, basePos,
         phase: Math.random() * Math.PI * 2,
         url,
         product, productIndex: ri, profile,
@@ -677,13 +742,14 @@ export function createCorridor(THREE, opts = {}) {
     const count = room.product.images.length;
     const maxHead = Math.max(0, count - 1);
     if (reducedMotion) {
-      // direct, clamped index — no cyclic spin, no idle drift
-      room.targetImageHead = clamp(room.scrollHead, 0, maxHead);
+      // direct, clamped index — no cyclic spin, no idle drift (manual scrub still counts)
+      room.targetImageHead = clamp(room.scrollHead + room.manualHead, 0, maxHead);
     } else {
       // scroll promotes a partial cycle; idle drift (only while active) brings
-      // the rest forward without forcing the user through a long slideshow.
+      // the rest forward without forcing the user through a long slideshow;
+      // manualHead carries touch swipe-to-scrub on top.
       if (isActive && count > 1) room.idleHead += dt * IDLE_RATE * (room.profile.calm || 1);
-      room.targetImageHead = room.scrollHead + room.idleHead;
+      room.targetImageHead = room.scrollHead + room.idleHead + room.manualHead;
     }
     const rate = reducedMotion ? 12 : (mobile ? 6.5 : 5.2);
     room.imageHead += (room.targetImageHead - room.imageHead) * Math.min(1, dt * rate);
@@ -733,6 +799,13 @@ export function createCorridor(THREE, opts = {}) {
       this.setActive(productIndex);
       this.setProductProgress(productIndex, progress);
     },
+    /* swipe/drag-to-scrub (touch): nudge the active room's carousel by a
+       (possibly fractional) number of screenshots. Persists on top of scroll. */
+    scrubActive(deltaImages) {
+      if (!deltaImages) return;
+      const room = rooms[clamp(Math.round(this.head), 0, this.count - 1)];
+      if (room) room.manualHead += deltaImages;
+    },
     setVisible(on) { this.visible = !!on; },
     setAnchorRect(rect) {
       if (!rect || !rect.width || mobile) return;   // mobile stays centred
@@ -761,6 +834,10 @@ export function createCorridor(THREE, opts = {}) {
             plane.mat.uniforms.uTex.value = tex;
             plane.mat.uniforms.uHasTex.value = 1;
             plane.tex = tex;
+            if (plane.reflectionMat) {
+              plane.reflectionMat.uniforms.uTex.value = tex;
+              plane.reflectionMat.uniforms.uHasTex.value = 1;
+            }
             setNaturalSize(plane, aspect);
             sizePlane(plane, plane.layout?.scale || 1);
           } catch (err) {
@@ -768,6 +845,10 @@ export function createCorridor(THREE, opts = {}) {
             plane.mat.uniforms.uTex.value = tex;
             plane.mat.uniforms.uHasTex.value = 1;
             plane.tex = tex;
+            if (plane.reflectionMat) {
+              plane.reflectionMat.uniforms.uTex.value = tex;
+              plane.reflectionMat.uniforms.uHasTex.value = 1;
+            }
             plane.missing = true;
           }
         }
@@ -855,6 +936,7 @@ export function createCorridor(THREE, opts = {}) {
           if (Math.abs(offset) > windowR) {
             plane.mesh.visible = false;
             plane.aura.visible = false;
+            if (plane.reflection) plane.reflection.visible = false;
             for (const trail of plane.trails) { trail.mesh.visible = false; trail.ready = false; }
             continue;
           }
@@ -895,6 +977,7 @@ export function createCorridor(THREE, opts = {}) {
           plane.mesh.visible = planeOn;
           plane.aura.visible = planeOn;
           if (!planeOn) {
+            if (plane.reflection) plane.reflection.visible = false;
             for (const trail of plane.trails) {
               trail.mesh.visible = false;
               trail.ready = false;
@@ -939,6 +1022,22 @@ export function createCorridor(THREE, opts = {}) {
             trail.mat.uniforms.uVelocity.value = scrollEnergy;
             trail.mat.uniforms.uOpacity.value = planeOpacity * plane.profile.trail * scrollEnergy * (0.24 + active * 0.24) / trail.lag;
           }
+
+          // soft floor reflection — only the hero/active plane, and only at full
+          // quality (the adaptive probe drops qualityScale, which hides it)
+          if (plane.reflection) {
+            const reflOn = active > 0.3 && q >= 0.999;
+            plane.reflection.visible = reflOn;
+            if (reflOn) {
+              const sx = plane.naturalW * layout.scale;
+              const sy = plane.naturalH * layout.scale;
+              plane.reflection.scale.set(sx, sy, 1);
+              plane.reflection.position.copy(plane.mesh.position);
+              plane.reflection.position.y -= sy * 1.02;        // seam sits just below the plane
+              plane.reflection.rotation.set(-plane.mesh.rotation.x, plane.mesh.rotation.y, -plane.mesh.rotation.z);
+              plane.reflectionMat.uniforms.uOpacity.value = planeOpacity * active * 0.4;
+            }
+          }
         }
       }
     },
@@ -953,6 +1052,7 @@ export function createCorridor(THREE, opts = {}) {
         plane.tex?.dispose?.();
         plane.mat.dispose();
         plane.auraMat.dispose();
+        plane.reflectionMat?.dispose();
         for (const trail of plane.trails) trail.mat.dispose();
       }
       unit.dispose();
