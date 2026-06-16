@@ -182,7 +182,9 @@ uniform float uLineOpacity;
 uniform float uBootEnergy;
 varying float vAlpha;
 void main(){
-  gl_FragColor = vec4(uLineColor * (1.0 + uBootEnergy * 0.38), vAlpha * uLineOpacity * (1.0 + uBootEnergy * 0.9));
+  // brighter line colour keeps each 1px synapse a crisp, bright filament on the
+  // dark field (no width change — reads thinner + more defined, not blooming)
+  gl_FragColor = vec4(uLineColor * (1.22 + uBootEnergy * 0.38), vAlpha * uLineOpacity * (1.0 + uBootEnergy * 0.9));
 }`;
 
 /* data pulses — a few bright motes streaming node→node along the edges. Each
@@ -376,9 +378,9 @@ async function loadDeps({ lenis = true } = {}) {
 const PROFILES = {
   spawn: { uTurbAmp: 0.5, uTurbFreq: 0.05, uTurbSpeed: 0.08, uSize: 2.0 },
   logo: { uTurbAmp: 0.18, uTurbFreq: 0.1, uTurbSpeed: 0.1, uSize: 2.3 },
-  // calm neural field — low turbulence so the network reads as a stable
-  // node/synapse diagram, not a wavy smoke cloud
-  nebula: { uTurbAmp: 0.34, uTurbFreq: 0.05, uTurbSpeed: 0.05, uSize: 2.7 },
+  // calm neural field — very low turbulence + smaller, crisper points so the
+  // network reads as a stable node/synapse diagram, not a wavy smoke cloud
+  nebula: { uTurbAmp: 0.2, uTurbFreq: 0.05, uTurbSpeed: 0.035, uSize: 2.4 },
   // per-product idle character — low amp keeps the detailed shapes legible
   'good-one': { uTurbAmp: 0.42, uTurbFreq: 0.08, uTurbSpeed: 0.11, uSize: 2.6 },
   'swico-ai': { uTurbAmp: 0.58, uTurbFreq: 0.07, uTurbSpeed: 0.13, uSize: 2.9 },
@@ -1003,6 +1005,14 @@ void main(){
   gl_FragColor = vec4(c.rgb * uStrength, c.a * uStrength);
 }`;
 
+/* Bloom + synaptic-firing are OFF by default: the crisp node/synapse field reads
+   as an intentional neural network, and the additive glow smeared it into a haze.
+   To trial a SUBTLE bloom later, set BLOOM_ENABLED = true and keep it gentle —
+   a faint rim glow on the brightest hubs, never a wash. */
+const BLOOM_ENABLED = false;
+const BLOOM_PARAMS = { strength: 0.25, threshold: 0.7, knee: 0.3, scale: 0.4 };
+const SYNAPTIC_FIRING = false;     // OFF — no periodic cortex flares in steady state
+
 class GlowBloom {
   constructor(renderer, { strength = 0.7, threshold = 0.32, knee = 0.5, scale = 0.5 } = {}) {
     this.renderer = renderer;
@@ -1257,12 +1267,13 @@ export async function initGL(canvas, options = {}) {
     }
   }
 
-  /* additive bloom — high-end desktop only, quality-gated by the FPS probe.
-     Fully wrapped: any failure leaves the normal render path untouched. */
+  /* additive bloom — OFF by default (BLOOM_ENABLED). When trialled later it stays
+     high-end desktop only and quality-gated by the FPS probe; fully wrapped so any
+     failure leaves the normal render path untouched. */
   let bloom = null;
-  if (highEnd) {
+  if (highEnd && BLOOM_ENABLED) {
     try {
-      bloom = new GlowBloom(renderer, { strength: 0.7 });
+      bloom = new GlowBloom(renderer, BLOOM_PARAMS);
       bloom.setSize(innerWidth, innerHeight, dpr);
     } catch (err) {
       console.warn('[swivel] bloom unavailable:', err);
@@ -1850,7 +1861,7 @@ export async function initGL(canvas, options = {}) {
      field is shown. High-end desktop + motion-safe only; mobile / low-end is
      untouched (fire() is never called, so uFire stays 0 and the shaders are
      a no-op). Reschedules forever so it resumes whenever the field returns. */
-  if (highEnd && !reducedMotion && cortex && !cortex.empty) {
+  if (SYNAPTIC_FIRING && highEnd && !reducedMotion && cortex && !cortex.empty) {
     const fireOnce = () => {
       if (particles.mode === 'nebula') cortex.fire(0.7 + Math.random() * 0.5);
       gsap.delayedCall(2.4 + Math.random() * 4.0, fireOnce);
