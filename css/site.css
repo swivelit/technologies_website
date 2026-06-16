@@ -182,7 +182,13 @@ html.gl-loading .loader, html.gl .loader { display: flex; }
 .chrome--top {
   top: 0; left: 0; right: 0;
   display: flex; align-items: center; justify-content: space-between;
-  padding: var(--chrome-pad);
+  /* keep clear of notch / rounded corners on viewport-fit=cover devices;
+     env() is 0 on non-notched screens, so desktop is unchanged */
+  padding:
+    max(var(--chrome-pad), env(safe-area-inset-top))
+    max(var(--chrome-pad), env(safe-area-inset-right))
+    var(--chrome-pad)
+    max(var(--chrome-pad), env(safe-area-inset-left));
   pointer-events: none;
 }
 .chrome--top > * { pointer-events: auto; }
@@ -223,9 +229,10 @@ html.gl-loading .loader, html.gl .loader { display: flex; }
   box-shadow: 0 0 8px var(--ember);
 }
 
-/* product index — bottom left */
+/* product index — bottom left (kept clear of the home-indicator / left notch) */
 .chrome--index {
-  left: var(--chrome-pad); bottom: var(--chrome-pad);
+  left: max(var(--chrome-pad), env(safe-area-inset-left));
+  bottom: max(var(--chrome-pad), env(safe-area-inset-bottom));
   display: flex; flex-direction: column; gap: 16px;
 }
 .windex { display: flex; flex-direction: column; gap: 7px; }
@@ -263,9 +270,10 @@ html.gl-loading .loader, html.gl .loader { display: flex; }
   box-shadow: inset 0 0 18px -8px rgba(59, 130, 246, 0.6);
 }
 
-/* scroll progress — bottom right */
+/* scroll progress — bottom right (kept clear of the home-indicator / right notch) */
 .chrome--progress {
-  right: var(--chrome-pad); bottom: var(--chrome-pad);
+  right: max(var(--chrome-pad), env(safe-area-inset-right));
+  bottom: max(var(--chrome-pad), env(safe-area-inset-bottom));
   display: flex; flex-direction: column; align-items: center; gap: 10px;
 }
 .progress__label {
