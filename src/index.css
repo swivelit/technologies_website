@@ -216,7 +216,7 @@ body{font-family:var(--sans);background:var(--white);color:var(--ink);overflow-x
 .dept-label{font-family:var(--serif);font-size:clamp(26px,3vw,38px);font-weight:700;color:var(--ink);text-align:center;margin-bottom:10px}
 .dept-sub{font-size:15px;color:var(--muted);text-align:center;margin-bottom:48px}
 .dept-grid-top{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-bottom:24px}
-.dept-grid-bot{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;max-width:calc(66.66% + 8px);margin:0 auto}
+.dept-grid-bot{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-bottom:24px}
 .dept-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:40px 30px;text-align:center;transition:transform 0.35s cubic-bezier(.34,1.56,.64,1),box-shadow 0.28s,border-color 0.28s;cursor:default;position:relative;overflow:hidden}
 .dept-card::before{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--orange);transform:scaleX(0);transition:transform 0.3s ease;transform-origin:left center}
 .dept-card:hover{transform:translateY(-6px);box-shadow:var(--shadow-lg);border-color:var(--orange)}
