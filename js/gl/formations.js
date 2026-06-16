@@ -159,33 +159,45 @@ export async function logoFormation(url, count, { width = 30 } = {}) {
 }
 
 /* ---------- neural-network constellation (hero / idle field) ----------
-   A loose 3D field of "neuron" clusters wired by faint filaments — built to
-   pair with the LineSegments mesh that connects nearest nodes. Cool electric
-   blue → cyan with ice-white cores and a rare warm spark. No galaxy arms. */
-export function nebulaFormation(count, { radius = 30 } = {}) {
+   A premium, READABLE neural cortex. Neuron hubs sit in an upper and a lower
+   lobe, leaving a calm horizontal channel through the centre so the SWIVEL
+   wordmark / hero text always reads. Fewer, more intentional particles; a
+   centre-fade dims anything that strays into the readable zone. Cool electric
+   blue → cyan with ice-white cores and a rare warm spark. No snowstorm. */
+export function nebulaFormation(count, { radius = 30, hubCount = 32, mobile = false } = {}) {
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const sizes = new Float32Array(count);
-  const place = tiltWriter(-0.18, 0.0, 0.08);
+  const place = tiltWriter(-0.16, 0.0, 0.06);
 
-  // scatter neuron centres through a gently flattened, folded cortex sheet
-  // behind the wordmark rather than a spherical galaxy.
-  const NC = 46;
+  // readable zone (world units, pre-tilt). Particles inside are dimmed so the
+  // centred wordmark / hero copy never fights the field.
+  const RX = radius * 0.64;
+  const RY = radius * 0.22;
+  const gapY = RY * 1.02;                                  // hubs kept beyond this band
+  const centerFade = (x, y) => {
+    const e = (x * x) / (RX * RX) + (y * y) / (RY * RY);
+    return e >= 1 ? 1 : 0.08 + 0.92 * e * e;              // strong dim in the core
+  };
+
+  // neuron centres arranged into two cortex lobes (above / below the channel)
+  const NC = Math.max(8, hubCount | 0);
   const cx = new Float32Array(NC), cy = new Float32Array(NC), cz = new Float32Array(NC);
   const cw = new Float32Array(NC);                         // density weight per node
   for (let n = 0; n < NC; n++) {
-    const u = (n + Math.random() * 0.45) / NC;
-    const lane = n % 5;
-    const fold = Math.sin(u * TAU * 2.1 + lane * 0.62);
-    const lobe = Math.cos(u * TAU * 1.35 + lane * 0.38);
-    cx[n] = (u - 0.5) * radius * 2.3 + gauss() * 2.1;
-    cy[n] = fold * radius * 0.24 + (lane - 2) * radius * 0.085 + gauss() * 1.25;
-    cz[n] = lobe * radius * 0.18 + gauss() * 1.7;
-    cw[n] = 0.42 + Math.random() * Math.random() * 0.9;    // a few hubs are denser
+    const u = (n + Math.random() * 0.5) / NC;
+    const lobe = (n % 2 === 0) ? 1 : -1;                   // alternate upper / lower
+    const lane = n % 4;
+    const reach = gapY + Math.pow(Math.random(), 0.85) * radius * 0.46 + lane * radius * 0.045;
+    cx[n] = (u - 0.5) * radius * 2.2 + gauss() * 1.7;
+    cy[n] = lobe * reach + gauss() * 0.7;
+    cz[n] = Math.sin(u * TAU * 1.3 + lobe) * radius * 0.16 + gauss() * 1.5;
+    cw[n] = 0.4 + Math.random() * Math.random() * 0.9;     // a few hubs are denser
   }
+  const brightHubs = Math.max(5, Math.round(NC * 0.26));
   const hubOrder = Array.from({ length: NC }, (_, i) => i)
     .sort((a, b) => cw[b] - cw[a])
-    .slice(0, 12);
+    .slice(0, brightHubs);
   let tot = 0; for (let n = 0; n < NC; n++) tot += cw[n];
   const cum = new Float32Array(NC);
   let acc = 0; for (let n = 0; n < NC; n++) { acc += cw[n] / tot; cum[n] = acc; }
@@ -239,69 +251,72 @@ export function nebulaFormation(count, { radius = 30 } = {}) {
       x: hubPositions[o],
       y: hubPositions[o + 1],
       z: hubPositions[o + 2],
-      radius: 1.35 + cw[n] * 1.65,
-      intensity: 0.54 + cw[n] * 0.66,
+      radius: 1.2 + cw[n] * 1.4,
+      intensity: 0.46 + cw[n] * 0.54,
       color: c,
     };
   }).sort((a, b) => b.intensity - a.intensity);
 
-  const halo = Math.floor(count * 0.12);
-  const hubCore = halo + Math.floor(count * 0.032);
-  const fil = hubCore + Math.floor(count * 0.24);
+  // leaner distribution: less halo dust, fewer filaments, more deliberate hubs.
+  const halo = Math.floor(count * 0.06);
+  const hubCore = halo + Math.floor(count * 0.034);
+  const fil = hubCore + Math.floor(count * 0.16);
 
   for (let i = 0; i < count; i++) {
     let x, y, z, b, col;
     if (i < halo) {
-      // sparse, dim outer halo dust — cool-white
-      const r = radius * 2.0 * Math.cbrt(Math.random());
+      // sparse, dim outer halo dust — cool-white, biased outward so the centre stays open
+      const r = radius * (1.2 + Math.random() * 1.0);
       const th = Math.random() * TAU;
       const ph = Math.acos(2 * Math.random() - 1);
       x = r * Math.sin(ph) * Math.cos(th) * 1.2;
-      y = r * Math.sin(ph) * Math.sin(th) * 0.72;
+      y = r * Math.sin(ph) * Math.sin(th) * 0.78;
       z = r * Math.cos(ph) * 0.6;
-      b = 0.06 + Math.random() * 0.12;
+      b = 0.05 + Math.random() * 0.09;
       col = ICE;
-      sizes[i] = 0.72 + Math.random() * 0.28;
+      sizes[i] = 0.66 + Math.random() * 0.26;
     } else if (i < hubCore) {
       // visible neuron hubs: tight, brighter cores that the point shader scales
       // up and breathes during the AI boot sequence.
       const a = hubOrder[(Math.random() * hubOrder.length) | 0];
-      const spread = 0.65 + Math.random() * 1.15;
+      const spread = 0.6 + Math.random() * 1.0;
       x = cx[a] + gauss() * spread;
       y = cy[a] + gauss() * spread;
       z = cz[a] + gauss() * spread * 0.65;
       const r = Math.random();
-      if (r < 0.52) col = ICE;
-      else if (r < 0.94) col = coolMix(0.45 + Math.random() * 0.55);
+      if (r < 0.56) col = ICE;
+      else if (r < 0.95) col = coolMix(0.45 + Math.random() * 0.55);
       else col = SPARK;
-      b = 0.54 + Math.random() * 0.46;
-      sizes[i] = 1.65 + Math.random() * 1.25;
+      b = 0.5 + Math.random() * 0.42;
+      sizes[i] = 1.55 + Math.random() * 1.1;
     } else if (i < fil) {
       // filament — strung between a centre and its nearest neighbour. These are
       // the proto-wiring, so they carry the blue/cyan tech accent.
       const a = pickNode(), c = near[a];
       const s = Math.random();
-      x = cx[a] + (cx[c] - cx[a]) * s + gauss() * 0.6;
-      y = cy[a] + (cy[c] - cy[a]) * s + gauss() * 0.6;
-      z = cz[a] + (cz[c] - cz[a]) * s + gauss() * 0.6;
-      b = 0.14 + Math.random() * 0.26;
+      x = cx[a] + (cx[c] - cx[a]) * s + gauss() * 0.55;
+      y = cy[a] + (cy[c] - cy[a]) * s + gauss() * 0.55;
+      z = cz[a] + (cz[c] - cz[a]) * s + gauss() * 0.55;
+      b = 0.12 + Math.random() * 0.22;
       col = coolMix(0.35 + Math.random() * 0.65);
-      sizes[i] = 0.72 + Math.random() * 0.28;
+      sizes[i] = 0.7 + Math.random() * 0.26;
     } else {
       // neuron — gaussian blob around a weighted centre, dominant cool-white
       const a = pickNode();
-      const spread = 1.6 + Math.random() * 1.8;
+      const spread = 1.3 + Math.random() * 1.4;
       x = cx[a] + gauss() * spread;
       y = cy[a] + gauss() * spread;
       z = cz[a] + gauss() * spread * 0.8;
       const r = Math.random();
-      if (r < 0.12) { col = ICE; b = 0.72 + Math.random() * 0.34; }        // bright core
-      else if (r < 0.24) { col = coolMix(Math.random()); b = 0.4 + Math.random() * 0.5; }
-      else if (r < 0.265) { col = SPARK; b = 0.5 + Math.random() * 0.5; } // rare warm
-      else { col = ICE; b = 0.38 + Math.random() * 0.5; }
-      sizes[i] = r < 0.12 ? 1.14 + Math.random() * 0.5 : 0.82 + Math.random() * 0.32;
+      if (r < 0.1) { col = ICE; b = 0.64 + Math.random() * 0.3; }          // bright core
+      else if (r < 0.22) { col = coolMix(Math.random()); b = 0.34 + Math.random() * 0.42; }
+      else if (r < 0.24) { col = SPARK; b = 0.44 + Math.random() * 0.42; } // rare warm
+      else { col = ICE; b = 0.32 + Math.random() * 0.42; }
+      sizes[i] = r < 0.1 ? 1.06 + Math.random() * 0.44 : 0.78 + Math.random() * 0.3;
     }
 
+    // dim anything that falls in the readable channel so the wordmark reads
+    b *= centerFade(x, y);
     place(positions, i, x, y, z);
     setCol(colors, i, col[0] * b, col[1] * b, col[2] * b);
   }
@@ -375,10 +390,14 @@ function scatterDust(positions, colors, n, place, col, spreadXY, spreadZ = 4) {
    as a THREE.LineSegments index into the shared particle buffer. "Nodes" are a
    strided subset of the formation; each links to its K nearest node neighbours.
    Total segments are hard-capped so the mesh never explodes. */
-export function buildEdges(positions, count, { nodes = 800, k = 3, maxSegments = 2000 } = {}) {
+export function buildEdges(positions, count, { nodes = 800, k = 3, maxSegments = 2000, maxDistance = 0 } = {}) {
   nodes = Math.min(nodes | 0, count);
   if (nodes < 2 || k < 1) return new Uint32Array(0);
   const step = count / nodes;
+  // when maxDistance is given, ignore candidate edges longer than it — this is
+  // what keeps the network mesh as short LOCAL synapses instead of giant
+  // triangles spanning the whole viewport.
+  const maxD2 = maxDistance > 0 ? maxDistance * maxDistance : Infinity;
 
   const idx = new Int32Array(nodes);
   const nx = new Float32Array(nodes), ny = new Float32Array(nodes), nz = new Float32Array(nodes);
@@ -400,6 +419,7 @@ export function buildEdges(positions, count, { nodes = 800, k = 3, maxSegments =
       if (b === a) continue;
       const dx = nx[b] - ax, dy = ny[b] - ay, dz = nz[b] - az;
       const d = dx * dx + dy * dy + dz * dz;
+      if (d > maxD2) continue;            // skip over-long edges
       if (d >= bestD[k - 1]) continue;
       let t = k - 1;                                   // insertion sort into top-k
       while (t > 0 && d < bestD[t - 1]) { bestD[t] = bestD[t - 1]; bestJ[t] = bestJ[t - 1]; t--; }

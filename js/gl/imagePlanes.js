@@ -398,6 +398,16 @@ function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 function smoothstep(a, b, x) { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
 function lerp(a, b, t) { return a + (b - a) * t; }
 
+/* cyclic carousel offset: how far image `index` sits from the current `head`,
+   wrapped into [-count/2, count/2] so ANY screenshot can rotate to the front
+   without the head having to travel the whole list. This is what lets a product
+   show all its screenshots without a tall, trap-like section. */
+function wrappedOffset(index, head, count) {
+  let o = index - head;
+  o = ((o + count / 2) % count + count) % count - count / 2;
+  return o;
+}
+
 function mixLayout(a, b, t) {
   return {
     x: lerp(a.x, b.x, t),
@@ -533,6 +543,8 @@ export function createCorridor(THREE, opts = {}) {
       planes: [],
       imageHead: 0,
       targetImageHead: 0,
+      scrollHead: 0,        // driven by local scroll (a partial cycle)
+      idleHead: 0,          // slow drift while active → eventually shows the rest
       localProgress: 0,
       activeHeroImageIndex: 0,
       visibleImageIndices: [],
@@ -656,16 +668,33 @@ export function createCorridor(THREE, opts = {}) {
     }
   }
 
-  function updateRoomImageHead(room, dt) {
-    const maxHead = Math.max(0, room.product.images.length - 1);
-    room.targetImageHead = clamp(room.targetImageHead, 0, maxHead);
-    const rate = reducedMotion ? 12 : (mobile ? 7.5 : 5.8);
+  // images/sec the carousel drifts on its own while a product is active — calmer
+  // products (lower profile.calm) drift more slowly. This promotes the remaining
+  // screenshots over time so a long product never needs a tall section.
+  const IDLE_RATE = mobile ? 0.1 : 0.14;
+
+  function updateRoomImageHead(room, dt, isActive) {
+    const count = room.product.images.length;
+    const maxHead = Math.max(0, count - 1);
+    if (reducedMotion) {
+      // direct, clamped index — no cyclic spin, no idle drift
+      room.targetImageHead = clamp(room.scrollHead, 0, maxHead);
+    } else {
+      // scroll promotes a partial cycle; idle drift (only while active) brings
+      // the rest forward without forcing the user through a long slideshow.
+      if (isActive && count > 1) room.idleHead += dt * IDLE_RATE * (room.profile.calm || 1);
+      room.targetImageHead = room.scrollHead + room.idleHead;
+    }
+    const rate = reducedMotion ? 12 : (mobile ? 6.5 : 5.2);
     room.imageHead += (room.targetImageHead - room.imageHead) * Math.min(1, dt * rate);
-    room.imageHead = clamp(room.imageHead, 0, maxHead);
+    if (reducedMotion) room.imageHead = clamp(room.imageHead, 0, maxHead);
     const raw = ((room.imageHead - room._prevImageHead) / Math.max(dt, 1 / 60)) / Math.max(1, maxHead);
     room._prevImageHead = room.imageHead;
     room._imageVelocity += (raw * 1.9 - room._imageVelocity) * Math.min(1, dt * 8);
-    room.activeHeroImageIndex = clamp(Math.round(room.imageHead), 0, maxHead);
+    // hero index wraps cyclically (clamped only in reduced-motion / direct mode)
+    room.activeHeroImageIndex = reducedMotion
+      ? clamp(Math.round(room.imageHead), 0, maxHead)
+      : ((Math.round(room.imageHead) % count) + count) % count;
   }
 
   const api = {
@@ -678,6 +707,7 @@ export function createCorridor(THREE, opts = {}) {
     visible: false,
     ready: true,
     master: 0,
+    qualityScale: 1,      // engine drops this if adaptive quality triggers
     _time: 0,
     _loaded: false,
     _anchorX: defaultAnchorX,
@@ -693,7 +723,11 @@ export function createCorridor(THREE, opts = {}) {
       if (!room) return;
       const p = clamp(Number.isFinite(progress) ? progress : 0, 0, 1);
       room.localProgress = p;
-      room.targetImageHead = p * Math.max(0, room.product.images.length - 1);
+      const maxHead = Math.max(0, room.product.images.length - 1);
+      // scroll promotes a bounded span (not the whole list) — the rest arrive via
+      // idle drift, so section height no longer scales with screenshot count.
+      const span = Math.min(maxHead, mobile ? 4 : 6);
+      room.scrollHead = p * span;
     },
     setProductState(productIndex, progress = 0) {
       this.setActive(productIndex);
@@ -744,7 +778,7 @@ export function createCorridor(THREE, opts = {}) {
     update(dt, px = 0, py = 0) {
       // master fade follows the engine's visibility flag (set across the product
       // run), so the corridor only appears during the product sections.
-      const mTarget = this.visible ? masterOpacity : 0;
+      const mTarget = this.visible ? masterOpacity * (this.qualityScale || 1) : 0;
       this.master += (mTarget - this.master) * Math.min(1, dt * 3);
       if (this.master < 0.002 && mTarget === 0) {
         this.master = 0;
@@ -753,6 +787,7 @@ export function createCorridor(THREE, opts = {}) {
       this._time += dt;
       const t = this._time;
       const N = rooms.length;
+      const q = this.qualityScale || 1;     // <1 when adaptive quality kicked in
 
       // ease the fractional active room toward the section the engine reports
       this.head += (this.targetHead - this.head) * Math.min(1, dt * 4.5);
@@ -778,15 +813,25 @@ export function createCorridor(THREE, opts = {}) {
       camera.lookAt(px * 0.06 * par, py * 0.04 * par, camZ - 15.5);
       camera.rotation.z += -px * 0.0016 * par;
 
+      const activeIdx = clamp(Math.round(head), 0, N - 1);
       for (let i = 0; i < N; i++) {
         const room = rooms[i];
-        updateRoomImageHead(room, dt);
+        const isActiveRoom = i === activeIdx;
+        updateRoomImageHead(room, dt, isActiveRoom);
         const ahead = camZ - room.z;                 // >0 in front, <0 passed
         const visible = ahead > -SPACING * 0.6 && ahead < FOG_FAR + SPACING * 1.5;
         room.group.visible = visible;
         room.visibleImageIndices = [];
         room.frontPlaneCount = 0;
         if (!visible) continue;
+
+        // VIRTUALIZE — only the screenshots within a window of the head are laid
+        // out / shaded each frame (the active room gets a wider window than its
+        // neighbours), so a 15-shot product costs the same as a 6-shot one.
+        const count = room.product.images.length;
+        const windowR = mobile
+          ? (isActiveRoom ? 2.4 : 1.6)
+          : (isActiveRoom ? 4.3 : 2.7);
 
         // active room reads at full strength; neighbours fall off fast so they
         // recede into depth rather than competing with the active product
@@ -803,8 +848,25 @@ export function createCorridor(THREE, opts = {}) {
         room.group.rotation.x = Math.cos(t * 0.17 + i * 0.7) * 0.012 * room.profile.drift * par;
 
         for (const plane of room.planes) {
-          const offset = plane.imageIndex - room.imageHead;
+          const offset = reducedMotion
+            ? plane.imageIndex - room.imageHead
+            : wrappedOffset(plane.imageIndex, room.imageHead, count);
+          // outside the window → cheaply hidden, no layout / shader work
+          if (Math.abs(offset) > windowR) {
+            plane.mesh.visible = false;
+            plane.aura.visible = false;
+            for (const trail of plane.trails) { trail.mesh.visible = false; trail.ready = false; }
+            continue;
+          }
           const layout = carouselSlot(offset, plane.profile, mobile, plane.product.orient);
+          // small products (e.g. 6 shots) wrap at a depth where the panel is
+          // still faintly visible — fade it fully to nothing near the antipode so
+          // it never pops from one side to the other as the head crosses.
+          if (!reducedMotion && count < 8) {
+            const wf = smoothstep(count / 2, count / 2 - 1.5, Math.abs(offset));
+            layout.opacity *= wf;
+            if (wf <= 0.001) layout.visible = false;
+          }
           plane.layout = layout;
           if (layout.visible) room.visibleImageIndices.push(plane.imageIndex);
           if (Math.abs(offset) < 2.25 && layout.opacity > 0.1) room.frontPlaneCount++;
@@ -844,9 +906,11 @@ export function createCorridor(THREE, opts = {}) {
           u.uTime.value = t + plane.phase;
           u.uVelocity.value = scrollEnergy;
           u.uActive.value = active;
-          u.uDistort.value = plane.profile.distort * (0.68 + active * 0.34 + scrollEnergy * 0.18);
-          u.uGlass.value = plane.profile.glass * (0.86 + active * 0.2);
-          u.uScan.value = plane.profile.scan * (0.68 + active * 0.42 + scrollEnergy * 0.12);
+          // active hero stays CRISP — distortion + glass chroma drop toward the
+          // front; side / rack panels keep more holographic character.
+          u.uDistort.value = plane.profile.distort * (0.4 + scrollEnergy * 0.2) * (1 - active * 0.55);
+          u.uGlass.value = plane.profile.glass * (0.62 - active * 0.22 + scrollEnergy * 0.12);
+          u.uScan.value = plane.profile.scan * (0.5 + active * 0.28 + scrollEnergy * 0.1);
           u.uOpacity.value = planeOpacity;
 
           plane.aura.position.copy(plane.mesh.position);
@@ -863,7 +927,8 @@ export function createCorridor(THREE, opts = {}) {
               trail.ready = true;
             }
             trail.pos.lerp(plane.mesh.position, Math.min(1, dt * (5.2 / trail.lag)));
-            trail.mesh.visible = scrollEnergy > 0.035 && planeOpacity > 0.025;
+            // trails are velocity-based and the first to go under low quality
+            trail.mesh.visible = q >= 0.999 && scrollEnergy > 0.035 && planeOpacity > 0.025;
             trail.mesh.position.copy(trail.pos);
             trail.mesh.position.x -= room._imageVelocity * (0.32 + trail.lag * 0.22);
             trail.mesh.position.y += Math.sin(t * 0.9 + trail.lag) * 0.035;
@@ -909,6 +974,9 @@ export function createCorridor(THREE, opts = {}) {
         visibleImageIndices: room ? [...room.visibleImageIndices] : [],
         frontPlaneCount: room?.frontPlaneCount || 0,
         imageCount: room?.product.images.length || 0,
+        sectionProgress: room?.localProgress || 0,
+        isCyclicMode: !reducedMotion,
+        masterOpacity: this.master,
         missingImages: room ? room.planes.filter((p) => p.missing).map((p) => p.imageIndex) : [],
       };
     },

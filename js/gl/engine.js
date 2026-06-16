@@ -746,7 +746,7 @@ class NeuralCortexOverlay {
       uPulseIntensity: { value: mobile ? 0.58 : 0.82 },
     };
 
-    const hubLimit = mobile ? 26 : 46;
+    const hubLimit = mobile ? 18 : 30;
     const sourceHubs = [...(meta?.hubs || [])].slice(0, hubLimit);
     const oldToNew = new Map(sourceHubs.map((hub, idx) => [hub.index, idx]));
     const edges = (meta?.hubEdges || [])
@@ -818,7 +818,7 @@ class NeuralCortexOverlay {
       uOpacity: this.uniforms.uOpacity,
       uBootEnergy: this.uniforms.uBootEnergy,
       uAccent: this.uniforms.uAccent,
-      uLineOpacity: { value: mobile ? 0.34 : 0.44 },
+      uLineOpacity: { value: mobile ? 0.24 : 0.3 },
     };
     this.lines = new THREE.LineSegments(lineGeo, new THREE.ShaderMaterial({
       uniforms: this.lineUniforms,
@@ -837,7 +837,7 @@ class NeuralCortexOverlay {
   }
 
   _buildPulses(hubs, hubPos, hubCol) {
-    const count = this.mobile ? 30 : 78;
+    const count = this.mobile ? 20 : 46;
     const geo = new THREE.BufferGeometry();
     const from = new Float32Array(count * 3);
     const to = new Float32Array(count * 3);
@@ -941,54 +941,65 @@ function clamp(v, min, max) {
   return Math.min(max, Math.max(min, v));
 }
 
+/* DPR is capped well below the native ratio on desktop: smoothness beats the
+   marginal sharpness of full 2× on a field of soft additive sprites. */
 function renderPixelRatio(isMobile) {
   const raw = devicePixelRatio || 1;
-  if (!isMobile) return Math.min(raw, 2);
-
+  if (!isMobile) {
+    const cores = navigator.hardwareConcurrency || 8;
+    const cap = cores <= 4 ? 1.35 : 1.5;
+    return Math.min(raw, cap);
+  }
   const cores = navigator.hardwareConcurrency || 6;
   const memory = navigator.deviceMemory || 4;
-  const cap = cores <= 4 || memory <= 3 ? 1.25 : 1.5;
+  const cap = cores <= 4 || memory <= 3 ? 1.0 : 1.25;
   return Math.min(raw, cap);
 }
 
+/* MAX-LEVEL is focal hierarchy, not raw count. Desktop tops out ~18k (high-end)
+   and ~11–14k on laptops; mobile 3–6k. Fewer, better particles read cleaner and
+   run smoother. */
 function particleBudget({ mobile = false } = {}) {
   if (mobile) {
     const area = innerWidth * innerHeight;
     const cores = navigator.hardwareConcurrency || 6;
     const memory = navigator.deviceMemory || 4;
-    let maxBudget = 9000;
-    if (cores <= 4) maxBudget = 6500;
-    if (memory <= 3) maxBudget = Math.min(maxBudget, 5500);
-    if (memory <= 2) maxBudget = Math.min(maxBudget, 4200);
+    let maxBudget = 6000;
+    if (cores <= 4) maxBudget = 5000;
+    if (memory <= 3) maxBudget = Math.min(maxBudget, 4400);
+    if (memory <= 2) maxBudget = Math.min(maxBudget, 3600);
 
-    let n = area * 0.016;
+    let n = area * 0.013;
     if ((devicePixelRatio || 1) > 1.5) n *= 0.85;
-    if (cores <= 4) n *= 0.78;
-    if (memory <= 4) n *= 0.88;
-    if (memory <= 2) n *= 0.78;
-    return Math.round(clamp(n, 3500, maxBudget));
+    if (cores <= 4) n *= 0.8;
+    if (memory <= 4) n *= 0.9;
+    if (memory <= 2) n *= 0.8;
+    return Math.round(clamp(n, 3000, maxBudget));
   }
 
   const dpr = Math.min(devicePixelRatio || 1, 2);
-  let n = (innerWidth * innerHeight) * 0.018;
-  if (dpr > 1.5) n *= 0.8;
-  if ((navigator.hardwareConcurrency || 8) <= 4) n *= 0.65;
-  return Math.round(Math.min(30000, Math.max(10000, n)));
+  let n = (innerWidth * innerHeight) * 0.0105;
+  if (dpr > 1.5) n *= 0.82;
+  const cores = navigator.hardwareConcurrency || 8;
+  if (cores <= 4) n *= 0.7;
+  else if (cores <= 6) n *= 0.86;
+  return Math.round(clamp(n, 8000, 18000));
 }
 
-/* network-mesh budget — capped hard, and scaled down / skipped on weaker
-   devices so the line layer and pulses never tank the framerate. */
+/* network-mesh budget — capped hard, scaled down / skipped on weaker devices,
+   and now distance-bounded (maxDistance) so segments stay short local synapses
+   instead of long lines slicing across the viewport. */
 function meshBudget({ mobile = false, reducedMotion = false } = {}) {
   const cores = navigator.hardwareConcurrency || (mobile ? 6 : 8);
   const memory = navigator.deviceMemory || 4;
   if (mobile) {
-    if (cores <= 4 || memory <= 3) return { nodes: 0, k: 0, maxSegments: 0, pulses: 0, lineOpacity: 0 };
-    return { nodes: 320, k: 2, maxSegments: 700, pulses: reducedMotion ? 0 : 18, lineOpacity: 0.32 };
+    if (cores <= 4 || memory <= 3) return { nodes: 0, k: 0, maxSegments: 0, pulses: 0, lineOpacity: 0, maxDistance: 0 };
+    return { nodes: 260, k: 2, maxSegments: 460, pulses: reducedMotion ? 0 : 12, lineOpacity: 0.22, maxDistance: 10 };
   }
   if (cores <= 4 || memory <= 4) {
-    return { nodes: 520, k: 3, maxSegments: 1200, pulses: reducedMotion ? 0 : 32, lineOpacity: 0.34 };
+    return { nodes: 440, k: 3, maxSegments: 760, pulses: reducedMotion ? 0 : 22, lineOpacity: 0.24, maxDistance: 12 };
   }
-  return { nodes: 700, k: 3, maxSegments: 1550, pulses: reducedMotion ? 0 : 46, lineOpacity: 0.34 };
+  return { nodes: 560, k: 3, maxSegments: 900, pulses: reducedMotion ? 0 : 30, lineOpacity: 0.26, maxDistance: 12 };
 }
 
 export async function initGL(canvas, options = {}) {
@@ -1072,7 +1083,11 @@ export async function initGL(canvas, options = {}) {
 
   /* formations */
   particles.formations.spawn = spawnFormation(particles.count);
-  const nebula = nebulaFormation(particles.count, { radius: isMobile ? 27 : 30 });
+  const nebula = nebulaFormation(particles.count, {
+    radius: isMobile ? 27 : 30,
+    hubCount: isMobile ? 16 : 32,
+    mobile: isMobile,
+  });
   particles.formations.nebula = nebula;
   // per-product shapes — cheap CPU arrays, keyed to the section ids
   particles.formations['good-one'] = goodOneFormation(particles.count);
@@ -1100,7 +1115,7 @@ export async function initGL(canvas, options = {}) {
     }
     // the logo carries a sparse circuit so the intro can collapse the mesh into
     // the wordmark and the idle logo keeps a faint live mesh + the odd pulse
-    const logoMesh = { nodes: Math.min(mesh.nodes, 360), k: 2, maxSegments: Math.min(mesh.maxSegments, 600) };
+    const logoMesh = { nodes: Math.min(mesh.nodes, 320), k: 2, maxSegments: Math.min(mesh.maxSegments, 520), maxDistance: 9 };
     particles.setEdges('logo', buildEdges(particles.formations.logo.positions, particles.count, logoMesh));
   }
 
@@ -1131,7 +1146,12 @@ export async function initGL(canvas, options = {}) {
       if (!section) return;
       const screens = Math.max(1, product.images.length);
       section.style.setProperty('--screens', String(screens));
-      section.style.setProperty('--product-scroll', `${Math.round(clamp(132 + screens * 19, 198, 384))}vh`);
+      // CAPPED + comparable pacing — the cyclic carousel (not section length) is
+      // what reveals every screenshot, so a product with 15 shots is no longer
+      // any taller than one with 6. No scroll trap. (Narrow/mobile layouts get
+      // natural auto height from CSS, so this only drives the wide desktop view.)
+      const scrollVh = clamp(158 + Math.min(screens, 6) * 9, 175, 230);
+      section.style.setProperty('--product-scroll', `${Math.round(scrollVh)}vh`);
     });
   }
 
@@ -1251,9 +1271,9 @@ export async function initGL(canvas, options = {}) {
     onEnter: () => {
       hintEl?.classList.remove('is-on');
       cortexAccent(ACCENTS.nebula, 1.0);
-      cortexOpacity(isMobile ? 0.46 : 0.62, 1.1);
-      cortexEnergy(0.22, 1.1);
-      cortexPulse(isMobile ? 0.2 : 0.25, isMobile ? 0.62 : 0.86, 1.1);
+      cortexOpacity(isMobile ? 0.32 : 0.42, 1.1);
+      cortexEnergy(0.16, 1.1);
+      cortexPulse(isMobile ? 0.18 : 0.22, isMobile ? 0.5 : 0.7, 1.1);
       // restore the mesh to its standard scene opacity (intro left it faint)
       if (particles.lineUniforms) {
         gsap.to(particles.lineUniforms.uLineOpacity, { value: mesh.lineOpacity, duration: 1.0, ease: 'sine.out', overwrite: 'auto' });
@@ -1265,9 +1285,9 @@ export async function initGL(canvas, options = {}) {
       // wordmark) — the readable SWIVEL TECHNOLOGIES is HTML over the top
       hintEl?.classList.add('is-on');
       cortexAccent(ACCENTS.nebula, 1.0);
-      cortexOpacity(isMobile ? 0.54 : 0.72, 1.1);
-      cortexEnergy(0.28, 1.1);
-      cortexPulse(isMobile ? 0.24 : 0.3, isMobile ? 0.72 : 0.98, 1.1);
+      cortexOpacity(isMobile ? 0.38 : 0.5, 1.1);
+      cortexEnergy(0.2, 1.1);
+      cortexPulse(isMobile ? 0.2 : 0.26, isMobile ? 0.56 : 0.76, 1.1);
       particles.morphTo('nebula', { duration: motion.heroMorph, stagger: isMobile ? 0.3 : 0.4, burst: motion.heroBurst });
     },
   });
@@ -1276,14 +1296,17 @@ export async function initGL(canvas, options = {}) {
     trigger: '#work', start: 'top 55%',
     onEnter: () => {
       dim(motion.workOpacity);
-      cortexOpacity(isMobile ? 0.12 : 0.18, 1.2);
-      cortexEnergy(0.1, 1.2);
+      // network lines drop to near-nothing so they never fight the screenshots
+      if (particles.lineUniforms) gsap.to(particles.lineUniforms.uLineOpacity, { value: 0.1, duration: 1.0, ease: 'sine.out', overwrite: 'auto' });
+      cortexOpacity(isMobile ? 0.1 : 0.14, 1.2);
+      cortexEnergy(0.08, 1.2);
     },
     onLeaveBack: () => {
-      dim(isMobile ? 0.7 : 0.78);
+      dim(isMobile ? 0.56 : 0.62);
+      if (particles.lineUniforms) gsap.to(particles.lineUniforms.uLineOpacity, { value: mesh.lineOpacity, duration: 1.0, ease: 'sine.out', overwrite: 'auto' });
       cortexAccent(ACCENTS.nebula, 1.0);
-      cortexOpacity(isMobile ? 0.52 : 0.68, 1.2);
-      cortexEnergy(0.22, 1.2);
+      cortexOpacity(isMobile ? 0.36 : 0.46, 1.2);
+      cortexEnergy(0.18, 1.2);
     },
   });
 
@@ -1387,10 +1410,11 @@ export async function initGL(canvas, options = {}) {
     trigger: '#about', start: 'top 64%',
     onEnter: () => {
       toNebula(productBurst * 0.5);
+      if (particles.lineUniforms) gsap.to(particles.lineUniforms.uLineOpacity, { value: mesh.lineOpacity, duration: 1.2, ease: 'sine.out', overwrite: 'auto' });
       cortexAccent(ACCENTS.nebula, 1.2);
-      cortexOpacity(isMobile ? 0.2 : 0.32, 1.3);
-      cortexEnergy(0.14, 1.2);
-      cortexPulse(isMobile ? 0.18 : 0.22, isMobile ? 0.5 : 0.68, 1.2);
+      cortexOpacity(isMobile ? 0.18 : 0.28, 1.3);
+      cortexEnergy(0.13, 1.2);
+      cortexPulse(isMobile ? 0.16 : 0.2, isMobile ? 0.46 : 0.62, 1.2);
       if (pu) {
         gsap.to(pu.uPulseSpeed, { value: isMobile ? 0.18 : 0.22, duration: 1.2, ease: 'sine.inOut', overwrite: 'auto' });
         gsap.to(pu.uPulseIntensity, { value: isMobile ? 0.58 : 0.78, duration: 1.2, ease: 'sine.inOut', overwrite: 'auto' });
@@ -1522,6 +1546,26 @@ export async function initGL(canvas, options = {}) {
     html.classList.add('no-gl');
   });
 
+  /* adaptive quality — a short frame-time sample a few seconds after boot. On a
+     genuinely slow device, trim the most expensive transparent layers so motion
+     stays smooth. Implausibly low rates (a hidden/throttled tab or a headless
+     capture) are ignored so we don't dim a stage that's simply paused. */
+  let qProbeStart = 0, qFrames = 0, qChecked = false;
+  function applyLowQuality(avgFps) {
+    qChecked = true;
+    console.info(`[swivel] adaptive quality: ~${avgFps.toFixed(0)}fps → trimming layers for smoothness`);
+    const u = particles.uniforms;
+    if (particles.lineUniforms) gsap.to(particles.lineUniforms.uLineOpacity, { value: particles.lineUniforms.uLineOpacity.value * 0.5, duration: 0.8, overwrite: 'auto' });
+    if (pu) gsap.to(pu.uPulseIntensity, { value: pu.uPulseIntensity.value * 0.6, duration: 0.8, overwrite: 'auto' });
+    gsap.to(u.uOpacity, { value: u.uOpacity.value * 0.86, duration: 0.8, overwrite: 'auto' });
+    gsap.to(u.uHubGlow, { value: u.uHubGlow.value * 0.72, duration: 0.8, overwrite: 'auto' });
+    if (cortex && !cortex.empty) {
+      gsap.to(cortex.uniforms.uOpacity, { value: cortex.uniforms.uOpacity.value * 0.6, duration: 0.8, overwrite: 'auto' });
+      gsap.to(cortex.uniforms.uPulseIntensity, { value: cortex.uniforms.uPulseIntensity.value * 0.6, duration: 0.8, overwrite: 'auto' });
+    }
+    if (corridor) corridor.qualityScale = 0.72;
+  }
+
   /* render loop — gsap.ticker is a single shared rAF */
   function tick(time, deltaMS) {
     if (lenis) {
@@ -1533,6 +1577,17 @@ export async function initGL(canvas, options = {}) {
     }
     if (document.hidden) return;
     const dt = Math.min(deltaMS / 1000, 0.05);
+
+    if (!qChecked && particles.uniforms.uTime.value > (isMobile ? 6.5 : 5.5)) {
+      if (!qProbeStart) { qProbeStart = time; qFrames = 0; }
+      qFrames++;
+      const elapsed = time - qProbeStart;
+      if (elapsed >= 1.6 && qFrames > 8) {
+        const avgFps = qFrames / elapsed;
+        if (avgFps > 12 && avgFps < (isMobile ? 34 : 48)) applyLowQuality(avgFps);
+        else qChecked = true;
+      }
+    }
 
     particles.uniforms.uTime.value += dt;
     rig.idleSpeed += ((particles.mode === 'nebula' ? motion.idleNebula : 0) - rig.idleSpeed) * 0.02;
@@ -1596,13 +1651,13 @@ export async function initGL(canvas, options = {}) {
   } else if (reducedMotion) {
     // simplified, mostly-static: a calm neural field resolves, HTML wordmark in
     particles.setImmediate('nebula');
-    if (lu) lu.uLineOpacity.value = 0.26;
+    if (lu) lu.uLineOpacity.value = 0.2;
     cortexAccent(ACCENTS.nebula, 0);
-    cortexOpacity(isMobile ? 0.36 : 0.5, 0);
+    cortexOpacity(isMobile ? 0.3 : 0.4, 0);
     cortexEnergy(0.08, 0);
-    cortexPulse(isMobile ? 0.08 : 0.1, isMobile ? 0.28 : 0.38, 0);
+    cortexPulse(isMobile ? 0.08 : 0.1, isMobile ? 0.24 : 0.32, 0);
     particles.uniforms.uBootEnergy.value = 0.08;
-    gsap.to(particles.uniforms.uOpacity, { value: 0.74, duration: 1.0, ease: 'sine.out' });
+    gsap.to(particles.uniforms.uOpacity, { value: 0.58, duration: 1.0, ease: 'sine.out' });
     revealWordmark();
     bootStatus(['systems online'], 0.25, 0.5);
     gsap.delayedCall(1.2, () => hint?.classList.add('is-on'));
@@ -1611,27 +1666,28 @@ export async function initGL(canvas, options = {}) {
     // (synapse lines + data pulses prominent) → the HTML wordmark resolves over
     // the top. No giant particle logo — the network stays the background.
     const T = isMobile ? 0.82 : 1;                    // mild speed-up on mobile
-    // Stage 1 — nodes fade in and WIRE together into a gently rotating neural net
-    gsap.to(particles.uniforms.uOpacity, { value: 0.82, duration: 1.4 * T, ease: 'sine.out', delay: 0.15 });
-    gsap.to(particles.uniforms.uBootEnergy, { value: 1.0, duration: 1.05 * T, ease: 'sine.out', delay: 0.1 });
-    gsap.to(particles.uniforms.uHubGlow, { value: isMobile ? 0.32 : 0.48, duration: 1.2 * T, ease: 'sine.out' });
+    // Stage 1 — nodes fade in and WIRE together into a gently rotating neural net.
+    // Tuned to FRAME the wordmark, not bury it: lower opacity / energy than before.
+    gsap.to(particles.uniforms.uOpacity, { value: 0.68, duration: 1.4 * T, ease: 'sine.out', delay: 0.15 });
+    gsap.to(particles.uniforms.uBootEnergy, { value: 0.78, duration: 1.05 * T, ease: 'sine.out', delay: 0.1 });
+    gsap.to(particles.uniforms.uHubGlow, { value: isMobile ? 0.26 : 0.36, duration: 1.2 * T, ease: 'sine.out' });
     cortexAccent(ACCENTS.nebula, 0);
-    cortexOpacity(isMobile ? 0.58 : 0.78, 1.25 * T);
-    cortexEnergy(1.1, 1.05 * T);
-    cortexPulse(isMobile ? 0.42 : 0.64, isMobile ? 1.15 : 1.72, 1.1 * T);
-    if (lu) gsap.to(lu.uLineOpacity, { value: 0.66, duration: 1.0 * T, ease: 'sine.out' });
+    cortexOpacity(isMobile ? 0.4 : 0.5, 1.25 * T);
+    cortexEnergy(0.82, 1.05 * T);
+    cortexPulse(isMobile ? 0.4 : 0.6, isMobile ? 0.85 : 1.1, 1.1 * T);
+    if (lu) gsap.to(lu.uLineOpacity, { value: 0.46, duration: 1.0 * T, ease: 'sine.out' });
     if (pu) {
-      gsap.to(pu.uPulseIntensity, { value: isMobile ? 1.25 : 1.8, duration: 1.1 * T, ease: 'sine.out' });
+      gsap.to(pu.uPulseIntensity, { value: isMobile ? 0.9 : 1.2, duration: 1.1 * T, ease: 'sine.out' });
       gsap.to(pu.uPulseSpeed, { value: isMobile ? 0.36 : 0.58, duration: 1.1 * T, ease: 'sine.out' });
     }
     particles.morphTo('nebula', { duration: 1.9 * T, stagger: 0.4, burst: 0.05 });
 
     // Stage 2 — the synapses pulse brighter as the engine "comes online"
     gsap.delayedCall(1.6 * T, () => {
-      if (lu) gsap.to(lu.uLineOpacity, { value: 0.78, duration: 0.7 * T, ease: 'sine.inOut', yoyo: true, repeat: 1 });
-      gsap.to(particles.uniforms.uBootEnergy, { value: 1.35, duration: 0.6 * T, ease: 'sine.inOut', yoyo: true, repeat: 1 });
-      if (cortex) gsap.to(cortex.uniforms.uBootEnergy, { value: 1.55, duration: 0.62 * T, ease: 'sine.inOut', yoyo: true, repeat: 1 });
-      if (cortex) gsap.to(cortex.uniforms.uPulseIntensity, { value: isMobile ? 1.35 : 2.05, duration: 0.62 * T, ease: 'sine.inOut', yoyo: true, repeat: 1 });
+      if (lu) gsap.to(lu.uLineOpacity, { value: 0.56, duration: 0.7 * T, ease: 'sine.inOut', yoyo: true, repeat: 1 });
+      gsap.to(particles.uniforms.uBootEnergy, { value: 1.0, duration: 0.6 * T, ease: 'sine.inOut', yoyo: true, repeat: 1 });
+      if (cortex) gsap.to(cortex.uniforms.uBootEnergy, { value: 1.1, duration: 0.62 * T, ease: 'sine.inOut', yoyo: true, repeat: 1 });
+      if (cortex) gsap.to(cortex.uniforms.uPulseIntensity, { value: isMobile ? 1.0 : 1.35, duration: 0.62 * T, ease: 'sine.inOut', yoyo: true, repeat: 1 });
     });
 
     // Stage 3 — the HTML wordmark resolves + boot status types
@@ -1649,18 +1705,32 @@ export async function initGL(canvas, options = {}) {
 
     // Stage 4 — settle the live mesh to its idle glow, scroll hint on
     gsap.delayedCall(3.4 * T, () => {
-      if (lu) gsap.to(lu.uLineOpacity, { value: 0.34, duration: 1.1, ease: 'sine.out' });
+      if (lu) gsap.to(lu.uLineOpacity, { value: 0.24, duration: 1.1, ease: 'sine.out' });
       if (pu) {
-        gsap.to(pu.uPulseIntensity, { value: isMobile ? 0.62 : 0.86, duration: 1.2, ease: 'sine.out' });
+        gsap.to(pu.uPulseIntensity, { value: isMobile ? 0.5 : 0.66, duration: 1.2, ease: 'sine.out' });
         gsap.to(pu.uPulseSpeed, { value: isMobile ? 0.18 : 0.22, duration: 1.2, ease: 'sine.out' });
       }
-      gsap.to(particles.uniforms.uBootEnergy, { value: 0.16, duration: 1.35, ease: 'sine.out' });
-      gsap.to(particles.uniforms.uHubGlow, { value: isMobile ? 0.18 : 0.28, duration: 1.2, ease: 'sine.out' });
-      gsap.to(particles.uniforms.uOpacity, { value: 0.76, duration: 1.35, ease: 'sine.out' });
-      cortexOpacity(isMobile ? 0.48 : 0.64, 1.35);
-      cortexEnergy(0.18, 1.35);
-      cortexPulse(isMobile ? 0.18 : 0.23, isMobile ? 0.62 : 0.86, 1.2);
+      gsap.to(particles.uniforms.uBootEnergy, { value: 0.14, duration: 1.35, ease: 'sine.out' });
+      gsap.to(particles.uniforms.uHubGlow, { value: isMobile ? 0.16 : 0.24, duration: 1.2, ease: 'sine.out' });
+      gsap.to(particles.uniforms.uOpacity, { value: 0.62, duration: 1.35, ease: 'sine.out' });
+      cortexOpacity(isMobile ? 0.34 : 0.42, 1.35);
+      cortexEnergy(0.16, 1.35);
+      cortexPulse(isMobile ? 0.16 : 0.21, isMobile ? 0.5 : 0.66, 1.2);
     });
-    gsap.delayedCall(isMobile ? 3.4 : 3.8, () => hint?.classList.add('is-on'));
+    // scroll hint only after the wordmark is on (reveal it defensively first)
+    gsap.delayedCall(isMobile ? 3.4 : 3.8, () => {
+      revealWordmark();
+      hint?.classList.add('is-on');
+    });
+  }
+
+  /* WATCHDOG — never leave a fresh visitor staring at a fieldless / wordless
+     intro. If, ~3s in, we're still near the top and the HTML wordmark hasn't
+     switched on through any of the paths above, force it on. */
+  if (!hash || hash === '#intro') {
+    gsap.delayedCall(reducedMotion ? 1.4 : 3.0, () => {
+      const nearIntro = (window.scrollY || 0) < innerHeight * 0.85;
+      if (nearIntro && !logoEl?.classList.contains('is-on')) revealWordmark();
+    });
   }
 }
