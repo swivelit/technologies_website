@@ -343,21 +343,30 @@ h1, h2, h3 { font-weight: 700; line-height: 1.02; letter-spacing: -0.025em; }
 /* ---------- intro ---------- */
 .scene--intro .scene__hold { align-items: center; text-align: center; justify-content: center; }
 /* the intro hold owns a stacking context so the wordmark / boot / hint always
-   sit above the readability plate (::before) and the WebGL canvas behind it. */
+   sit above the readability haze (::before) and the WebGL canvas behind it. */
 html.gl .scene--intro .scene__hold { isolation: isolate; z-index: 2; }
-/* soft dark-glass haze behind the wordmark — a wide, feathered radial (not a
-   flat box) that guarantees the white/cyan wordmark reads over the neural field
-   without looking like a panel. */
-html.gl .scene--intro::before {
+/* The readability haze lives on the STICKY hold — never on the tall scrolling
+   section — so it stays locked behind the wordmark and cannot drift upward as
+   the section scrolls under the pinned content. A single soft, edgeless radial
+   blob centred behind the wordmark: it must never read as a panel/slab. */
+html.gl .scene--intro::before { content: none; }
+html.gl .scene--intro .scene__hold::before {
   content: "";
   position: absolute;
-  inset: 0;
-  z-index: 0;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(940px, 84vw);
+  height: min(440px, 46vh);
+  z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(30% 19% at 50% 50%, rgba(34, 211, 238, 0.08), transparent 70%),
-    radial-gradient(58% 33% at 50% 50%, rgba(4, 6, 12, 0.84), rgba(4, 6, 12, 0.46) 52%, transparent 80%),
-    radial-gradient(120% 82% at 50% 46%, transparent 48%, rgba(4, 6, 12, 0.36) 100%);
+    radial-gradient(ellipse at center,
+      rgba(4, 6, 12, 0.6) 0%,
+      rgba(4, 6, 12, 0.38) 36%,
+      rgba(34, 211, 238, 0.035) 56%,
+      transparent 76%);
+  filter: blur(20px);
 }
 .intro__wordmark {
   font-weight: 700; line-height: 1;
@@ -453,10 +462,12 @@ html.gl .intro__logo.is-on .intro__wordsub {
   38% { opacity: 1; transform: translate(-50%, -50%) scaleX(1); }
   100% { opacity: 0; transform: translate(-50%, -50%) scaleX(1.12); }
 }
+/* a brief power-frame flourish during ignite, then it fully disappears — no
+   persistent border/frame is left between the wordmark and the boot status. */
 @keyframes intro-power-frame {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(0.94, 0.72); }
-  42% { opacity: 0.65; }
-  100% { opacity: 0.18; transform: translate(-50%, -50%) scale(1, 1); }
+  40% { opacity: 0.5; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1, 1); }
 }
 @keyframes wordmark-power {
   0% { text-shadow: 0 0 0 rgba(34, 211, 238, 0); filter: brightness(0.58); }
@@ -530,16 +541,25 @@ html.gl .scroll-hint.is-on { opacity: 1; animation: hint-pulse 2.6s ease-in-out 
 
 /* ---------- hero ---------- */
 .scene--hero .scene__hold { align-items: center; text-align: center; }
-/* gentle centre haze so the hero headline + subline read over the calm field */
+/* gentle centre haze so the hero headline + subline read over the calm field —
+   anchored to the sticky hold (not the tall section) so it never drifts on
+   scroll, same as the intro. */
 html.gl .scene--hero .scene__hold { isolation: isolate; z-index: 2; }
-html.gl .scene--hero::before {
+html.gl .scene--hero::before { content: none; }
+html.gl .scene--hero .scene__hold::before {
   content: "";
   position: absolute;
-  inset: 0;
-  z-index: 0;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(1100px, 88vw);
+  height: min(520px, 52vh);
+  z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(62% 42% at 50% 50%, rgba(4, 6, 12, 0.52), rgba(4, 6, 12, 0.18) 56%, transparent 82%);
+    radial-gradient(ellipse at center,
+      rgba(4, 6, 12, 0.5) 0%, rgba(4, 6, 12, 0.16) 56%, transparent 82%);
+  filter: blur(22px);
 }
 .hero__title {
   background: linear-gradient(180deg, #fff 30%, #b9b4cc);
