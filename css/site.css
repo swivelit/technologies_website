@@ -737,8 +737,12 @@ html.gl .scene--hero .scene__hold::before {
   object-fit: cover; object-position: center;
   opacity: 0; transition: opacity 0.9s ease;
 }
+/* <picture> wrappers are layout-transparent so the absolutely-stacked gallery
+   imgs (and the founder's object-fit img) behave exactly as bare <img> did */
+.device__sc picture, .founder__photo picture { display: contents; }
 .device__sc img.is-active,
-.device__sc img:only-child { opacity: 1; }
+.device__sc > img:only-child,
+.device__sc > picture:only-child > img { opacity: 1; }
 
 /* phone frame — portrait app screenshots */
 .device--phone {

@@ -434,6 +434,17 @@ async function makeTexture(THREE, url, maxDim, maxAniso) {
   return { tex, aspect: w / h };
 }
 
+/* prefer the generated .webp sibling (~95% smaller from the image pipeline),
+   falling back to the committed original PNG/JPEG if it's missing or fails. */
+async function loadBestTexture(THREE, url, maxDim, maxAniso) {
+  const webp = url.replace(/\.(png|jpe?g)$/i, '.webp');
+  if (webp !== url) {
+    try { return await makeTexture(THREE, webp, maxDim, maxAniso); }
+    catch { /* fall through to the original */ }
+  }
+  return makeTexture(THREE, url, maxDim, maxAniso);
+}
+
 function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 function smoothstep(a, b, x) { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
 function lerp(a, b, t) { return a + (b - a) * t; }
@@ -830,7 +841,7 @@ export function createCorridor(THREE, opts = {}) {
         while (cursor < queue.length) {
           const plane = queue[cursor++];
           try {
-            const { tex, aspect } = await makeTexture(THREE, plane.url, maxDim, maxAnisotropy);
+            const { tex, aspect } = await loadBestTexture(THREE, plane.url, maxDim, maxAnisotropy);
             plane.mat.uniforms.uTex.value = tex;
             plane.mat.uniforms.uHasTex.value = 1;
             plane.tex = tex;

@@ -1,0 +1,14 @@
+{
+  "name": "swivel-technologies-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Swivel Technologies marketing site — static HTML/CSS + WebGL stage. Node is used only for the build-time image pipeline (sharp); the site itself ships no bundler/runtime deps.",
+  "scripts": {
+    "optimize:images": "node scripts/optimize-images.mjs",
+    "gen:favicons": "node scripts/gen-favicons.mjs",
+    "build:assets": "npm run optimize:images && npm run gen:favicons"
+  },
+  "devDependencies": {
+    "sharp": "^0.33.5"
+  }
+}
