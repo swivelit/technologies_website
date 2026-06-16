@@ -853,20 +853,13 @@ html.gl .scene--hero .scene__hold::before {
 }
 .founder__photo:hover { box-shadow: 0 0 80px -18px rgba(59, 130, 246, 0.6); }
 .founder__photo:hover img { filter: grayscale(0.12) contrast(1.02); transform: scale(1.04); }
-/* accent rim + lower fade — matches .product__info / .team-card accent language */
+/* neutral rim + lower fade — no scanline. The team section's --accent is green,
+   so the frame stays a neutral hairline rather than reading as a green tint. */
 .founder__photo::before {
   content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
   border-radius: inherit;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+  box-shadow: inset 0 0 0 1px var(--line);
   background: linear-gradient(180deg, transparent 60%, rgba(5, 6, 10, 0.5));
-}
-/* a slow scanline sweep — same @keyframes scan the product cards use */
-.founder__photo::after {
-  content: ""; position: absolute; left: 0; right: 0; top: 30%; z-index: 2;
-  height: 1px; pointer-events: none;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: 0.45;
-  animation: scan 5.5s ease-in-out infinite;
 }
 .founder h3 { font-size: clamp(1.3rem, 2.4vw, 2rem); }
 .founder .role { color: var(--ember); margin: 10px 0 16px; }
