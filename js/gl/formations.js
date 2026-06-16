@@ -168,18 +168,20 @@ export function nebulaFormation(count, { radius = 30 } = {}) {
   const sizes = new Float32Array(count);
   const place = tiltWriter(-0.18, 0.0, 0.08);
 
-  // scatter neuron centres through a gently flattened ellipsoid
+  // scatter neuron centres through a gently flattened, folded cortex sheet
+  // behind the wordmark rather than a spherical galaxy.
   const NC = 46;
   const cx = new Float32Array(NC), cy = new Float32Array(NC), cz = new Float32Array(NC);
   const cw = new Float32Array(NC);                         // density weight per node
   for (let n = 0; n < NC; n++) {
-    const r = radius * Math.cbrt(Math.random());
-    const th = Math.random() * TAU;
-    const ph = Math.acos(2 * Math.random() - 1);
-    cx[n] = r * Math.sin(ph) * Math.cos(th) * 1.25;
-    cy[n] = r * Math.sin(ph) * Math.sin(th) * 0.72;
-    cz[n] = r * Math.cos(ph) * 0.6;
-    cw[n] = 0.4 + Math.random() * Math.random();           // a few hubs are denser
+    const u = (n + Math.random() * 0.45) / NC;
+    const lane = n % 5;
+    const fold = Math.sin(u * TAU * 2.1 + lane * 0.62);
+    const lobe = Math.cos(u * TAU * 1.35 + lane * 0.38);
+    cx[n] = (u - 0.5) * radius * 2.3 + gauss() * 2.1;
+    cy[n] = fold * radius * 0.24 + (lane - 2) * radius * 0.085 + gauss() * 1.25;
+    cz[n] = lobe * radius * 0.18 + gauss() * 1.7;
+    cw[n] = 0.42 + Math.random() * Math.random() * 0.9;    // a few hubs are denser
   }
   const hubOrder = Array.from({ length: NC }, (_, i) => i)
     .sort((a, b) => cw[b] - cw[a])
@@ -204,6 +206,44 @@ export function nebulaFormation(count, { radius = 30 } = {}) {
     }
     near[a] = bi;
   }
+  const hubPositions = new Float32Array(NC * 3);
+  for (let n = 0; n < NC; n++) place(hubPositions, n, cx[n], cy[n], cz[n]);
+
+  const hubPairs = [];
+  const seenHubPair = new Set();
+  for (let a = 0; a < NC; a++) {
+    const best = [];
+    for (let b = 0; b < NC; b++) {
+      if (a === b) continue;
+      const dx = cx[b] - cx[a], dy = cy[b] - cy[a], dz = cz[b] - cz[a];
+      const d = dx * dx + dy * dy + dz * dz;
+      best.push([b, d]);
+    }
+    best.sort((p, q) => p[1] - q[1]);
+    const links = cw[a] > 0.9 ? 3 : 2;
+    for (let k = 0; k < links; k++) {
+      const b = best[k]?.[0];
+      if (b == null) continue;
+      const lo = Math.min(a, b), hi = Math.max(a, b);
+      const key = `${lo}:${hi}`;
+      if (seenHubPair.has(key)) continue;
+      seenHubPair.add(key);
+      hubPairs.push([lo, hi]);
+    }
+  }
+  const hubs = Array.from({ length: NC }, (_, n) => {
+    const o = n * 3;
+    const c = hubOrder.includes(n) ? coolMix(0.75 + Math.random() * 0.25) : (Math.random() < 0.55 ? ICE : coolMix(0.35 + Math.random() * 0.45));
+    return {
+      index: n,
+      x: hubPositions[o],
+      y: hubPositions[o + 1],
+      z: hubPositions[o + 2],
+      radius: 1.35 + cw[n] * 1.65,
+      intensity: 0.54 + cw[n] * 0.66,
+      color: c,
+    };
+  }).sort((a, b) => b.intensity - a.intensity);
 
   const halo = Math.floor(count * 0.12);
   const hubCore = halo + Math.floor(count * 0.032);
@@ -266,7 +306,7 @@ export function nebulaFormation(count, { radius = 30 } = {}) {
     setCol(colors, i, col[0] * b, col[1] * b, col[2] * b);
   }
 
-  return { positions, colors, sizes };
+  return { positions, colors, sizes, meta: { hubs, hubEdges: hubPairs } };
 }
 
 /* ============================================================

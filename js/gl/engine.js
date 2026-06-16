@@ -11,7 +11,7 @@ import {
   buildEdges,
 } from './formations.js';
 import { scramble } from '../scramble.js';
-import { createCorridor } from './imagePlanes.js';
+import { CORRIDOR_PRODUCTS, createCorridor } from './imagePlanes.js';
 
 const CDN = {
   three: 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js',
@@ -232,6 +232,106 @@ void main(){
   gl_FragColor = vec4(uPulseColor * (0.6 + core + uBootEnergy * 0.5), core * core * vAlpha);
 }`;
 
+const CORTEX_HUB_VERT = /* glsl */ `
+attribute float aSize;
+attribute float aIntensity;
+attribute float aSeed;
+attribute vec3 aColor;
+uniform float uTime;
+uniform float uOpacity;
+uniform float uBootEnergy;
+uniform float uPixelRatio;
+uniform vec3 uAccent;
+varying vec3 vColor;
+varying float vAlpha;
+void main(){
+  float pulse = 0.72 + 0.28 * sin(uTime * (1.15 + aSeed * 0.7) + aSeed * 6.28318);
+  vec3 pos = position;
+  pos.z += sin(uTime * 0.32 + aSeed * 9.0) * 0.45 * (0.25 + uBootEnergy * 0.45);
+  vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+  gl_Position = projectionMatrix * mv;
+  float ps = aSize * (15.0 + uBootEnergy * 7.0) * uPixelRatio * (80.0 / max(1.0, -mv.z));
+  gl_PointSize = clamp(ps, 4.0, 70.0 * uPixelRatio);
+  vColor = mix(aColor, uAccent, 0.22 + uBootEnergy * 0.12);
+  vAlpha = uOpacity * aIntensity * (0.62 + pulse * 0.5 + uBootEnergy * 0.22);
+}`;
+
+const CORTEX_HUB_FRAG = /* glsl */ `
+precision highp float;
+varying vec3 vColor;
+varying float vAlpha;
+void main(){
+  vec2 uv = gl_PointCoord - 0.5;
+  float d = length(uv) * 2.0;
+  if (d > 1.0) discard;
+  float core = smoothstep(1.0, 0.0, d);
+  float halo = smoothstep(1.0, 0.18, d);
+  vec3 col = vColor * (0.55 + core * 1.25 + halo * 0.35);
+  gl_FragColor = vec4(col, vAlpha * (core * core * 0.72 + halo * 0.24));
+}`;
+
+const CORTEX_LINE_VERT = /* glsl */ `
+attribute float aEdgeIntensity;
+uniform float uTime;
+uniform float uOpacity;
+uniform float uBootEnergy;
+varying float vAlpha;
+void main(){
+  vec3 pos = position;
+  pos.z += sin(uTime * 0.2 + position.x * 0.08 + position.y * 0.05) * 0.24 * uBootEnergy;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+  vAlpha = uOpacity * aEdgeIntensity * (0.32 + uBootEnergy * 0.55);
+}`;
+
+const CORTEX_LINE_FRAG = /* glsl */ `
+precision highp float;
+uniform vec3 uAccent;
+uniform float uLineOpacity;
+varying float vAlpha;
+void main(){
+  gl_FragColor = vec4(uAccent * 1.18, vAlpha * uLineOpacity);
+}`;
+
+const CORTEX_PULSE_VERT = /* glsl */ `
+attribute vec3 aFrom;
+attribute vec3 aTo;
+attribute vec3 aColor;
+attribute float aPhase;
+attribute float aSpeed;
+uniform float uTime;
+uniform float uOpacity;
+uniform float uBootEnergy;
+uniform float uPixelRatio;
+uniform float uPulseSpeed;
+uniform float uPulseIntensity;
+uniform vec3 uAccent;
+varying vec3 vColor;
+varying float vAlpha;
+void main(){
+  float tt = fract(uTime * uPulseSpeed * aSpeed * (1.0 + uBootEnergy * 1.6) + aPhase);
+  float life = sin(tt * 3.14159265);
+  vec3 pos = mix(aFrom, aTo, tt);
+  pos += normalize(aTo - aFrom + vec3(0.001)) * life * 0.18 * uBootEnergy;
+  vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+  gl_Position = projectionMatrix * mv;
+  float ps = (2.0 + uBootEnergy * 1.2) * uPixelRatio * (92.0 / max(1.0, -mv.z));
+  gl_PointSize = clamp(ps, 2.0, 24.0 * uPixelRatio);
+  vColor = mix(aColor, uAccent, 0.34);
+  vAlpha = uOpacity * uPulseIntensity * (0.22 + 0.78 * life) * (0.55 + uBootEnergy * 0.75);
+}`;
+
+const CORTEX_PULSE_FRAG = /* glsl */ `
+precision highp float;
+varying vec3 vColor;
+varying float vAlpha;
+void main(){
+  vec2 uv = gl_PointCoord - 0.5;
+  float d = length(uv) * 2.0;
+  if (d > 1.0) discard;
+  float core = smoothstep(1.0, 0.0, d);
+  gl_FragColor = vec4(vColor * (0.6 + core * 1.3), core * core * vAlpha);
+}`;
+
 /* ---------------- dependency loading ---------------- */
 
 function loadScript(src) {
@@ -296,6 +396,8 @@ const ACCENTS = {
   'ai-business-assistant': 0x34d399,
   'defect-detector': 0xf76d6d,
 };
+
+const PRODUCT_IDS = CORRIDOR_PRODUCTS.map((product) => product.id);
 
 class Particles {
   constructor(count, { mobile = false, mesh = null, reducedMotion = false } = {}) {
@@ -625,6 +727,214 @@ class Particles {
   }
 }
 
+class NeuralCortexOverlay {
+  constructor(meta, { mobile = false, reducedMotion = false, pixelRatio = 1 } = {}) {
+    this.mobile = mobile;
+    this.reducedMotion = reducedMotion;
+    this.group = new THREE.Group();
+    this.group.position.set(0, 0, mobile ? -4.2 : -4.8);
+    const scale = mobile ? 0.78 : 0.92;
+    this.group.scale.setScalar(scale);
+
+    this.uniforms = {
+      uTime: { value: 0 },
+      uOpacity: { value: 0 },
+      uBootEnergy: { value: 0 },
+      uPixelRatio: { value: pixelRatio },
+      uAccent: { value: new THREE.Color(ACCENTS.nebula) },
+      uPulseSpeed: { value: mobile ? 0.22 : 0.28 },
+      uPulseIntensity: { value: mobile ? 0.58 : 0.82 },
+    };
+
+    const hubLimit = mobile ? 26 : 46;
+    const sourceHubs = [...(meta?.hubs || [])].slice(0, hubLimit);
+    const oldToNew = new Map(sourceHubs.map((hub, idx) => [hub.index, idx]));
+    const edges = (meta?.hubEdges || [])
+      .map(([a, b]) => [oldToNew.get(a), oldToNew.get(b)])
+      .filter(([a, b]) => a != null && b != null && a !== b);
+
+    if (sourceHubs.length < 4 || edges.length < 3) {
+      this.empty = true;
+      return;
+    }
+
+    const hubGeo = new THREE.BufferGeometry();
+    const pos = new Float32Array(sourceHubs.length * 3);
+    const col = new Float32Array(sourceHubs.length * 3);
+    const size = new Float32Array(sourceHubs.length);
+    const intensity = new Float32Array(sourceHubs.length);
+    const seed = new Float32Array(sourceHubs.length);
+    sourceHubs.forEach((hub, i) => {
+      const o = i * 3;
+      pos[o] = hub.x;
+      pos[o + 1] = hub.y;
+      pos[o + 2] = hub.z;
+      const c = hub.color || [0.9, 0.96, 1.12];
+      col[o] = c[0];
+      col[o + 1] = c[1];
+      col[o + 2] = c[2];
+      size[i] = hub.radius || 1.8;
+      intensity[i] = hub.intensity || 0.8;
+      seed[i] = Math.random();
+    });
+    hubGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    hubGeo.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
+    hubGeo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+    hubGeo.setAttribute('aIntensity', new THREE.BufferAttribute(intensity, 1));
+    hubGeo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
+    this.hubGeo = hubGeo;
+    this.hubs = new THREE.Points(hubGeo, new THREE.ShaderMaterial({
+      uniforms: this.uniforms,
+      vertexShader: CORTEX_HUB_VERT,
+      fragmentShader: CORTEX_HUB_FRAG,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+    }));
+    this.hubs.frustumCulled = false;
+    this.group.add(this.hubs);
+
+    const lineGeo = new THREE.BufferGeometry();
+    const linePos = new Float32Array(edges.length * 2 * 3);
+    const lineIntensity = new Float32Array(edges.length * 2);
+    edges.forEach(([a, b], i) => {
+      const oa = a * 3, ob = b * 3, out = i * 6;
+      linePos[out] = pos[oa];
+      linePos[out + 1] = pos[oa + 1];
+      linePos[out + 2] = pos[oa + 2];
+      linePos[out + 3] = pos[ob];
+      linePos[out + 4] = pos[ob + 1];
+      linePos[out + 5] = pos[ob + 2];
+      const edgeI = Math.min(1.25, (intensity[a] + intensity[b]) * 0.5);
+      lineIntensity[i * 2] = edgeI;
+      lineIntensity[i * 2 + 1] = edgeI;
+    });
+    lineGeo.setAttribute('position', new THREE.BufferAttribute(linePos, 3));
+    lineGeo.setAttribute('aEdgeIntensity', new THREE.BufferAttribute(lineIntensity, 1));
+    this.lineGeo = lineGeo;
+    this.lineUniforms = {
+      uTime: this.uniforms.uTime,
+      uOpacity: this.uniforms.uOpacity,
+      uBootEnergy: this.uniforms.uBootEnergy,
+      uAccent: this.uniforms.uAccent,
+      uLineOpacity: { value: mobile ? 0.34 : 0.44 },
+    };
+    this.lines = new THREE.LineSegments(lineGeo, new THREE.ShaderMaterial({
+      uniforms: this.lineUniforms,
+      vertexShader: CORTEX_LINE_VERT,
+      fragmentShader: CORTEX_LINE_FRAG,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+    }));
+    this.lines.frustumCulled = false;
+    this.group.add(this.lines);
+
+    this.edges = edges;
+    if (!reducedMotion) this._buildPulses(sourceHubs, pos, col);
+  }
+
+  _buildPulses(hubs, hubPos, hubCol) {
+    const count = this.mobile ? 30 : 78;
+    const geo = new THREE.BufferGeometry();
+    const from = new Float32Array(count * 3);
+    const to = new Float32Array(count * 3);
+    const color = new Float32Array(count * 3);
+    const phase = new Float32Array(count);
+    const speed = new Float32Array(count);
+    for (let i = 0; i < count; i++) {
+      const edge = this.edges[(Math.random() * this.edges.length) | 0];
+      const a = edge[0], b = edge[1];
+      const flip = Math.random() < 0.5;
+      const ia = flip ? b : a;
+      const ib = flip ? a : b;
+      const oa = ia * 3, ob = ib * 3, o = i * 3;
+      from[o] = hubPos[oa];
+      from[o + 1] = hubPos[oa + 1];
+      from[o + 2] = hubPos[oa + 2];
+      to[o] = hubPos[ob];
+      to[o + 1] = hubPos[ob + 1];
+      to[o + 2] = hubPos[ob + 2];
+      const boost = Math.min(1.2, ((hubs[ia]?.intensity || 0.8) + (hubs[ib]?.intensity || 0.8)) * 0.52);
+      color[o] = hubCol[oa] * boost;
+      color[o + 1] = hubCol[oa + 1] * boost;
+      color[o + 2] = hubCol[oa + 2] * boost;
+      phase[i] = Math.random();
+      speed[i] = 0.72 + Math.random() * 0.72;
+    }
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+    geo.setAttribute('aFrom', new THREE.BufferAttribute(from, 3));
+    geo.setAttribute('aTo', new THREE.BufferAttribute(to, 3));
+    geo.setAttribute('aColor', new THREE.BufferAttribute(color, 3));
+    geo.setAttribute('aPhase', new THREE.BufferAttribute(phase, 1));
+    geo.setAttribute('aSpeed', new THREE.BufferAttribute(speed, 1));
+    this.pulseGeo = geo;
+    this.pulses = new THREE.Points(geo, new THREE.ShaderMaterial({
+      uniforms: this.uniforms,
+      vertexShader: CORTEX_PULSE_VERT,
+      fragmentShader: CORTEX_PULSE_FRAG,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+    }));
+    this.pulses.frustumCulled = false;
+    this.group.add(this.pulses);
+  }
+
+  setOpacity(value, duration = 1) {
+    if (this.empty) return;
+    if (duration <= 0 || !gsap) this.uniforms.uOpacity.value = value;
+    else gsap.to(this.uniforms.uOpacity, { value, duration, ease: 'sine.inOut', overwrite: 'auto' });
+  }
+
+  setBootEnergy(value, duration = 1) {
+    if (this.empty) return;
+    if (duration <= 0 || !gsap) this.uniforms.uBootEnergy.value = value;
+    else gsap.to(this.uniforms.uBootEnergy, { value, duration, ease: 'sine.inOut', overwrite: 'auto' });
+  }
+
+  setPulse({ speed, intensity }, duration = 1) {
+    if (this.empty) return;
+    if (speed != null) {
+      if (duration <= 0 || !gsap) this.uniforms.uPulseSpeed.value = speed;
+      else gsap.to(this.uniforms.uPulseSpeed, { value: speed, duration, ease: 'sine.inOut', overwrite: 'auto' });
+    }
+    if (intensity != null) {
+      if (duration <= 0 || !gsap) this.uniforms.uPulseIntensity.value = intensity;
+      else gsap.to(this.uniforms.uPulseIntensity, { value: intensity, duration, ease: 'sine.inOut', overwrite: 'auto' });
+    }
+  }
+
+  setAccent(hex, duration = 1) {
+    if (this.empty) return;
+    const target = new THREE.Color(hex);
+    const c = this.uniforms.uAccent.value;
+    if (duration <= 0 || !gsap) c.copy(target);
+    else gsap.to(c, { r: target.r, g: target.g, b: target.b, duration, ease: 'sine.inOut', overwrite: 'auto' });
+  }
+
+  update(dt) {
+    if (this.empty) return;
+    this.uniforms.uTime.value += dt * (this.reducedMotion ? 0.18 : 1);
+    const t = this.uniforms.uTime.value;
+    const e = this.uniforms.uBootEnergy.value;
+    this.group.rotation.y = Math.sin(t * 0.08) * (0.035 + e * 0.012);
+    this.group.rotation.x = Math.cos(t * 0.065) * (0.018 + e * 0.01);
+  }
+
+  dispose() {
+    this.hubGeo?.dispose();
+    this.lineGeo?.dispose();
+    this.pulseGeo?.dispose();
+    this.hubs?.material?.dispose();
+    this.lines?.material?.dispose();
+    this.pulses?.material?.dispose();
+  }
+}
+
 /* ---------------- stage ---------------- */
 
 function clamp(v, min, max) {
@@ -762,7 +1072,8 @@ export async function initGL(canvas, options = {}) {
 
   /* formations */
   particles.formations.spawn = spawnFormation(particles.count);
-  particles.formations.nebula = nebulaFormation(particles.count);
+  const nebula = nebulaFormation(particles.count, { radius: isMobile ? 27 : 30 });
+  particles.formations.nebula = nebula;
   // per-product shapes — cheap CPU arrays, keyed to the section ids
   particles.formations['good-one'] = goodOneFormation(particles.count);
   particles.formations['swico-ai'] = swicoFormation(particles.count);
@@ -771,6 +1082,15 @@ export async function initGL(canvas, options = {}) {
   particles.formations['ai-business-assistant'] = aiAssistantFormation(particles.count);
   particles.formations['defect-detector'] = defectFormation(particles.count);
   particles.formations.logo = await logoFormation('images/logo.png', particles.count, { width: LOGO_W });
+
+  let cortex = null;
+  try {
+    cortex = new NeuralCortexOverlay(nebula.meta, { mobile: isMobile, reducedMotion, pixelRatio: dpr });
+    if (!cortex.empty) scene.add(cortex.group);
+  } catch (err) {
+    console.warn('[swivel] cortex overlay unavailable:', err);
+    cortex = null;
+  }
 
   // precompute a nearest-neighbour network for the nebula + each product so the
   // mesh roughly follows the active shape
@@ -792,6 +1112,7 @@ export async function initGL(canvas, options = {}) {
   html.classList.add('gl');
   html.classList.toggle('gl-mobile', isMobile);
   html.classList.remove('gl-loading');
+  applyProductScreenCounts();
 
   let lenis = null;
   let refreshFrame = 0;
@@ -804,11 +1125,29 @@ export async function initGL(canvas, options = {}) {
     return document.getElementById(id);
   }
 
+  function applyProductScreenCounts() {
+    CORRIDOR_PRODUCTS.forEach((product) => {
+      const section = document.getElementById(product.id);
+      if (!section) return;
+      const screens = Math.max(1, product.images.length);
+      section.style.setProperty('--screens', String(screens));
+      section.style.setProperty('--product-scroll', `${Math.round(clamp(132 + screens * 19, 198, 384))}vh`);
+    });
+  }
+
   function updateSceneStickiness() {
     const viewportH = window.visualViewport?.height || innerHeight;
     document.querySelectorAll('.scene').forEach((sceneEl) => {
       const hold = sceneEl.querySelector('.scene__hold');
       if (!hold || sceneEl.classList.contains('scene--contact')) return;
+      const keepProductTheatre =
+        sceneEl.classList.contains('scene--product') &&
+        !isMobile &&
+        !sceneFitQuery.matches;
+      if (keepProductTheatre) {
+        sceneEl.classList.remove('scene--unstick');
+        return;
+      }
       sceneEl.classList.remove('scene--unstick');
       const contentTooTall = hold.scrollHeight > viewportH + 8;
       sceneEl.classList.toggle('scene--unstick', contentTooTall);
@@ -900,6 +1239,10 @@ export async function initGL(canvas, options = {}) {
   const dim = (v, d = 1.4) =>
     gsap.to(particles.uniforms.uOpacity, { value: v, duration: d, ease: 'sine.inOut', overwrite: 'auto' });
   const pu = particles.pulseUniforms;                // undefined when pulse budget is disabled
+  const cortexOpacity = (value, duration = 1.1) => cortex?.setOpacity(value, duration);
+  const cortexEnergy = (value, duration = 1.1) => cortex?.setBootEnergy(value, duration);
+  const cortexAccent = (hex, duration = 1.1) => cortex?.setAccent(hex, duration);
+  const cortexPulse = (speed, intensity, duration = 1.1) => cortex?.setPulse({ speed, intensity }, duration);
 
   const hintEl = document.getElementById('scrollHint');
   ScrollTrigger.create({
@@ -907,6 +1250,10 @@ export async function initGL(canvas, options = {}) {
     start: 'top 70%',
     onEnter: () => {
       hintEl?.classList.remove('is-on');
+      cortexAccent(ACCENTS.nebula, 1.0);
+      cortexOpacity(isMobile ? 0.46 : 0.62, 1.1);
+      cortexEnergy(0.22, 1.1);
+      cortexPulse(isMobile ? 0.2 : 0.25, isMobile ? 0.62 : 0.86, 1.1);
       // restore the mesh to its standard scene opacity (intro left it faint)
       if (particles.lineUniforms) {
         gsap.to(particles.lineUniforms.uLineOpacity, { value: mesh.lineOpacity, duration: 1.0, ease: 'sine.out', overwrite: 'auto' });
@@ -917,13 +1264,27 @@ export async function initGL(canvas, options = {}) {
       // scrolling back up to the intro keeps the calm neural field (no particle
       // wordmark) — the readable SWIVEL TECHNOLOGIES is HTML over the top
       hintEl?.classList.add('is-on');
+      cortexAccent(ACCENTS.nebula, 1.0);
+      cortexOpacity(isMobile ? 0.54 : 0.72, 1.1);
+      cortexEnergy(0.28, 1.1);
+      cortexPulse(isMobile ? 0.24 : 0.3, isMobile ? 0.72 : 0.98, 1.1);
       particles.morphTo('nebula', { duration: motion.heroMorph, stagger: isMobile ? 0.3 : 0.4, burst: motion.heroBurst });
     },
   });
   // dim the stage across the whole product run; restore to full above it
   ScrollTrigger.create({
     trigger: '#work', start: 'top 55%',
-    onEnter: () => dim(motion.workOpacity), onLeaveBack: () => dim(isMobile ? 0.7 : 0.78),
+    onEnter: () => {
+      dim(motion.workOpacity);
+      cortexOpacity(isMobile ? 0.12 : 0.18, 1.2);
+      cortexEnergy(0.1, 1.2);
+    },
+    onLeaveBack: () => {
+      dim(isMobile ? 0.7 : 0.78);
+      cortexAccent(ACCENTS.nebula, 1.0);
+      cortexOpacity(isMobile ? 0.52 : 0.68, 1.2);
+      cortexEnergy(0.22, 1.2);
+    },
   });
 
   /* corridor: bind the active 3D room to the product section near the viewport
@@ -933,6 +1294,8 @@ export async function initGL(canvas, options = {}) {
   if (corridor) {
     const FIRST = '#good-one';
     const LAST = '#defect-detector';
+    window.__swivelDebug = window.__swivelDebug || {};
+    window.__swivelDebug.corridor = () => corridor?.getDebugState?.() || null;
 
     // visibility: on only while the product run is on screen
     ScrollTrigger.create({
@@ -951,6 +1314,22 @@ export async function initGL(canvas, options = {}) {
       onUpdate: setHead, onRefresh: setHead,
     });
 
+    // local product progress: inside each product section, promote screenshot
+    // 1 → 2 → 3… through the foreground hero position.
+    PRODUCT_IDS.forEach((id, idx) => {
+      const setImageProgress = (self) => {
+        corridor.setActive(idx);
+        corridor.setProductProgress(idx, self.progress);
+      };
+      ScrollTrigger.create({
+        trigger: `#${id}`,
+        start: 'top top',
+        end: 'bottom bottom',
+        onUpdate: setImageProgress,
+        onRefresh: setImageProgress,
+      });
+    });
+
     // anchor the corridor to the product card area (all product cards share the
     // right-hand column, so one measurement keeps every room on spot)
     anchorToCard = () => {
@@ -965,7 +1344,7 @@ export async function initGL(canvas, options = {}) {
      dissolves and re-forms into its shape. bake() makes every morph start
      from whatever is on screen, so the first goes nebula→shape and the rest
      go shape→shape. burst is kept gentle so transitions read, not thrash. */
-  const PRODUCTS = ['good-one', 'swico-ai', 'grab-basket', 'manas', 'ai-business-assistant', 'defect-detector'];
+  const PRODUCTS = PRODUCT_IDS;
   const productPulse = {
     'good-one': { speed: isMobile ? 0.18 : 0.24, intensity: isMobile ? 0.58 : 0.88, energy: 0.14 },
     'swico-ai': { speed: isMobile ? 0.26 : 0.34, intensity: isMobile ? 0.72 : 1.05, energy: 0.18 },
@@ -984,10 +1363,14 @@ export async function initGL(canvas, options = {}) {
     const morph = () => {
       particles.morphTo(id, { duration: productDur, stagger: productStagger, burst: productBurst });
       const p = productPulse[id];
+      cortexAccent(ACCENTS[id], 1.0);
+      cortexOpacity(isMobile ? 0.1 : 0.16, 1.0);
+      cortexEnergy(p ? p.energy + 0.05 : 0.12, 0.9);
       if (p && pu) {
         gsap.to(pu.uPulseSpeed, { value: p.speed, duration: 1.0, ease: 'sine.inOut', overwrite: 'auto' });
         gsap.to(pu.uPulseIntensity, { value: p.intensity, duration: 1.0, ease: 'sine.inOut', overwrite: 'auto' });
       }
+      if (p) cortexPulse(p.speed * 0.82, p.intensity * 0.72, 1.0);
       if (p) gsap.to(particles.uniforms.uBootEnergy, { value: p.energy, duration: 0.9, ease: 'sine.inOut', overwrite: 'auto' });
     };
     ScrollTrigger.create({
@@ -1004,6 +1387,10 @@ export async function initGL(canvas, options = {}) {
     trigger: '#about', start: 'top 64%',
     onEnter: () => {
       toNebula(productBurst * 0.5);
+      cortexAccent(ACCENTS.nebula, 1.2);
+      cortexOpacity(isMobile ? 0.2 : 0.32, 1.3);
+      cortexEnergy(0.14, 1.2);
+      cortexPulse(isMobile ? 0.18 : 0.22, isMobile ? 0.5 : 0.68, 1.2);
       if (pu) {
         gsap.to(pu.uPulseSpeed, { value: isMobile ? 0.18 : 0.22, duration: 1.2, ease: 'sine.inOut', overwrite: 'auto' });
         gsap.to(pu.uPulseIntensity, { value: isMobile ? 0.58 : 0.78, duration: 1.2, ease: 'sine.inOut', overwrite: 'auto' });
@@ -1036,15 +1423,25 @@ export async function initGL(canvas, options = {}) {
     if (productIndex >= 0) {
       const p = productPulse[id];
       corridor?.setHead(productIndex);
+      corridor?.setProductProgress(productIndex, 0);
       if (corridor) {
         corridor.head = productIndex;
         corridor.setVisible(true);
       }
+      cortexAccent(ACCENTS[id], 0);
+      cortexOpacity(isMobile ? 0.1 : 0.16, 0);
+      cortexEnergy(p ? p.energy + 0.05 : 0.12, 0);
+      if (p) cortexPulse(p.speed * 0.82, p.intensity * 0.72, 0);
       if (p && pu) {
         pu.uPulseSpeed.value = p.speed;
         pu.uPulseIntensity.value = p.intensity;
       }
       if (p) particles.uniforms.uBootEnergy.value = p.energy;
+    } else {
+      cortexAccent(ACCENTS.nebula, 0);
+      cortexOpacity(isMobile ? 0.18 : 0.28, 0);
+      cortexEnergy(0.12, 0);
+      cortexPulse(isMobile ? 0.14 : 0.18, isMobile ? 0.42 : 0.58, 0);
     }
   } else {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -1055,6 +1452,7 @@ export async function initGL(canvas, options = {}) {
   scheduleSettledRefreshes();
   if (hash && hash !== '#intro') {
     requestAnimationFrame(() => {
+      const productIndex = PRODUCTS.indexOf(hash.slice(1));
       if (typeof window.__swivelScrollTo === 'function') {
         window.__swivelScrollTo(hash, { immediate: true });
       } else {
@@ -1066,6 +1464,22 @@ export async function initGL(canvas, options = {}) {
         }
       }
       ScrollTrigger.update();
+      if (productIndex >= 0 && corridor) {
+        let cancelled = false;
+        const cancel = () => { cancelled = true; };
+        addEventListener('wheel', cancel, { once: true, passive: true });
+        addEventListener('touchstart', cancel, { once: true, passive: true });
+        addEventListener('keydown', cancel, { once: true });
+        const resetProductHash = () => {
+          if (cancelled) return;
+          corridor.setProductState(productIndex, 0);
+          corridor.head = productIndex;
+          corridor.targetHead = productIndex;
+          corridor.setVisible(true);
+        };
+        resetProductHash();
+        [140, 520, 1300, 2800, 5200].forEach((ms) => setTimeout(resetProductHash, ms));
+      }
     });
   }
 
@@ -1086,6 +1500,7 @@ export async function initGL(canvas, options = {}) {
       renderer.setPixelRatio(d);
       renderer.setSize(innerWidth, innerHeight, false);
       particles.uniforms.uPixelRatio.value = d;
+      if (cortex) cortex.uniforms.uPixelRatio.value = d;
       fitCamera();
       corridor?.resize(innerWidth, innerHeight);
       anchorToCard();
@@ -1101,6 +1516,7 @@ export async function initGL(canvas, options = {}) {
     gsap.ticker.remove(tick);
     try { lenis?.destroy?.(); } catch {}
     try { corridor?.dispose(); } catch {}
+    try { cortex?.dispose(); } catch {}
     if (window.__swivelLenis === lenis) delete window.__swivelLenis;
     html.classList.remove('gl', 'gl-mobile');
     html.classList.add('no-gl');
@@ -1124,6 +1540,7 @@ export async function initGL(canvas, options = {}) {
     // the logo must face the camera — unwind any accumulated spin
     if (particles.mode !== 'nebula') rig.idle *= Math.pow(0.25, dt);
     particles.group.rotation.y = rig.rotY + rig.idle;
+    cortex?.update(dt);
 
     cam.px += (cam.tx - cam.px) * 0.045;
     cam.py += (cam.ty - cam.py) * 0.045;
@@ -1180,6 +1597,10 @@ export async function initGL(canvas, options = {}) {
     // simplified, mostly-static: a calm neural field resolves, HTML wordmark in
     particles.setImmediate('nebula');
     if (lu) lu.uLineOpacity.value = 0.26;
+    cortexAccent(ACCENTS.nebula, 0);
+    cortexOpacity(isMobile ? 0.36 : 0.5, 0);
+    cortexEnergy(0.08, 0);
+    cortexPulse(isMobile ? 0.08 : 0.1, isMobile ? 0.28 : 0.38, 0);
     particles.uniforms.uBootEnergy.value = 0.08;
     gsap.to(particles.uniforms.uOpacity, { value: 0.74, duration: 1.0, ease: 'sine.out' });
     revealWordmark();
@@ -1194,6 +1615,10 @@ export async function initGL(canvas, options = {}) {
     gsap.to(particles.uniforms.uOpacity, { value: 0.82, duration: 1.4 * T, ease: 'sine.out', delay: 0.15 });
     gsap.to(particles.uniforms.uBootEnergy, { value: 1.0, duration: 1.05 * T, ease: 'sine.out', delay: 0.1 });
     gsap.to(particles.uniforms.uHubGlow, { value: isMobile ? 0.32 : 0.48, duration: 1.2 * T, ease: 'sine.out' });
+    cortexAccent(ACCENTS.nebula, 0);
+    cortexOpacity(isMobile ? 0.58 : 0.78, 1.25 * T);
+    cortexEnergy(1.1, 1.05 * T);
+    cortexPulse(isMobile ? 0.42 : 0.64, isMobile ? 1.15 : 1.72, 1.1 * T);
     if (lu) gsap.to(lu.uLineOpacity, { value: 0.66, duration: 1.0 * T, ease: 'sine.out' });
     if (pu) {
       gsap.to(pu.uPulseIntensity, { value: isMobile ? 1.25 : 1.8, duration: 1.1 * T, ease: 'sine.out' });
@@ -1205,6 +1630,8 @@ export async function initGL(canvas, options = {}) {
     gsap.delayedCall(1.6 * T, () => {
       if (lu) gsap.to(lu.uLineOpacity, { value: 0.78, duration: 0.7 * T, ease: 'sine.inOut', yoyo: true, repeat: 1 });
       gsap.to(particles.uniforms.uBootEnergy, { value: 1.35, duration: 0.6 * T, ease: 'sine.inOut', yoyo: true, repeat: 1 });
+      if (cortex) gsap.to(cortex.uniforms.uBootEnergy, { value: 1.55, duration: 0.62 * T, ease: 'sine.inOut', yoyo: true, repeat: 1 });
+      if (cortex) gsap.to(cortex.uniforms.uPulseIntensity, { value: isMobile ? 1.35 : 2.05, duration: 0.62 * T, ease: 'sine.inOut', yoyo: true, repeat: 1 });
     });
 
     // Stage 3 — the HTML wordmark resolves + boot status types
@@ -1214,7 +1641,8 @@ export async function initGL(canvas, options = {}) {
         'initializing neural engine',
         'mapping synaptic graph',
         'routing intelligence layer',
-        'linking product systems',
+        'synchronizing product cortex',
+        'calibrating visual systems',
         'systems online',
       ], 0, 0.48 * T);
     });
@@ -1229,6 +1657,9 @@ export async function initGL(canvas, options = {}) {
       gsap.to(particles.uniforms.uBootEnergy, { value: 0.16, duration: 1.35, ease: 'sine.out' });
       gsap.to(particles.uniforms.uHubGlow, { value: isMobile ? 0.18 : 0.28, duration: 1.2, ease: 'sine.out' });
       gsap.to(particles.uniforms.uOpacity, { value: 0.76, duration: 1.35, ease: 'sine.out' });
+      cortexOpacity(isMobile ? 0.48 : 0.64, 1.35);
+      cortexEnergy(0.18, 1.35);
+      cortexPulse(isMobile ? 0.18 : 0.23, isMobile ? 0.62 : 0.86, 1.2);
     });
     gsap.delayedCall(isMobile ? 3.4 : 3.8, () => hint?.classList.add('is-on'));
   }
