@@ -241,19 +241,21 @@ uniform float uTime;
 uniform float uOpacity;
 uniform float uBootEnergy;
 uniform float uPixelRatio;
+uniform float uFire;        // transient "synaptic firing" flare (0 = no-op)
 uniform vec3 uAccent;
 varying vec3 vColor;
 varying float vAlpha;
 void main(){
   float pulse = 0.72 + 0.28 * sin(uTime * (1.15 + aSeed * 0.7) + aSeed * 6.28318);
+  float fire = uFire * (0.35 + aSeed * 1.3);   // staggered per-hub so the net flickers
   vec3 pos = position;
   pos.z += sin(uTime * 0.32 + aSeed * 9.0) * 0.45 * (0.25 + uBootEnergy * 0.45);
   vec4 mv = modelViewMatrix * vec4(pos, 1.0);
   gl_Position = projectionMatrix * mv;
-  float ps = aSize * (15.0 + uBootEnergy * 7.0) * uPixelRatio * (80.0 / max(1.0, -mv.z));
+  float ps = aSize * (15.0 + uBootEnergy * 7.0 + fire * 10.0) * uPixelRatio * (80.0 / max(1.0, -mv.z));
   gl_PointSize = clamp(ps, 4.0, 70.0 * uPixelRatio);
-  vColor = mix(aColor, uAccent, 0.22 + uBootEnergy * 0.12);
-  vAlpha = uOpacity * aIntensity * (0.62 + pulse * 0.5 + uBootEnergy * 0.22);
+  vColor = mix(aColor, uAccent, 0.22 + uBootEnergy * 0.12) * (1.0 + fire * 0.7);
+  vAlpha = uOpacity * aIntensity * (0.62 + pulse * 0.5 + uBootEnergy * 0.22 + fire * 0.5);
 }`;
 
 const CORTEX_HUB_FRAG = /* glsl */ `
@@ -275,12 +277,13 @@ attribute float aEdgeIntensity;
 uniform float uTime;
 uniform float uOpacity;
 uniform float uBootEnergy;
+uniform float uFire;        // synaptic firing brightens the conducting edges
 varying float vAlpha;
 void main(){
   vec3 pos = position;
   pos.z += sin(uTime * 0.2 + position.x * 0.08 + position.y * 0.05) * 0.24 * uBootEnergy;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-  vAlpha = uOpacity * aEdgeIntensity * (0.32 + uBootEnergy * 0.55);
+  vAlpha = uOpacity * aEdgeIntensity * (0.32 + uBootEnergy * 0.55 + uFire * 0.6);
 }`;
 
 const CORTEX_LINE_FRAG = /* glsl */ `
@@ -304,20 +307,21 @@ uniform float uBootEnergy;
 uniform float uPixelRatio;
 uniform float uPulseSpeed;
 uniform float uPulseIntensity;
+uniform float uFire;        // firing speeds + brightens the travelling pulses
 uniform vec3 uAccent;
 varying vec3 vColor;
 varying float vAlpha;
 void main(){
-  float tt = fract(uTime * uPulseSpeed * aSpeed * (1.0 + uBootEnergy * 1.6) + aPhase);
+  float tt = fract(uTime * uPulseSpeed * aSpeed * (1.0 + uBootEnergy * 1.6 + uFire * 1.2) + aPhase);
   float life = sin(tt * 3.14159265);
   vec3 pos = mix(aFrom, aTo, tt);
   pos += normalize(aTo - aFrom + vec3(0.001)) * life * 0.18 * uBootEnergy;
   vec4 mv = modelViewMatrix * vec4(pos, 1.0);
   gl_Position = projectionMatrix * mv;
-  float ps = (2.0 + uBootEnergy * 1.2) * uPixelRatio * (92.0 / max(1.0, -mv.z));
+  float ps = (2.0 + uBootEnergy * 1.2 + uFire * 1.4) * uPixelRatio * (92.0 / max(1.0, -mv.z));
   gl_PointSize = clamp(ps, 2.0, 24.0 * uPixelRatio);
   vColor = mix(aColor, uAccent, 0.34);
-  vAlpha = uOpacity * uPulseIntensity * (0.22 + 0.78 * life) * (0.55 + uBootEnergy * 0.75);
+  vAlpha = uOpacity * uPulseIntensity * (0.22 + 0.78 * life) * (0.55 + uBootEnergy * 0.75 + uFire * 0.8);
 }`;
 
 const CORTEX_PULSE_FRAG = /* glsl */ `
@@ -740,11 +744,13 @@ class NeuralCortexOverlay {
       uTime: { value: 0 },
       uOpacity: { value: 0 },
       uBootEnergy: { value: 0 },
+      uFire: { value: 0 },          // transient firing flare, driven in update()
       uPixelRatio: { value: pixelRatio },
       uAccent: { value: new THREE.Color(ACCENTS.nebula) },
       uPulseSpeed: { value: mobile ? 0.22 : 0.28 },
       uPulseIntensity: { value: mobile ? 0.58 : 0.82 },
     };
+    this._fire = 0;
 
     const hubLimit = mobile ? 18 : 30;
     const sourceHubs = [...(meta?.hubs || [])].slice(0, hubLimit);
@@ -817,6 +823,7 @@ class NeuralCortexOverlay {
       uTime: this.uniforms.uTime,
       uOpacity: this.uniforms.uOpacity,
       uBootEnergy: this.uniforms.uBootEnergy,
+      uFire: this.uniforms.uFire,
       uAccent: this.uniforms.uAccent,
       uLineOpacity: { value: mobile ? 0.24 : 0.3 },
     };
@@ -916,6 +923,13 @@ class NeuralCortexOverlay {
     else gsap.to(c, { r: target.r, g: target.g, b: target.b, duration, ease: 'sine.inOut', overwrite: 'auto' });
   }
 
+  /* trigger a synaptic-firing flare — a quick spike that update() decays back to
+     zero. Independent of the scroll-driven uBootEnergy so it never fights it. */
+  fire(strength = 1) {
+    if (this.empty || this.reducedMotion) return;
+    this._fire = Math.min(1.4, Math.max(this._fire, strength));
+  }
+
   update(dt) {
     if (this.empty) return;
     this.uniforms.uTime.value += dt * (this.reducedMotion ? 0.18 : 1);
@@ -923,6 +937,9 @@ class NeuralCortexOverlay {
     const e = this.uniforms.uBootEnergy.value;
     this.group.rotation.y = Math.sin(t * 0.08) * (0.035 + e * 0.012);
     this.group.rotation.x = Math.cos(t * 0.065) * (0.018 + e * 0.01);
+    // firing flare decays to ~0 in ~1s (frame-rate independent)
+    this._fire *= Math.pow(0.05, dt);
+    this.uniforms.uFire.value = this._fire;
   }
 
   dispose() {
@@ -932,6 +949,156 @@ class NeuralCortexOverlay {
     this.hubs?.material?.dispose();
     this.lines?.material?.dispose();
     this.pulses?.material?.dispose();
+  }
+}
+
+/* ---------------- additive bloom (desktop / high-end only) ----------------
+   A compact, self-contained glow pass — no external post-processing addon, so
+   the local-vendor / CDN three-module contract stays intact. The particle+cortex
+   scene is re-rendered into a half-res target, bright areas are extracted and
+   separably blurred, then ADDED back over the canvas that the normal pass already
+   drew. Because the base render is never replaced, switching this off is
+   byte-identical to the original look — and it is never created on mobile / low
+   end, and is dropped the instant the adaptive-quality FPS probe fires. */
+const BLOOM_QUAD_VERT = /* glsl */ `
+varying vec2 vUv;
+void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
+
+const BLOOM_BRIGHT_FRAG = /* glsl */ `
+precision highp float;
+varying vec2 vUv;
+uniform sampler2D tDiffuse;
+uniform float uThreshold;
+uniform float uKnee;
+void main(){
+  vec4 c = texture2D(tDiffuse, vUv);
+  float l = max(c.r, max(c.g, c.b));
+  float k = smoothstep(uThreshold, uThreshold + uKnee, l);
+  gl_FragColor = vec4(c.rgb * k, c.a * k);
+}`;
+
+const BLOOM_BLUR_FRAG = /* glsl */ `
+precision highp float;
+varying vec2 vUv;
+uniform sampler2D tDiffuse;
+uniform vec2 uTexel;
+uniform vec2 uDir;
+void main(){
+  vec2 o = uTexel * uDir;
+  vec4 s = texture2D(tDiffuse, vUv) * 0.2270270270;
+  s += texture2D(tDiffuse, vUv + o * 1.3846153846) * 0.3162162162;
+  s += texture2D(tDiffuse, vUv - o * 1.3846153846) * 0.3162162162;
+  s += texture2D(tDiffuse, vUv + o * 3.2307692308) * 0.0702702703;
+  s += texture2D(tDiffuse, vUv - o * 3.2307692308) * 0.0702702703;
+  gl_FragColor = s;
+}`;
+
+const BLOOM_COMPOSITE_FRAG = /* glsl */ `
+precision highp float;
+varying vec2 vUv;
+uniform sampler2D tDiffuse;
+uniform float uStrength;
+void main(){
+  vec4 c = texture2D(tDiffuse, vUv);
+  gl_FragColor = vec4(c.rgb * uStrength, c.a * uStrength);
+}`;
+
+class GlowBloom {
+  constructor(renderer, { strength = 0.7, threshold = 0.32, knee = 0.5, scale = 0.5 } = {}) {
+    this.renderer = renderer;
+    this.strength = strength;
+    this.scale = scale;
+    this.enabled = true;
+    this._texel = [1 / 2, 1 / 2];
+
+    const opts = { depthBuffer: false, stencilBuffer: false };
+    this.sceneRT = new THREE.WebGLRenderTarget(2, 2, opts);
+    this.rtA = new THREE.WebGLRenderTarget(2, 2, opts);
+    this.rtB = new THREE.WebGLRenderTarget(2, 2, opts);
+    for (const rt of [this.sceneRT, this.rtA, this.rtB]) {
+      rt.texture.minFilter = THREE.LinearFilter;
+      rt.texture.magFilter = THREE.LinearFilter;
+      rt.texture.generateMipmaps = false;
+    }
+
+    this.brightMat = new THREE.ShaderMaterial({
+      uniforms: { tDiffuse: { value: null }, uThreshold: { value: threshold }, uKnee: { value: knee } },
+      vertexShader: BLOOM_QUAD_VERT, fragmentShader: BLOOM_BRIGHT_FRAG,
+      depthTest: false, depthWrite: false, blending: THREE.NoBlending,
+    });
+    this.blurMat = new THREE.ShaderMaterial({
+      uniforms: { tDiffuse: { value: null }, uTexel: { value: new THREE.Vector2() }, uDir: { value: new THREE.Vector2() } },
+      vertexShader: BLOOM_QUAD_VERT, fragmentShader: BLOOM_BLUR_FRAG,
+      depthTest: false, depthWrite: false, blending: THREE.NoBlending,
+    });
+    this.compositeMat = new THREE.ShaderMaterial({
+      uniforms: { tDiffuse: { value: null }, uStrength: { value: strength } },
+      vertexShader: BLOOM_QUAD_VERT, fragmentShader: BLOOM_COMPOSITE_FRAG,
+      depthTest: false, depthWrite: false, transparent: true,
+      blending: THREE.CustomBlending, blendEquation: THREE.AddEquation,
+      blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor,
+      blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneFactor,
+    });
+
+    this.quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    this.quadScene = new THREE.Scene();
+    this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.brightMat);
+    this.quad.frustumCulled = false;
+    this.quadScene.add(this.quad);
+  }
+
+  setSize(w, h, dpr) {
+    const sw = Math.max(2, Math.floor(w * dpr * this.scale));
+    const sh = Math.max(2, Math.floor(h * dpr * this.scale));
+    this.sceneRT.setSize(sw, sh);
+    this.rtA.setSize(sw, sh);
+    this.rtB.setSize(sw, sh);
+    this._texel = [1 / sw, 1 / sh];
+  }
+
+  _pass(mat, target) {
+    this.quad.material = mat;
+    this.renderer.setRenderTarget(target);
+    this.renderer.render(this.quadScene, this.quadCam);
+  }
+
+  /* additive: re-render `scene`, extract + blur the bright bits, add over canvas */
+  add(scene, camera) {
+    const r = this.renderer;
+    const prevAutoClear = r.autoClear;
+
+    r.autoClear = true;
+    r.setRenderTarget(this.sceneRT);     // own transparent clear, then the scene
+    r.render(scene, camera);
+
+    this.brightMat.uniforms.tDiffuse.value = this.sceneRT.texture;
+    this._pass(this.brightMat, this.rtA);
+
+    this.blurMat.uniforms.uTexel.value.set(this._texel[0], this._texel[1]);
+    for (let i = 0; i < 2; i++) {
+      this.blurMat.uniforms.tDiffuse.value = this.rtA.texture;
+      this.blurMat.uniforms.uDir.value.set(1, 0);
+      this._pass(this.blurMat, this.rtB);
+      this.blurMat.uniforms.tDiffuse.value = this.rtB.texture;
+      this.blurMat.uniforms.uDir.value.set(0, 1);
+      this._pass(this.blurMat, this.rtA);
+    }
+
+    r.setRenderTarget(null);
+    r.autoClear = false;                 // keep the base scene already on the canvas
+    this.compositeMat.uniforms.tDiffuse.value = this.rtA.texture;
+    this.compositeMat.uniforms.uStrength.value = this.strength;
+    this.quad.material = this.compositeMat;
+    r.render(this.quadScene, this.quadCam);
+
+    r.autoClear = prevAutoClear;
+    r.setRenderTarget(null);
+  }
+
+  dispose() {
+    this.sceneRT.dispose(); this.rtA.dispose(); this.rtB.dispose();
+    this.brightMat.dispose(); this.blurMat.dispose(); this.compositeMat.dispose();
+    this.quad.geometry.dispose();
   }
 }
 
@@ -1045,6 +1212,15 @@ export async function initGL(canvas, options = {}) {
   camera.position.set(0, 0, cam.baseZ);
 
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // high-end desktop gate for the most expensive opt-in FX (bloom + synaptic
+  // firing). Conservative by design — Safari hides deviceMemory, so memory is
+  // only required when actually reported.
+  const highEnd = (() => {
+    if (isMobile) return false;
+    const cores = navigator.hardwareConcurrency || 8;
+    const memory = navigator.deviceMemory;          // undefined on Safari
+    return cores >= 8 && (memory === undefined || memory >= 8);
+  })();
   const mesh = meshBudget({ mobile: isMobile, reducedMotion });
   const particles = new Particles(particleBudget({ mobile: isMobile }), {
     mobile: isMobile, mesh, reducedMotion,
@@ -1080,6 +1256,21 @@ export async function initGL(canvas, options = {}) {
       corridor = null;
     }
   }
+
+  /* additive bloom — high-end desktop only, quality-gated by the FPS probe.
+     Fully wrapped: any failure leaves the normal render path untouched. */
+  let bloom = null;
+  if (highEnd) {
+    try {
+      bloom = new GlowBloom(renderer, { strength: 0.7 });
+      bloom.setSize(innerWidth, innerHeight, dpr);
+    } catch (err) {
+      console.warn('[swivel] bloom unavailable:', err);
+      bloom = null;
+    }
+  }
+  window.__swivelDebug = window.__swivelDebug || {};
+  window.__swivelDebug.bloom = () => ({ highEnd, active: !!(bloom && bloom.enabled) });
 
   /* formations */
   particles.formations.spawn = spawnFormation(particles.count);
@@ -1525,6 +1716,7 @@ export async function initGL(canvas, options = {}) {
       renderer.setSize(innerWidth, innerHeight, false);
       particles.uniforms.uPixelRatio.value = d;
       if (cortex) cortex.uniforms.uPixelRatio.value = d;
+      bloom?.setSize(innerWidth, innerHeight, d);
       fitCamera();
       corridor?.resize(innerWidth, innerHeight);
       anchorToCard();
@@ -1541,6 +1733,7 @@ export async function initGL(canvas, options = {}) {
     try { lenis?.destroy?.(); } catch {}
     try { corridor?.dispose(); } catch {}
     try { cortex?.dispose(); } catch {}
+    try { bloom?.dispose(); } catch {}
     if (window.__swivelLenis === lenis) delete window.__swivelLenis;
     html.classList.remove('gl', 'gl-mobile');
     html.classList.add('no-gl');
@@ -1564,6 +1757,7 @@ export async function initGL(canvas, options = {}) {
       gsap.to(cortex.uniforms.uPulseIntensity, { value: cortex.uniforms.uPulseIntensity.value * 0.6, duration: 0.8, overwrite: 'auto' });
     }
     if (corridor) corridor.qualityScale = 0.72;
+    if (bloom) bloom.enabled = false;     // drop the extra full-scene pass first
   }
 
   /* render loop — gsap.ticker is a single shared rAF */
@@ -1604,6 +1798,13 @@ export async function initGL(canvas, options = {}) {
 
     renderer.render(scene, camera);
 
+    // additive glow over the particle/cortex pass (high-end desktop only). A
+    // runtime failure self-disables bloom rather than breaking the frame.
+    if (bloom && bloom.enabled) {
+      try { bloom.add(scene, camera); }
+      catch (err) { console.warn('[swivel] bloom disabled:', err); bloom.enabled = false; }
+    }
+
     // second pass — the product image corridor, layered over the particles
     if (corridor) {
       corridor.update(dt, cam.px, cam.py);
@@ -1616,6 +1817,18 @@ export async function initGL(canvas, options = {}) {
   }
   gsap.ticker.add(tick);
   gsap.ticker.lagSmoothing(0);
+
+  /* occasional "synaptic firing" — brief cortex flares while the idle neural
+     field is shown. High-end desktop + motion-safe only; mobile / low-end is
+     untouched (fire() is never called, so uFire stays 0 and the shaders are
+     a no-op). Reschedules forever so it resumes whenever the field returns. */
+  if (highEnd && !reducedMotion && cortex && !cortex.empty) {
+    const fireOnce = () => {
+      if (particles.mode === 'nebula') cortex.fire(0.7 + Math.random() * 0.5);
+      gsap.delayedCall(2.4 + Math.random() * 4.0, fireOnce);
+    };
+    gsap.delayedCall(4 + Math.random() * 2, fireOnce);
+  }
 
   /* loader out → "a neural network boots up and becomes the brand" intro */
   gsap.to(progress, {
