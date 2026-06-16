@@ -814,34 +814,64 @@ html.gl .scene--hero .scene__hold::before {
 .mv-grid p em { font-style: normal; color: var(--dim); }
 
 /* ---------- team ---------- */
+/* the founder reads as the lead — a wider portrait frame than the support cards */
 .founder {
   margin-top: 44px;
-  display: grid; grid-template-columns: minmax(0, 220px) 1fr;
-  gap: clamp(24px, 4vw, 56px); align-items: center;
+  display: grid; grid-template-columns: minmax(0, 300px) 1fr;
+  gap: clamp(28px, 4.5vw, 64px); align-items: center;
 }
-.founder__photo { position: relative; }
-.founder__photo img {
-  border-radius: 14px; filter: grayscale(1) contrast(1.05);
+/* portrait 4/5 frame (real photo is 1080x1350) with object-fit: cover so JEY.png
+   is never squeezed. A fine-pointer tilt (--tiltX/--tiltY set by chrome.js) plus
+   the site's accent rim + scanline language; reduced-motion leaves it static. */
+.founder__photo {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: 16px;
+  overflow: hidden;
   border: 1px solid var(--line);
-  transition: filter 0.5s, box-shadow 0.5s;
+  transform: perspective(1000px) rotateY(var(--tiltX, 0deg)) rotateX(var(--tiltY, 0deg));
+  transition: transform 0.5s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.55s;
+  will-change: transform;
 }
-.founder__photo:hover img {
-  filter: grayscale(0.15) contrast(1.02);
-  box-shadow: 0 0 70px -18px rgba(59, 130, 246, 0.7);
+.founder__photo img {
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center 18%;
+  filter: grayscale(1) contrast(1.05);
+  transition: filter 0.5s, transform 0.6s ease;
+}
+.founder__photo:hover { box-shadow: 0 0 80px -18px rgba(59, 130, 246, 0.6); }
+.founder__photo:hover img { filter: grayscale(0.12) contrast(1.02); transform: scale(1.04); }
+/* accent rim + lower fade — matches .product__info / .team-card accent language */
+.founder__photo::before {
+  content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+  background: linear-gradient(180deg, transparent 60%, rgba(5, 6, 10, 0.5));
+}
+/* a slow scanline sweep — same @keyframes scan the product cards use */
+.founder__photo::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 30%; z-index: 2;
+  height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.45;
+  animation: scan 5.5s ease-in-out infinite;
 }
 .founder h3 { font-size: clamp(1.3rem, 2.4vw, 2rem); }
 .founder .role { color: var(--ember); margin: 10px 0 16px; }
 .founder p { color: var(--faint); font-size: 0.88rem; line-height: 1.75; max-width: 68ch; }
 .founder p + p { margin-top: 12px; }
 
+/* support team — capped width + portrait 4/5 figures (matching the founder),
+   so the three cards stay proportional and never out-size the lead photo */
 .team-grid {
-  margin-top: 54px;
+  margin-top: 48px;
   display: grid; grid-template-columns: repeat(3, 1fr);
-  gap: clamp(16px, 2.5vw, 30px);
+  gap: clamp(16px, 2.5vw, 28px);
+  max-width: 800px;
 }
 .team-card { position: relative; }
 .team-card figure {
-  aspect-ratio: 4 / 4.6; overflow: hidden; border-radius: 14px;
+  aspect-ratio: 4 / 5; overflow: hidden; border-radius: 14px;
   border: 1px solid var(--line);
 }
 .team-card img {
@@ -1188,9 +1218,11 @@ html.no-gl .scene--contact::before {
   .brand__sub { display: none; }
   .feature-list { grid-template-columns: 1fr; }
   .industry-grid { grid-template-columns: 1fr; }
-  .team-grid { grid-template-columns: 1fr; max-width: 420px; }
+  /* stacked: founder stays the larger lead, team drops to a 2-up of smaller
+     cards so they never out-size the founder photo */
+  .team-grid { grid-template-columns: 1fr 1fr; max-width: 420px; gap: 14px; }
   .founder { grid-template-columns: 1fr; }
-  .founder__photo { max-width: 240px; }
+  .founder__photo { max-width: 300px; }
   .mv-grid article:nth-child(2) { justify-self: start; text-align: left; }
   .ogrid { grid-template-columns: 1fr; }
   .why-list li { grid-template-columns: 1fr; gap: 8px; }

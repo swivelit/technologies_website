@@ -135,6 +135,31 @@ function initGalleries() {
   });
 }
 
+/* ---------- founder photo tilt (subtle pointer parallax) ----------
+   fine pointers only, disabled under reduced motion. Sets --tiltX/--tiltY which
+   the .founder__photo transform reads; rAF-throttled so it never thrashes. */
+function initFounderTilt() {
+  if (reduceMotion || !matchMedia('(pointer: fine)').matches) return;
+  const photo = document.querySelector('.founder__photo');
+  if (!photo) return;
+  let raf = 0, tx = 0, ty = 0;
+  const apply = () => {
+    raf = 0;
+    photo.style.setProperty('--tiltX', `${tx.toFixed(2)}deg`);
+    photo.style.setProperty('--tiltY', `${ty.toFixed(2)}deg`);
+  };
+  photo.addEventListener('pointermove', (e) => {
+    const r = photo.getBoundingClientRect();
+    tx = ((e.clientX - r.left) / r.width - 0.5) * 7;     // rotateY, max ~3.5°
+    ty = -((e.clientY - r.top) / r.height - 0.5) * 7;    // rotateX
+    if (!raf) raf = requestAnimationFrame(apply);
+  }, { passive: true });
+  photo.addEventListener('pointerleave', () => {
+    tx = ty = 0;
+    if (!raf) raf = requestAnimationFrame(apply);
+  });
+}
+
 /* ---------- smooth in-page navigation ---------- */
 function hashTarget(sel) {
   if (!sel || sel === '#') return null;
@@ -354,6 +379,7 @@ export function initChrome({ reduceMotion: rm = false } = {}) {
   initWorkIndex();
   initReveals();
   initGalleries();
+  initFounderTilt();
   initAnchors();
   initKeyboardScroll();
   initOverlays();
