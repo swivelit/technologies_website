@@ -570,16 +570,17 @@ html.gl .scene--hero .scene__hold::before {
   filter: blur(22px);
 }
 .hero__title {
+  /* the hero is now the proposition (not the wordmark) — size it below the intro
+     brand reveal for hierarchy, and so the longer line never overflows wide. */
+  font-size: clamp(2.2rem, 5vw, 4.6rem);
+  line-height: 1.05;
   background: linear-gradient(180deg, #fff 30%, #b9b4cc);
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;
 }
-.hero__tag {
-  margin-top: 30px;
-  font-size: clamp(1.05rem, 2vw, 1.5rem);
-  color: var(--text); font-weight: 500; letter-spacing: 0.01em;
-}
-.hero__sub { margin-top: 18px; color: var(--faint); font-size: 0.62rem; }
+/* .hero__tag removed — the hero proposition is now the <h1>, so the tagline
+   paragraph is gone and the sub follows the headline directly. */
+.hero__sub { margin-top: 22px; color: var(--faint); font-size: 0.62rem; }
 
 /* ---------- work title ---------- */
 .scene--worktitle .scene__hold { align-items: flex-start; }
