@@ -925,9 +925,10 @@ export function createCorridor(THREE, opts = {}) {
           ? (isActiveRoom ? 2.4 : 1.6)
           : (isActiveRoom ? 4.3 : 2.7);
 
-        // active room reads at full strength; neighbours fall off fast so they
-        // recede into depth rather than competing with the active product
-        const focus = clamp(1 - Math.abs(i - head) * 0.62, 0.12, 1);
+        // active room reads at full strength; neighbours fall to ZERO at rest
+        // (focus reaches 0 by |i-head|≈0.74) so a parked product shows only its
+        // own screenshots — neighbours only appear mid-scroll as a brief cross-fade.
+        const focus = clamp(1 - Math.abs(i - head) * 1.35, 0, 1);
         const behind = smoothstep(-SPACING * 0.6, 2, ahead);
         const roomOpacity = this.master * focus * behind * room.profile.opacity;
         const roomWob = reducedMotion ? 0 : room.profile.drift;
