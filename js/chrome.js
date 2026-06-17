@@ -101,7 +101,17 @@ function initReveals() {
   );
 
   observedEls.forEach((el) => io.observe(el));
-  setTimeout(revealAll, isMobile ? 1400 : 2200);
+  // Safety net only for what's already on/above the fold, so elements further
+  // down the page still animate when scrolled into view (the IntersectionObserver
+  // handles those).
+  const revealInView = () => {
+    const vh = innerHeight || document.documentElement.clientHeight;
+    revealEls.forEach((el) => {
+      if (el.classList.contains('in')) return;
+      if (el.getBoundingClientRect().top < vh * 0.9) el.classList.add('in');
+    });
+  };
+  setTimeout(revealInView, isMobile ? 1400 : 2200);
 }
 
 /* ---------- product card galleries (cross-fade, pause when off-screen) ---------- */
