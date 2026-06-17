@@ -1466,12 +1466,10 @@ export async function initGL(canvas, options = {}) {
   const cortexAccent = (hex, duration = 1.1) => cortex?.setAccent(hex, duration);
   const cortexPulse = (speed, intensity, duration = 1.1) => cortex?.setPulse({ speed, intensity }, duration);
 
-  const hintEl = document.getElementById('scrollHint');
   ScrollTrigger.create({
     trigger: '#hero',
     start: 'top 70%',
     onEnter: () => {
-      hintEl?.classList.remove('is-on');
       cortexAccent(ACCENTS.nebula, 1.0);
       cortexOpacity(isMobile ? 0.32 : 0.42, 1.1);
       cortexEnergy(0.16, 1.1);
@@ -1485,7 +1483,6 @@ export async function initGL(canvas, options = {}) {
     onLeaveBack: () => {
       // scrolling back up to the intro keeps the calm neural field (no particle
       // wordmark) — the readable SWIVEL TECHNOLOGIES is HTML over the top
-      hintEl?.classList.add('is-on');
       cortexAccent(ACCENTS.nebula, 1.0);
       cortexOpacity(isMobile ? 0.38 : 0.5, 1.1);
       cortexEnergy(0.2, 1.1);
@@ -1875,19 +1872,10 @@ export async function initGL(canvas, options = {}) {
     onComplete: () => loader?.classList.add('is-done'),
   });
 
-  const hint = document.getElementById('scrollHint');
   const bootEl = document.querySelector('.intro__boot');
   const decodeEl = document.querySelector('.intro__decode');
-  const statusEl = document.getElementById('bootStatus');
   const lu = particles.lineUniforms;                 // undefined on low-end (no mesh)
 
-  // type a boot-style status line through a couple of states, scrambling each
-  const bootStatus = (states, start, step) =>
-    states.forEach((s, i) => gsap.delayedCall(start + i * step, () => {
-      if (!statusEl) return;
-      statusEl.textContent = s;
-      if (!reducedMotion) scramble(statusEl, { duration: 420 });
-    }));
   // the readable SWIVEL TECHNOLOGIES is real HTML (.intro__logo) — the WebGL
   // only draws the neural field behind it. reveal = fade the HTML wordmark in
   // and switch on the boot-status line.
@@ -1911,8 +1899,6 @@ export async function initGL(canvas, options = {}) {
     particles.uniforms.uBootEnergy.value = 0.08;
     gsap.to(particles.uniforms.uOpacity, { value: 0.58, duration: 1.0, ease: 'sine.out' });
     revealWordmark();
-    bootStatus(['systems online'], 0.25, 0.5);
-    gsap.delayedCall(1.2, () => hint?.classList.add('is-on'));
   } else {
     // staged "AI system boot": scattered nodes → wire into a neural network
     // (synapse lines + data pulses prominent) → the HTML wordmark resolves over
@@ -1942,20 +1928,12 @@ export async function initGL(canvas, options = {}) {
       if (cortex) gsap.to(cortex.uniforms.uPulseIntensity, { value: isMobile ? 1.0 : 1.35, duration: 0.62 * T, ease: 'sine.inOut', yoyo: true, repeat: 1 });
     });
 
-    // Stage 3 — the HTML wordmark resolves + boot status types
+    // Stage 3 — the HTML wordmark resolves
     gsap.delayedCall(1.9 * T, () => {
       revealWordmark();
-      bootStatus([
-        'initializing neural engine',
-        'mapping synaptic graph',
-        'routing intelligence layer',
-        'synchronizing product cortex',
-        'calibrating visual systems',
-        'systems online',
-      ], 0, 0.48 * T);
     });
 
-    // Stage 4 — settle the live mesh to its idle glow, scroll hint on
+    // Stage 4 — settle the live mesh to its idle glow
     gsap.delayedCall(3.4 * T, () => {
       if (lu) gsap.to(lu.uLineOpacity, { value: 0.24, duration: 1.1, ease: 'sine.out' });
       if (pu) {
@@ -1969,10 +1947,9 @@ export async function initGL(canvas, options = {}) {
       cortexEnergy(0.16, 1.35);
       cortexPulse(isMobile ? 0.16 : 0.21, isMobile ? 0.5 : 0.66, 1.2);
     });
-    // scroll hint only after the wordmark is on (reveal it defensively first)
+    // re-assert the wordmark is on (defensive, after the boot settles)
     gsap.delayedCall(isMobile ? 3.4 : 3.8, () => {
       revealWordmark();
-      hint?.classList.add('is-on');
     });
   }
 

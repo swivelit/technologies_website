@@ -494,8 +494,10 @@ html.gl .intro__logo.is-on .intro__wordsub {
   100% { opacity: 0; transform: translateX(18%); }
 }
 
-/* GL-only intro caption — decodes the wordmark + a boot status line beneath the
-   particle logo as the network converges (engine adds .is-on) */
+/* Intro caption wrapper. The boot-status line + scroll hint were removed; in GL
+   the decode line is hidden (the HTML wordmark already reads SWIVEL TECHNOLOGIES),
+   so this stays invisible there and remains only as the no-WebGL fallback caption
+   container. (engine fades it in via .is-on) */
 .intro__boot { display: none; }
 html.gl .intro__boot {
   display: block;
@@ -504,48 +506,15 @@ html.gl .intro__boot {
   z-index: 2;
   opacity: 0; transition: opacity 0.8s ease;
 }
-html.gl .intro__boot::before {
-  content: "";
-  display: block;
-  width: min(320px, 58vw);
-  height: 1px;
-  margin: 0 auto 12px;
-  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.5), rgba(156, 196, 255, 0.52), transparent);
-  box-shadow: 0 0 22px rgba(34, 211, 238, 0.18);
-}
 html.gl .intro__boot.is-on { opacity: 1; }
 .intro__decode {
   font-size: clamp(0.6rem, 1.3vw, 0.86rem);
   letter-spacing: 0.5em; text-indent: 0.5em;
   color: #fff; font-weight: 500;
 }
-/* the big HTML wordmark already says SWIVEL TECHNOLOGIES — drop the duplicate
-   decode line in GL mode and keep only the readable boot-status line */
+/* the big HTML wordmark already says SWIVEL TECHNOLOGIES — hide the duplicate
+   decode line in GL mode (it remains for the no-WebGL fallback) */
 html.gl .intro__decode { display: none; }
-.intro__status {
-  margin-top: 4px; font-size: 0.72rem; letter-spacing: 0.16em; color: #cfe7ff;
-  text-shadow: 0 2px 14px rgba(4, 8, 18, 0.92), 0 0 20px rgba(34, 211, 238, 0.18);
-}
-.intro__status .intro__prompt { color: var(--faint); margin-right: 2px; }
-.intro__caret {
-  display: inline-block; width: 0.55em; height: 0.95em; margin-left: 3px;
-  background: var(--gold); vertical-align: -0.1em;
-  box-shadow: 0 0 8px var(--gold), 0 0 18px rgba(34, 211, 238, 0.55);
-  animation: caret-blink 1s steps(1) infinite;
-}
-@keyframes caret-blink { 50% { opacity: 0; } }
-
-.scroll-hint {
-  position: absolute; left: 50%; bottom: 7vh; transform: translateX(-50%);
-  z-index: 2;
-  color: var(--faint); font-size: 0.6rem;
-  animation: hint-pulse 2.6s ease-in-out infinite;
-  white-space: nowrap;
-}
-/* under GL the engine reveals it (adds .is-on) once the logo has formed */
-html.gl .scroll-hint { opacity: 0; animation: none; transition: opacity 1.2s ease; }
-html.gl .scroll-hint.is-on { opacity: 1; animation: hint-pulse 2.6s ease-in-out infinite; }
-@keyframes hint-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
 
 /* ---------- hero ---------- */
 .scene--hero .scene__hold { align-items: center; text-align: center; }
