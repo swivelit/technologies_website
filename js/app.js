@@ -10,97 +10,16 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 if (!location.hash) window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const RICH_SCENE_MIN_WIDTH = 1500;
-const RICH_SCENE_MIN_HEIGHT = 820;
-const FULL_CORRIDOR_MIN_WIDTH = 1600;
-const FULL_CORRIDOR_MIN_HEIGHT = 860;
-const COMPACT_THEATRE_WIDTH = 1366;
-const COMPACT_THEATRE_HEIGHT = 720;
-const STACKED_PRODUCTS_WIDTH = 1120;
-const STACKED_PRODUCTS_HEIGHT = 680;
+const RICH_SCENE_MIN_WIDTH = 1120;
+const RICH_SCENE_MIN_HEIGHT = 760;
 
-function clamp(v, min, max) {
-  return Math.min(max, Math.max(min, v));
-}
-
-function viewportSize() {
-  const vv = window.visualViewport;
-  return {
-    w: Math.max(1, Math.round(vv?.width || innerWidth || document.documentElement.clientWidth || 1)),
-    h: Math.max(1, Math.round(vv?.height || innerHeight || document.documentElement.clientHeight || 1)),
-    layoutW: Math.max(1, Math.round(innerWidth || document.documentElement.clientWidth || 1)),
-    layoutH: Math.max(1, Math.round(innerHeight || document.documentElement.clientHeight || 1)),
-    visualScale: vv?.scale || 1,
-  };
-}
-
-function syncViewportLayout() {
-  const { w, h, layoutW, layoutH, visualScale } = viewportSize();
-  const desktopFit = Math.min(w / 1920, h / 900);
-  const theatreFit = Math.min(w / FULL_CORRIDOR_MIN_WIDTH, h / FULL_CORRIDOR_MIN_HEIGHT);
-  const compactFit = Math.min(w / COMPACT_THEATRE_WIDTH, h / COMPACT_THEATRE_HEIGHT);
-  const productFit = clamp(theatreFit, 0.46, 1.08);
-  const density = clamp(1 - compactFit, 0, 0.54);
-  const visualConstrained = h < layoutH * 0.94 || w < layoutW * 0.94 || visualScale > 1.01;
-  const finePointer = matchMedia('(pointer: fine) and (hover: hover)').matches;
-  const dense = w < RICH_SCENE_MIN_WIDTH || h < RICH_SCENE_MIN_HEIGHT;
-  const short = h < RICH_SCENE_MIN_HEIGHT;
-  const compact = w < COMPACT_THEATRE_WIDTH || h < COMPACT_THEATRE_HEIGHT;
-  const stacked = w < STACKED_PRODUCTS_WIDTH || h < STACKED_PRODUCTS_HEIGHT;
-  const zoomLike = visualConstrained || (finePointer && (w < FULL_CORRIDOR_MIN_WIDTH || h < FULL_CORRIDOR_MIN_HEIGHT));
-
-  html.style.setProperty('--viewport-w', `${w}px`);
-  html.style.setProperty('--viewport-h', `${h}px`);
-  html.style.setProperty('--viewport-fit', String(clamp(desktopFit, 0.46, 1.08).toFixed(4)));
-  html.style.setProperty('--product-fit', String(productFit.toFixed(4)));
-  html.style.setProperty('--product-copy-scale', String(clamp(0.78 + productFit * 0.22 - density * 0.1, 0.72, 1).toFixed(4)));
-  html.style.setProperty('--product-visual-scale', String(clamp(0.6 + productFit * 0.4 - density * 0.12, 0.52, 1.04).toFixed(4)));
-  html.style.setProperty('--product-density', String(density.toFixed(4)));
-
-  html.classList.toggle('is-wide-view', w >= FULL_CORRIDOR_MIN_WIDTH && h >= FULL_CORRIDOR_MIN_HEIGHT);
-  html.classList.toggle('is-dense-view', dense);
-  html.classList.toggle('is-short-view', short);
-  html.classList.toggle('is-zoom-like-view', zoomLike);
-  html.classList.toggle('is-compact-theatre', compact);
-  html.classList.toggle('is-stacked-products', stacked);
-
-  document.querySelectorAll('.scene--product').forEach((scene) => {
-    const forceUnstick = dense || short || compact || stacked || zoomLike;
-    if (forceUnstick) {
-      scene.dataset.viewportUnstick = '1';
-      scene.classList.add('scene--unstick');
-    } else if (scene.dataset.viewportUnstick === '1') {
-      delete scene.dataset.viewportUnstick;
-      scene.classList.remove('scene--unstick');
-    }
-  });
-
-  return { w, h, dense, compact, stacked };
+function visualHeight() {
+  return Math.round(window.visualViewport?.height || innerHeight || document.documentElement.clientHeight || 0);
 }
 
 function viewportCanFitRichScene() {
-  const { w, h, dense, compact, stacked } = syncViewportLayout();
-  return w >= RICH_SCENE_MIN_WIDTH &&
-    h >= RICH_SCENE_MIN_HEIGHT &&
-    !dense &&
-    !compact &&
-    !stacked;
+  return innerWidth >= RICH_SCENE_MIN_WIDTH && visualHeight() >= RICH_SCENE_MIN_HEIGHT;
 }
-
-syncViewportLayout();
-addEventListener('resize', syncViewportLayout, { passive: true });
-addEventListener('orientationchange', () => {
-  syncViewportLayout();
-  setTimeout(syncViewportLayout, 180);
-}, { passive: true });
-window.visualViewport?.addEventListener('resize', syncViewportLayout, { passive: true });
-document.fonts?.ready?.then(syncViewportLayout).catch(() => {});
-addEventListener('load', () => {
-  syncViewportLayout();
-  document.querySelectorAll('img').forEach((img) => {
-    if (!img.complete) img.addEventListener('load', syncViewportLayout, { once: true });
-  });
-}, { once: true });
 
 /* High-power tablets (e.g. iPad Pro / Air) can drive the richer desktop corridor
    instead of always falling back to the conservative mobile path. We only opt a

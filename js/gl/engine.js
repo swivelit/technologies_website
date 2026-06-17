@@ -1118,10 +1118,8 @@ function clamp(v, min, max) {
   return Math.min(max, Math.max(min, v));
 }
 
-const RICH_SCENE_MIN_WIDTH = 1500;
-const RICH_SCENE_MIN_HEIGHT = 820;
-const FULL_CORRIDOR_MIN_WIDTH = 1600;
-const FULL_CORRIDOR_MIN_HEIGHT = 860;
+const RICH_SCENE_MIN_WIDTH = 1120;
+const RICH_SCENE_MIN_HEIGHT = 760;
 
 function readViewportSize() {
   const vv = window.visualViewport;
@@ -1376,23 +1374,10 @@ export async function initGL(canvas, options = {}) {
   function updateSceneStickiness() {
     viewport = readViewportSize();
     const viewportH = viewport.h;
-    const cls = html.classList;
-    const dense = cls.contains('is-dense-view');
-    const short = cls.contains('is-short-view');
-    const zoomLike = cls.contains('is-zoom-like-view');
-    const compact = cls.contains('is-compact-theatre');
-    const stacked = cls.contains('is-stacked-products');
     const theatreFitsViewport =
       !isMobile &&
       viewport.w >= RICH_SCENE_MIN_WIDTH &&
       viewportH >= RICH_SCENE_MIN_HEIGHT &&
-      viewport.w >= FULL_CORRIDOR_MIN_WIDTH &&
-      viewportH >= FULL_CORRIDOR_MIN_HEIGHT &&
-      !dense &&
-      !short &&
-      !zoomLike &&
-      !compact &&
-      !stacked &&
       !sceneFitQuery.matches;
 
     document.querySelectorAll('.scene').forEach((sceneEl) => {
@@ -1401,29 +1386,7 @@ export async function initGL(canvas, options = {}) {
       sceneEl.classList.remove('scene--unstick');
       const isProduct = sceneEl.classList.contains('scene--product');
       const holdTooTall = hold.scrollHeight > viewportH + 1;
-      let productTooTall = false;
-      let productNearOverflow = false;
-      if (isProduct) {
-        const product = sceneEl.querySelector('.product');
-        const info = sceneEl.querySelector('.product__info');
-        const cardWrap = sceneEl.querySelector('.product__card-wrap');
-        const productRect = product?.getBoundingClientRect();
-        const infoRect = info?.getBoundingClientRect();
-        const cardRect = cardWrap?.getBoundingClientRect();
-        const infoTooTall = !!infoRect && infoRect.height > viewportH * 0.84;
-        const cardTooTall = !!cardRect && cardRect.height > viewportH * 0.78;
-        const productTooWide = !!productRect && productRect.width > viewport.w + 1;
-        productTooTall = infoTooTall || cardTooTall || productTooWide;
-        productNearOverflow = (dense || short || zoomLike || compact) &&
-          (
-            hold.scrollHeight > viewportH * 0.94 ||
-            (!!productRect && productRect.height > viewportH * 0.9) ||
-            (!!infoRect && infoRect.height > viewportH * 0.76) ||
-            (!!cardRect && cardRect.height > viewportH * 0.7)
-          );
-      }
-      const shouldUnstick = holdTooTall ||
-        (isProduct && (!theatreFitsViewport || productTooTall || productNearOverflow || stacked));
+      const shouldUnstick = holdTooTall || (isProduct && !theatreFitsViewport);
       sceneEl.classList.toggle('scene--unstick', shouldUnstick);
     });
   }
