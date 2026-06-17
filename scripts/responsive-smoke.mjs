@@ -7,6 +7,10 @@ const ROOT = resolve(new URL('..', import.meta.url).pathname);
 const DEFAULT_PORT = Number(process.env.RESPONSIVE_PORT || 4173);
 
 const VIEWPORTS = [
+  [1920, 900],
+  [1745, 818],
+  [1536, 720],
+  [1280, 600],
   [320, 568],
   [360, 640],
   [375, 667],
@@ -193,6 +197,11 @@ async function evaluatePage(page) {
       .filter(({ rect }) => visible(rect) && !inViewportX(rect, 8))
       .map(({ el, rect }) => `${el.closest('.scene--product')?.id || 'product'} ${Math.round(rect.left)}..${Math.round(rect.right)}`);
 
+    const infoIssues = [...document.querySelectorAll('.product__info')]
+      .map((el) => ({ el, rect: el.getBoundingClientRect() }))
+      .filter(({ rect }) => visible(rect) && !inViewportX(rect, 2))
+      .map(({ el, rect }) => `${el.closest('.scene--product')?.id || 'product'} ${Math.round(rect.left)}..${Math.round(rect.right)}`);
+
     const productOverlaps = [...document.querySelectorAll('.product')]
       .map((product) => {
         const info = product.querySelector('.product__info')?.getBoundingClientRect();
@@ -202,11 +211,44 @@ async function evaluatePage(page) {
       })
       .filter(Boolean);
 
+    const stacked = doc.classList.contains('is-stacked-products');
+    const compact = doc.classList.contains('is-compact-theatre');
+    const dense = doc.classList.contains('is-dense-view');
+    const short = doc.classList.contains('is-short-view');
+    const zoomLike = doc.classList.contains('is-zoom-like-view');
+    const wide = doc.classList.contains('is-wide-view');
+
+    const visualFitIssues = [...document.querySelectorAll('.scene--product')]
+      .map((scene) => {
+        const info = scene.querySelector('.product__info')?.getBoundingClientRect();
+        const card = scene.querySelector('.product__card')?.getBoundingClientRect();
+        const sceneOkFallback = scene.classList.contains('scene--unstick') || stacked;
+        const infoBad = info && visible(info) && info.height > vh * 0.84;
+        const cardBad = card && visible(card) && card.height > vh * 0.78;
+        if ((infoBad || cardBad) && !sceneOkFallback) {
+          return `${scene.id}: info=${info ? Math.round(info.height) : 0}, card=${card ? Math.round(card.height) : 0}, vh=${vh}`;
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    const chromeIndexIssue = (dense || short || compact || (zoomLike && !wide))
+      ? [...document.querySelectorAll('.chrome--index, .chrome--progress')]
+          .filter((el) => getComputedStyle(el).display !== 'none')
+          .map((el) => el.className || el.tagName)
+      : [];
+
     const stickyIssues = doc.classList.contains('gl')
       ? [...document.querySelectorAll('.scene--product')]
           .filter((scene) => {
             const hold = scene.querySelector('.scene__hold');
-            return hold && hold.scrollHeight > (window.visualViewport?.height || vh) + 1 && !scene.classList.contains('scene--unstick');
+            const info = scene.querySelector('.product__info')?.getBoundingClientRect();
+            const card = scene.querySelector('.product__card')?.getBoundingClientRect();
+            const tooTall =
+              (hold && hold.scrollHeight > (window.visualViewport?.height || vh) + 1) ||
+              (info && info.height > vh * 0.84) ||
+              (card && card.height > vh * 0.78);
+            return tooTall && !scene.classList.contains('scene--unstick') && !stacked;
           })
           .map((scene) => scene.id)
       : [];
@@ -227,11 +269,22 @@ async function evaluatePage(page) {
       wideElements,
       headerIssues,
       cardIssues,
+      infoIssues,
       productOverlaps,
+      visualFitIssues,
+      chromeIndexIssue,
       stickyIssues,
       canvasIssue,
       gl: doc.classList.contains('gl'),
       glMobile: doc.classList.contains('gl-mobile'),
+      classes: {
+        wide,
+        dense,
+        short,
+        zoomLike,
+        compact,
+        stacked,
+      },
     };
   });
 }
@@ -259,8 +312,11 @@ function summarizeFailure(result, consoleErrors, overlayIssues) {
   if (result.overflowDoc) failures.push(`document scrollWidth ${result.docScrollWidth}`);
   if (result.overflowBody) failures.push(`body scrollWidth ${result.bodyScrollWidth}`);
   if (result.headerIssues.length) failures.push(`header out of bounds: ${result.headerIssues.join(', ')}`);
+  if (result.infoIssues.length) failures.push(`product info out of bounds: ${result.infoIssues.join(', ')}`);
   if (result.cardIssues.length) failures.push(`cards out of bounds: ${result.cardIssues.join(', ')}`);
   if (result.productOverlaps.length) failures.push(`product overlap: ${result.productOverlaps.join(', ')}`);
+  if (result.visualFitIssues.length) failures.push(`product visual fit: ${result.visualFitIssues.join(', ')}`);
+  if (result.chromeIndexIssue.length) failures.push(`dense chrome still visible: ${result.chromeIndexIssue.join(', ')}`);
   if (result.stickyIssues.length) failures.push(`sticky not released: ${result.stickyIssues.join(', ')}`);
   if (result.canvasIssue) failures.push('WebGL canvas size does not match viewport');
   if (result.wideElements.length) failures.push(`wide elements: ${JSON.stringify(result.wideElements)}`);

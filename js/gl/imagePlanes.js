@@ -177,8 +177,14 @@ const VIEW = 10;        // how far in front of the active room the camera sits
 const FOG_NEAR = 9;     // view-space distance where planes start fading to bg
 const FOG_FAR = 50;     // …and where they're fully absorbed by the dark
 const ANCHOR_Y = 0.02;  // vertical anchor in NDC (~viewport centre, card height)
-const RICH_SCENE_MIN_WIDTH = 1120;
-const RICH_SCENE_MIN_HEIGHT = 760;
+const RICH_SCENE_MIN_WIDTH = 1500;
+const RICH_SCENE_MIN_HEIGHT = 820;
+const FULL_CORRIDOR_MIN_WIDTH = 1600;
+const FULL_CORRIDOR_MIN_HEIGHT = 860;
+const COMPACT_THEATRE_WIDTH = 1366;
+const COMPACT_THEATRE_HEIGHT = 720;
+const STACKED_PRODUCTS_WIDTH = 1120;
+const STACKED_PRODUCTS_HEIGHT = 680;
 
 /* ------------------------------------------------------------------ *
  * glass-screen shader — texture + rounded corners + soft inner vignette,
@@ -477,37 +483,50 @@ function mixLayout(a, b, t) {
 function viewportMetrics(w, h, isMobile) {
   const width = Math.max(1, Math.round(w || window.visualViewport?.width || innerWidth || 1));
   const height = Math.max(1, Math.round(h || window.visualViewport?.height || innerHeight || 1));
-  const fit = Math.min(width / 1440, height / 900);
-  const compactW = width < RICH_SCENE_MIN_WIDTH;
-  const compactH = height < RICH_SCENE_MIN_HEIGHT;
+  const fit = Math.min(width / FULL_CORRIDOR_MIN_WIDTH, height / FULL_CORRIDOR_MIN_HEIGHT);
+  const richFit = Math.min(width / RICH_SCENE_MIN_WIDTH, height / RICH_SCENE_MIN_HEIGHT);
+  const compactFit = Math.min(width / COMPACT_THEATRE_WIDTH, height / COMPACT_THEATRE_HEIGHT);
+  const compactW = width < COMPACT_THEATRE_WIDTH;
+  const compactH = height < COMPACT_THEATRE_HEIGHT;
+  const dense = width < RICH_SCENE_MIN_WIDTH || height < RICH_SCENE_MIN_HEIGHT;
+  const short = height < RICH_SCENE_MIN_HEIGHT;
+  const stacked = width < STACKED_PRODUCTS_WIDTH || height < STACKED_PRODUCTS_HEIGHT;
   const coarse = matchMedia('(pointer: coarse), (hover: none)').matches;
-  const compactScale =
-    Math.min(
-      compactW ? clamp(width / RICH_SCENE_MIN_WIDTH, 0.68, 1) : 1,
-      compactH ? clamp(height / RICH_SCENE_MIN_HEIGHT, 0.66, 1) : 1
-    );
-  const base = clamp(fit, isMobile ? 0.48 : 0.62, isMobile ? 0.88 : 1.16);
-  const planeScale = clamp(
-    base * compactScale * (coarse ? 0.82 : 1),
-    isMobile ? 0.42 : 0.5,
-    isMobile ? 0.88 : 1.16
+  const zoomLike = matchMedia('(pointer: fine) and (hover: hover)').matches &&
+    (width < FULL_CORRIDOR_MIN_WIDTH || height < FULL_CORRIDOR_MIN_HEIGHT);
+  const compactScale = Math.min(
+    clamp(richFit, 0.56, 1),
+    clamp(compactFit, 0.52, 1)
   );
-  const spreadScale = clamp(0.62 + planeScale * 0.38, 0.58, width > 2200 ? 1.18 : 1.1);
-  const depthScale = clamp(0.78 + planeScale * 0.24, 0.72, 1.08);
-  const yScale = clamp(0.68 + planeScale * 0.28, 0.62, 1.02);
-  const opacityScale = clamp((coarse ? 0.42 : 0.62) + planeScale * 0.34, 0.34, 0.98);
+  const density = clamp(1 - compactFit, 0, 0.55);
+  const base = clamp(fit, isMobile ? 0.42 : 0.5, isMobile ? 0.82 : 1.08);
+  const densityPenalty = (dense ? 0.1 : 0) + (short ? 0.08 : 0) + (zoomLike ? 0.08 : 0);
+  const planeScale = clamp(
+    base * compactScale * (coarse ? 0.78 : 1) - densityPenalty,
+    isMobile ? 0.34 : 0.38,
+    isMobile ? 0.82 : 1.08
+  );
+  const spreadScale = clamp(0.48 + planeScale * 0.44 - density * 0.12, 0.42, width > 2200 ? 1.12 : 0.98);
+  const depthScale = clamp(0.68 + planeScale * 0.22 - density * 0.08, 0.58, 1.04);
+  const yScale = clamp(0.58 + planeScale * 0.28 - density * 0.1, 0.5, 0.98);
+  const opacityScale = clamp((coarse ? 0.26 : 0.42) + planeScale * 0.42 - density * 0.18, 0, 0.94);
   return {
     width,
     height,
     aspect: width / height,
+    dense,
+    short,
+    compact: compactW || compactH || coarse || dense || zoomLike,
+    stacked,
+    zoomLike,
     planeScale,
     spreadScale,
     depthScale,
     yScale,
     opacityScale,
-    anchorClamp: width > 2200 ? 0.62 : 0.78,
-    disabled: !isMobile && (width < 900 || height < 520),
-    compact: compactW || compactH || coarse,
+    anchorClamp: stacked ? 0.38 : (dense || zoomLike ? 0.52 : (width > 2200 ? 0.62 : 0.74)),
+    anchorBias: dense || zoomLike ? 0.08 : 0,
+    disabled: stacked || (!isMobile && (width < COMPACT_THEATRE_WIDTH || height < COMPACT_THEATRE_HEIGHT)),
   };
 }
 
@@ -528,7 +547,7 @@ function carouselSlot(offset, profile, isMobile, orient = 'portrait', metrics = 
         { x: side * 2.75 * spread, y: 1.05, z: -5.75 * depth, scale: 0.28 * rackScale, opacity: 0.08, rx: -0.015, ry: -side * 0.36, rz: side * 0.02 },
       ]
     : [
-        { x: 0, y: 0.18, z: 1.08, scale: 1.03 * heroScale, opacity: 1.0, rx: 0.012, ry: 0, rz: 0 },
+        { x: 0, y: 0.18, z: 1.08, scale: (metrics.dense ? 0.9 : 1.03) * heroScale, opacity: 1.0, rx: 0.012, ry: 0, rz: 0 },
         { x: side * 3.78 * spread, y: 1.42, z: -2.45 * depth, scale: 0.63 * sideScale, opacity: 0.74, rx: -0.022, ry: -side * 0.32, rz: side * 0.018 },
         { x: side * 4.98 * spread, y: -1.88, z: -5.3 * depth, scale: 0.47 * rackScale, opacity: 0.52, rx: 0.026, ry: -side * 0.48, rz: -side * 0.024 },
         { x: side * 5.95 * spread, y: 0.56, z: -8.3 * depth, scale: 0.36 * rackScale, opacity: 0.31, rx: -0.018, ry: -side * 0.58, rz: side * 0.032 },
@@ -601,7 +620,7 @@ export function createCorridor(THREE, opts = {}) {
   // default horizontal anchor in NDC: desktop pushes the rooms toward the
   // right-hand product-card column (text sits on the left); mobile stacks the
   // layout, so keep the corridor centred behind the content.
-  const defaultAnchorX = mobile ? 0.0 : (metrics.aspect > 2.15 ? 0.34 : 0.42);
+  const defaultAnchorX = mobile ? 0.0 : (metrics.aspect > 2.15 ? 0.3 : 0.42);
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 260);
@@ -879,7 +898,11 @@ export function createCorridor(THREE, opts = {}) {
     setAnchorRect(rect) {
       if (!rect || !rect.width || mobile) return;   // mobile stays centred
       const cx = rect.left + rect.width / 2;
-      this._anchorTargetX = clamp((cx / Math.max(1, metrics.width)) * 2 - 1, -metrics.anchorClamp, metrics.anchorClamp);
+      this._anchorTargetX = clamp(
+        (cx / Math.max(1, metrics.width)) * 2 - 1 + metrics.anchorBias,
+        -metrics.anchorClamp,
+        metrics.anchorClamp
+      );
     },
 
     /* lazy texture load — prioritises hero planes, small concurrency pool so

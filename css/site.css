@@ -44,9 +44,42 @@
   --content-max: 1560px;
   --card-scale: 1;
   --text-scale: 1;
+  --viewport-w: 100vw;
+  --viewport-h: 100svh;
+  --viewport-fit: 1;
+  --product-fit: 1;
+  --product-copy-scale: 1;
+  --product-visual-scale: 1;
+  --product-density: 0;
   --product-card-max-h: min(62dvh, 650px);
   --product-card-w: min(100%, 760px, calc(var(--product-card-max-h) * 1.5238));
   --chrome-hit: 42px;
+}
+
+html.is-dense-view {
+  --chrome-pad: clamp(12px, 1.7vw, 24px);
+  --section-pad-y: clamp(70px, 9svh, 118px);
+  --text-scale: min(1, calc(0.92 + var(--viewport-fit) * 0.08));
+  --product-card-max-h: min(58dvh, calc(var(--viewport-h) * 0.72), 560px);
+  --product-card-w: min(100%, 700px, calc(var(--product-card-max-h) * 1.5238));
+}
+
+html.is-short-view {
+  --section-pad-y: clamp(60px, 8svh, 92px);
+  --product-card-max-h: min(52dvh, calc(var(--viewport-h) * 0.68), 470px);
+}
+
+html.is-compact-theatre {
+  --text-scale: min(0.94, calc(0.82 + var(--viewport-fit) * 0.12));
+  --product-card-max-h: min(48dvh, calc(var(--viewport-h) * 0.62), 430px);
+  --product-card-w: min(100%, 640px, calc(var(--product-card-max-h) * 1.5238));
+}
+
+html.is-stacked-products {
+  --section-pad-y: clamp(68px, 8svh, 100px);
+  --text-scale: min(0.94, calc(0.84 + var(--viewport-fit) * 0.1));
+  --product-card-max-h: min(46dvh, calc(var(--viewport-h) * 0.58), 390px);
+  --product-card-w: min(100%, 620px, calc(var(--product-card-max-h) * 1.5238));
 }
 
 /* ---------- reset ---------- */
@@ -327,7 +360,7 @@ html.gl-loading .loader, html.gl .loader { display: flex; }
 .pill {
   display: inline-flex; align-items: center; gap: 8px;
   min-height: var(--chrome-hit);
-  padding: 0.62em clamp(0.82em, 1.4vw, 1.25em);
+  padding: 0.62em clamp(0.72em, calc(1.4vw * var(--viewport-fit)), 1.25em);
   border: 1px solid var(--line);
   border-radius: 999px;
   background: rgba(8, 8, 14, 0.45);
@@ -381,7 +414,7 @@ html.gl-loading .loader, html.gl .loader { display: flex; }
 .btn-outline {
   align-self: flex-start;
   min-height: var(--chrome-hit);
-  padding: 0.7em clamp(1em, 1.4vw, 1.3em);
+  padding: 0.7em clamp(0.82em, calc(1.4vw * var(--viewport-fit)), 1.3em);
   border: 1px solid var(--line);
   font-family: var(--f-mono); font-size: clamp(0.56rem, 0.66vw, 0.6rem); font-weight: 500;
   letter-spacing: clamp(0.12em, 0.3vw, 0.22em); text-transform: uppercase;
@@ -423,9 +456,9 @@ html.gl-loading .loader, html.gl .loader { display: flex; }
   min-height: 100dvh;
   display: flex; flex-direction: column; justify-content: center;
   padding:
-    max(var(--section-pad-y), calc(78px + env(safe-area-inset-top, 0px)))
+    max(calc(var(--section-pad-y) * var(--viewport-fit)), calc(78px + env(safe-area-inset-top, 0px)))
     var(--pad-x)
-    max(var(--section-pad-y), calc(54px + env(safe-area-inset-bottom, 0px)));
+    max(calc(var(--section-pad-y) * var(--viewport-fit)), calc(54px + env(safe-area-inset-bottom, 0px)));
   max-width: var(--content-max); margin: 0 auto; width: 100%;
 }
 
@@ -689,8 +722,8 @@ html.gl .scene--hero .scene__hold::before {
 
 .product {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(300px, 6fr);
-  gap: clamp(28px, 4.5vw, 80px);
+  grid-template-columns: minmax(0, 5fr) minmax(280px, 6fr);
+  gap: clamp(24px, calc(4.2vw * var(--viewport-fit)), 80px);
   align-items: center;
   width: 100%;
   overflow: visible;
@@ -699,7 +732,8 @@ html.gl .scene--hero .scene__hold::before {
 /* readable glass panel so product copy stays crisp over the moving stage */
 .product__info {
   position: relative; z-index: 1;
-  padding: clamp(18px, 2.1vw, 34px);
+  width: min(100%, calc(680px * var(--product-copy-scale)));
+  padding: clamp(16px, calc(2vw * var(--product-copy-scale)), 34px);
   border-radius: clamp(10px, 1.2vw, 16px);
   background:
     linear-gradient(145deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent 34%),
@@ -740,27 +774,28 @@ html.gl .scene--hero .scene__hold::before {
   letter-spacing: 0;
   line-height: 1.06;
   overflow-wrap: anywhere;
+  font-size: calc(clamp(1.48rem, 3.35vw, 3.1rem) * var(--product-copy-scale));
 }
 .product__tagline {
-  margin-top: 16px;
-  font-size: calc(clamp(0.96rem, 1.25vw, 1.2rem) * var(--text-scale));
+  margin-top: clamp(10px, calc(1.4vh * var(--product-fit)), 16px);
+  font-size: calc(clamp(0.9rem, 1.12vw, 1.16rem) * var(--product-copy-scale));
   color: var(--text); font-weight: 500;
 }
 .product__desc {
   margin-top: clamp(16px, 2vh, 22px);
   color: var(--dim);
-  font-size: calc(clamp(0.88rem, 0.98vw, 1rem) * var(--text-scale));
-  line-height: 1.72;
+  font-size: calc(clamp(0.82rem, 0.92vw, 0.98rem) * var(--product-copy-scale));
+  line-height: calc(1.58 + (var(--product-fit) * 0.12));
   max-width: 58ch;
 }
 
 .feature-list {
   margin-top: clamp(18px, 2.8vh, 26px);
   display: grid; grid-template-columns: 1fr 1fr;
-  gap: clamp(7px, 1.2vh, 9px) clamp(14px, 2vw, 22px);
+  gap: clamp(6px, calc(1vh * var(--product-fit)), 9px) clamp(12px, 1.8vw, 22px);
 }
 .feature-list li {
-  font-family: var(--f-mono); font-size: calc(clamp(0.58rem, 0.62vw, 0.68rem) * var(--text-scale)); font-weight: 500;
+  font-family: var(--f-mono); font-size: calc(clamp(0.54rem, 0.58vw, 0.66rem) * var(--product-copy-scale)); font-weight: 500;
   letter-spacing: clamp(0.02em, 0.12vw, 0.07em); text-transform: uppercase;
   color: var(--dim);
   padding-left: 14px; position: relative;
@@ -773,7 +808,7 @@ html.gl .scene--hero .scene__hold::before {
 .product__foot {
   margin-top: clamp(18px, 2.9vh, 28px); padding-top: clamp(14px, 2vh, 18px);
   border-top: 1px solid var(--line-soft);
-  color: var(--dim); font-size: calc(clamp(0.62rem, 0.7vw, 0.74rem) * var(--text-scale)); line-height: 1.76; letter-spacing: 0.02em;
+  color: var(--dim); font-size: calc(clamp(0.58rem, 0.64vw, 0.72rem) * var(--product-copy-scale)); line-height: 1.68; letter-spacing: 0.02em;
   max-width: 62ch;
 }
 .product__foot b { color: var(--accent); font-weight: 500; }
@@ -802,7 +837,7 @@ html.gl .scene--hero .scene__hold::before {
 /* glassy 3d card */
 .product__card-wrap {
   perspective: 1400px;
-  width: 100%;
+  width: min(100%, calc(760px * var(--product-visual-scale)));
   min-width: 0;
   justify-self: center;
   display: grid;
@@ -876,7 +911,7 @@ html.gl .scene--hero .scene__hold::before {
 
 /* phone frame — portrait app screenshots */
 .device--phone {
-  height: min(95%, calc(var(--product-card-max-h) - 54px)); aspect-ratio: 9 / 19.5; max-width: 62%;
+  height: min(95%, calc(var(--product-card-max-h) - 54px)); aspect-ratio: 9 / 19.5; max-width: calc(54% + (var(--product-visual-scale) * 8%));
   padding: clamp(4px, 0.55vw, 6px); border-radius: clamp(20px, 2vw, 28px);
   background: linear-gradient(160deg, #1a1d27, #07090f);
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -1596,6 +1631,108 @@ html.no-gl .scene--contact::before {
   .product__card-wrap { width: min(78vw, 500px); }
   .overlay { align-items: stretch; }
   .overlay__panel { max-height: calc(100svh - 20px); max-height: calc(100dvh - 20px); }
+}
+
+html.is-short-view .chrome--index,
+html.is-short-view .chrome--progress,
+html.is-compact-theatre .chrome--index,
+html.is-compact-theatre .chrome--progress,
+html.is-zoom-like-view:not(.is-wide-view) .chrome--index,
+html.is-zoom-like-view:not(.is-wide-view) .chrome--progress {
+  display: none;
+}
+
+html.is-dense-view .chrome--top::before {
+  height: calc(104px + env(safe-area-inset-top, 0px));
+}
+
+html.is-dense-view .brand__main { font-size: clamp(0.82rem, 0.95vw, 0.98rem); }
+html.is-dense-view .pill {
+  min-height: 38px;
+  gap: 6px;
+  font-size: clamp(0.5rem, 0.58vw, 0.6rem);
+  letter-spacing: clamp(0.08em, 0.2vw, 0.14em);
+}
+
+html.is-dense-view:not(.is-stacked-products) .product {
+  grid-template-columns: minmax(0, 0.98fr) minmax(260px, 0.92fr);
+  gap: clamp(20px, 3vw, 46px);
+}
+
+html.is-dense-view:not(.is-stacked-products) .product__info {
+  width: min(100%, calc(620px * var(--product-copy-scale)));
+}
+
+html.is-dense-view:not(.is-stacked-products) .product__card-wrap {
+  width: min(100%, calc(620px * var(--product-visual-scale)));
+}
+
+html.is-dense-view .product__kicker { margin-bottom: clamp(10px, 1.5vh, 16px); }
+html.is-dense-view .product__desc { margin-top: clamp(12px, 1.8vh, 18px); }
+html.is-dense-view .feature-list { margin-top: clamp(14px, 2vh, 20px); }
+html.is-dense-view .product__foot { margin-top: clamp(14px, 2vh, 20px); }
+
+html.is-compact-theatre:not(.is-stacked-products) .product {
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.82fr);
+  align-items: start;
+}
+
+html.is-compact-theatre .feature-list,
+html.is-short-view .feature-list {
+  grid-template-columns: 1fr;
+}
+
+html.is-compact-theatre:not(.is-stacked-products) .product__card-wrap {
+  align-self: center;
+  opacity: 0.9;
+}
+
+html.gl.is-compact-theatre:not(.is-stacked-products) .product__card-wrap.in {
+  opacity: 0.22;
+}
+
+html.is-stacked-products .product {
+  grid-template-columns: 1fr;
+  align-items: start;
+  gap: clamp(22px, 5vw, 40px);
+}
+
+html.is-stacked-products .product__info {
+  width: min(100%, 760px);
+  justify-self: start;
+}
+
+html.is-stacked-products .product__card-wrap {
+  width: min(100%, 680px);
+  justify-self: center;
+}
+
+html.gl.is-stacked-products .scene__hold {
+  position: relative;
+  top: auto;
+  min-height: auto;
+}
+
+html.gl.is-stacked-products .scene--product {
+  height: auto;
+  min-height: auto;
+}
+
+html.is-stacked-products .product__card,
+html.is-compact-theatre .product__card {
+  transform: none;
+}
+
+html.is-stacked-products .product:nth-child(even) .product__card,
+html.is-stacked-products .scene--product:nth-of-type(even) .product__card,
+html.is-compact-theatre .product:nth-child(even) .product__card,
+html.is-compact-theatre .scene--product:nth-of-type(even) .product__card {
+  transform: none;
+}
+
+html.is-stacked-products .product__card:hover,
+html.is-compact-theatre .product__card:hover {
+  transform: none;
 }
 
 /* ---------- reduced motion ---------- */
