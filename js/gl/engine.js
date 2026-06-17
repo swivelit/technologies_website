@@ -1246,12 +1246,12 @@ export async function initGL(canvas, options = {}) {
      on weaker phones (the HTML product cards already carry the screenshots).
      Any failure here must never take down the particle stage. */
   let corridor = null;
-  const corridorOK = (() => {
-    if (!isMobile) return true;
-    const cores = navigator.hardwareConcurrency || 6;
-    const memory = navigator.deviceMemory || 4;
-    return cores > 4 && memory > 3;
-  })();
+  // Corridor is desktop-only. On phones it ghosts behind the copy and merely
+  // duplicates the HTML product cards (which already show every screenshot), so
+  // disable it for ALL mobile sessions. (High-power tablets run as isMobile=false
+  // via app.js, so they keep the corridor.) corridor stays null — every use is
+  // guarded by `if (corridor)` / `corridor?.`, so no errors result.
+  const corridorOK = !isMobile;
   if (corridorOK) {
     try {
       corridor = createCorridor(THREE, {
