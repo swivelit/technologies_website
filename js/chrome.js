@@ -11,6 +11,7 @@ const EMAILJS_SERVICE = 'service_8unkljg';
 const EMAILJS_TEMPLATE = 'template_7bvvb7l';
 
 let reduceMotion = false;
+const STACKED_VIEW_QUERY = '(max-width: 1119px), (max-height: 759px)';
 
 /* ---------- scroll progress (bottom-right) ---------- */
 function initProgress() {
@@ -66,7 +67,7 @@ function initReveals() {
   const observedEls = [...new Set([...revealEls, ...scrambleEls])];
   if (!observedEls.length) return;
 
-  const isMobile = matchMedia('(max-width: 820px), (pointer: coarse), (hover: none)').matches;
+  const isMobile = matchMedia(STACKED_VIEW_QUERY).matches;
   const revealOne = (el) => {
     if (el.hasAttribute('data-reveal')) el.classList.add('in');
     if (el.hasAttribute('data-scramble') && !reduceMotion && !el.dataset.scrambled) {
