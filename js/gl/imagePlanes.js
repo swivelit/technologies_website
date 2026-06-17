@@ -126,6 +126,31 @@ export const CORRIDOR_PRODUCTS = [
   },
 ];
 
+const PRODUCT_ASSET_PREFIXES = {
+  'good-one': 'projects/goodone/',
+  'swico-ai': 'projects/swico/',
+  'grab-basket': 'projects/grab%20basket/',
+  manas: 'projects/manas/',
+  'ai-business-assistant': 'projects/Ai%20business%20assistant/',
+  'defect-detector': 'projects/Defect%20detectors/',
+};
+
+function validateProductAssets() {
+  const entries = Object.entries(PRODUCT_ASSET_PREFIXES);
+  CORRIDOR_PRODUCTS.forEach((product) => {
+    const expectedPrefix = PRODUCT_ASSET_PREFIXES[product.id];
+    if (!expectedPrefix) return;
+    product.images.forEach((url) => {
+      if (url.includes(expectedPrefix)) return;
+      const matched = entries.find(([, prefix]) => url.includes(prefix));
+      const foundId = matched?.[0] || url;
+      console.warn(`[swivel] Product asset mismatch: ${product.id} contains ${foundId} asset`);
+    });
+  });
+}
+
+validateProductAssets();
+
 /* Continuous theatre personalities. These values do not bind a screenshot to a
    fixed slot; they bend the shared carousel path so each product keeps its own
    motion language while imageHead decides which screenshot is the hero. */
@@ -177,14 +202,14 @@ const VIEW = 10;        // how far in front of the active room the camera sits
 const FOG_NEAR = 9;     // view-space distance where planes start fading to bg
 const FOG_FAR = 50;     // …and where they're fully absorbed by the dark
 const ANCHOR_Y = 0.02;  // vertical anchor in NDC (~viewport centre, card height)
-const RICH_SCENE_MIN_WIDTH = 1500;
+const FULL_CORRIDOR_MIN_WIDTH = 1880;
+const FULL_CORRIDOR_MIN_HEIGHT = 900;
+const RICH_SCENE_MIN_WIDTH = 1600;
 const RICH_SCENE_MIN_HEIGHT = 820;
-const FULL_CORRIDOR_MIN_WIDTH = 1600;
-const FULL_CORRIDOR_MIN_HEIGHT = 860;
-const COMPACT_THEATRE_WIDTH = 1366;
-const COMPACT_THEATRE_HEIGHT = 720;
-const STACKED_PRODUCTS_WIDTH = 1120;
-const STACKED_PRODUCTS_HEIGHT = 680;
+const COMPACT_THEATRE_WIDTH = 1440;
+const COMPACT_THEATRE_HEIGHT = 760;
+const STACKED_PRODUCTS_WIDTH = 1280;
+const STACKED_PRODUCTS_HEIGHT = 700;
 
 /* ------------------------------------------------------------------ *
  * glass-screen shader — texture + rounded corners + soft inner vignette,
@@ -483,8 +508,8 @@ function mixLayout(a, b, t) {
 function viewportMetrics(w, h, isMobile) {
   const width = Math.max(1, Math.round(w || window.visualViewport?.width || innerWidth || 1));
   const height = Math.max(1, Math.round(h || window.visualViewport?.height || innerHeight || 1));
-  const fit = Math.min(width / FULL_CORRIDOR_MIN_WIDTH, height / FULL_CORRIDOR_MIN_HEIGHT);
-  const richFit = Math.min(width / RICH_SCENE_MIN_WIDTH, height / RICH_SCENE_MIN_HEIGHT);
+  const fullFit = Math.min(width / FULL_CORRIDOR_MIN_WIDTH, height / FULL_CORRIDOR_MIN_HEIGHT);
+  const theatreFit = Math.min(width / RICH_SCENE_MIN_WIDTH, height / RICH_SCENE_MIN_HEIGHT);
   const compactFit = Math.min(width / COMPACT_THEATRE_WIDTH, height / COMPACT_THEATRE_HEIGHT);
   const compactW = width < COMPACT_THEATRE_WIDTH;
   const compactH = height < COMPACT_THEATRE_HEIGHT;
@@ -494,26 +519,28 @@ function viewportMetrics(w, h, isMobile) {
   const coarse = matchMedia('(pointer: coarse), (hover: none)').matches;
   const zoomLike = matchMedia('(pointer: fine) and (hover: hover)').matches &&
     (width < FULL_CORRIDOR_MIN_WIDTH || height < FULL_CORRIDOR_MIN_HEIGHT);
-  const compactScale = Math.min(
-    clamp(richFit, 0.56, 1),
-    clamp(compactFit, 0.52, 1)
-  );
+  const compactScale = Math.min(clamp(theatreFit, 0.54, 1), clamp(compactFit, 0.48, 1));
   const density = clamp(1 - compactFit, 0, 0.55);
-  const base = clamp(fit, isMobile ? 0.42 : 0.5, isMobile ? 0.82 : 1.08);
-  const densityPenalty = (dense ? 0.1 : 0) + (short ? 0.08 : 0) + (zoomLike ? 0.08 : 0);
+  const base = clamp(fullFit, isMobile ? 0.4 : 0.48, isMobile ? 0.82 : 1.08);
+  const densityPenalty = (dense ? 0.16 : 0) + (short ? 0.12 : 0) + (zoomLike ? 0.1 : 0);
   const planeScale = clamp(
     base * compactScale * (coarse ? 0.78 : 1) - densityPenalty,
-    isMobile ? 0.34 : 0.38,
+    isMobile ? 0.32 : 0.34,
     isMobile ? 0.82 : 1.08
   );
-  const spreadScale = clamp(0.48 + planeScale * 0.44 - density * 0.12, 0.42, width > 2200 ? 1.12 : 0.98);
-  const depthScale = clamp(0.68 + planeScale * 0.22 - density * 0.08, 0.58, 1.04);
-  const yScale = clamp(0.58 + planeScale * 0.28 - density * 0.1, 0.5, 0.98);
-  const opacityScale = clamp((coarse ? 0.26 : 0.42) + planeScale * 0.42 - density * 0.18, 0, 0.94);
+  const spreadScale = clamp(0.42 + planeScale * 0.42 - density * 0.18, 0.32, width > 2200 ? 1.12 : 0.98);
+  const depthScale = clamp(0.6 + planeScale * 0.22 - density * 0.12, 0.48, 1.04);
+  const yScale = clamp(0.5 + planeScale * 0.28 - density * 0.12, 0.42, 0.98);
+  const opacityScale = stacked
+    ? 0
+    : clamp((coarse ? 0.14 : 0.34) + planeScale * 0.36 - density * 0.3 - (compactW || compactH ? 0.18 : 0), 0.02, 0.94);
   return {
     width,
     height,
     aspect: width / height,
+    fullFit,
+    theatreFit,
+    compactFit,
     dense,
     short,
     compact: compactW || compactH || coarse || dense || zoomLike,
@@ -870,8 +897,16 @@ export function createCorridor(THREE, opts = {}) {
     _velocity: 0,
 
     /* explicit control surface (engine ↔ corridor) */
-    setActive(i) { this.targetHead = clamp(i, 0, this.count - 1); },
-    setHead(v) { this.targetHead = clamp(v, 0, this.count - 1); },
+    setActive(i, options = {}) { this.setHead(i, options); },
+    setHead(v, { immediate = false } = {}) {
+      const next = clamp(v, 0, this.count - 1);
+      this.targetHead = next;
+      if (immediate) {
+        this.head = next;
+        this._prevHead = next;
+        this._velocity = 0;
+      }
+    },
     setProductProgress(productIndex, progress = 0) {
       const room = rooms[productIndex];
       if (!room) return;
@@ -884,7 +919,7 @@ export function createCorridor(THREE, opts = {}) {
       room.scrollHead = p * span;
     },
     setProductState(productIndex, progress = 0) {
-      this.setActive(productIndex);
+      this.setActive(productIndex, { immediate: true });
       this.setProductProgress(productIndex, progress);
     },
     /* swipe/drag-to-scrub (touch): nudge the active room's carousel by a
@@ -1165,6 +1200,8 @@ export function createCorridor(THREE, opts = {}) {
       const activeProductIndex = clamp(Math.round(this.head), 0, this.count - 1);
       const room = rooms[activeProductIndex];
       const activeImageHead = room?.imageHead || 0;
+      const activeImageIndex = room?.activeHeroImageIndex || 0;
+      const missingImageIndexes = room ? room.planes.filter((p) => p.missing).map((p) => p.imageIndex) : [];
       return {
         head: this.head,
         targetHead: this.targetHead,
@@ -1172,7 +1209,9 @@ export function createCorridor(THREE, opts = {}) {
         activeProductId: room?.product.id || null,
         activeImageHead,
         activeTargetImageHead: room?.targetImageHead || 0,
-        activeHeroImageIndex: room?.activeHeroImageIndex || 0,
+        activeHeroImageIndex: activeImageIndex,
+        activeImageIndex,
+        activeImageUrl: room?.product.images[activeImageIndex] || null,
         visibleImageIndices: room ? [...room.visibleImageIndices] : [],
         frontPlaneCount: room?.frontPlaneCount || 0,
         imageCount: room?.product.images.length || 0,
@@ -1182,7 +1221,8 @@ export function createCorridor(THREE, opts = {}) {
         viewportScale: metrics.planeScale,
         viewportOpacityScale: metrics.opacityScale,
         viewportDisabled: metrics.disabled,
-        missingImages: room ? room.planes.filter((p) => p.missing).map((p) => p.imageIndex) : [],
+        missingImageIndexes,
+        missingImages: missingImageIndexes,
       };
     },
   };

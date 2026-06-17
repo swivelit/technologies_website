@@ -11,6 +11,9 @@ const VIEWPORTS = [
   [1745, 818],
   [1536, 720],
   [1280, 600],
+  [1728, 850],
+  [1600, 800],
+  [1440, 760],
   [320, 568],
   [360, 640],
   [375, 667],
@@ -41,6 +44,15 @@ const PAGES = [
   '/index.html#contact',
   '/career.html',
 ];
+
+const PRODUCT_EXPECTATIONS = new Map([
+  ['/index.html#good-one', { id: 'good-one', prefix: 'projects/goodone/' }],
+  ['/index.html#swico-ai', { id: 'swico-ai', prefix: 'projects/swico/' }],
+  ['/index.html#grab-basket', { id: 'grab-basket', prefix: 'projects/grab%20basket/' }],
+  ['/index.html#manas', { id: 'manas', prefix: 'projects/manas/' }],
+  ['/index.html#ai-business-assistant', { id: 'ai-business-assistant', prefix: 'projects/Ai%20business%20assistant/' }],
+  ['/index.html#defect-detector', { id: 'defect-detector', prefix: 'projects/Defect%20detectors/' }],
+]);
 
 const TYPES = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -104,6 +116,12 @@ function startServer(port = DEFAULT_PORT) {
   });
 }
 
+function cacheBustedPath(path, width, height, index) {
+  const [base, hash = ''] = path.split('#');
+  const joiner = base.includes('?') ? '&' : '?';
+  return `${base}${joiner}smoke=${width}x${height}-${index}${hash ? `#${hash}` : ''}`;
+}
+
 async function loadBrowser() {
   try {
     const { chromium } = await import('playwright');
@@ -122,7 +140,7 @@ async function loadBrowser() {
 
   const puppeteer = await import('puppeteer-core').catch(() => null);
   if (!puppeteer) {
-    throw new Error('Install Playwright or expose puppeteer-core to run responsive smoke tests.');
+    throw new Error('Install a browser test driver to run responsive smoke tests: npm install -D playwright && npx playwright install chromium, or npm install -D puppeteer-core and set CHROME_PATH.');
   }
 
   const executablePath =
@@ -136,7 +154,7 @@ async function loadBrowser() {
     ].find((path) => existsSync(path));
 
   if (!executablePath) {
-    throw new Error('No Chrome executable found. Set CHROME_PATH or install Playwright.');
+    throw new Error('No Chrome executable found. Set CHROME_PATH, or install Playwright and run npx playwright install chromium.');
   }
 
   const browser = await puppeteer.default.launch({
@@ -307,6 +325,106 @@ async function checkOverlay(page, id) {
   }, id);
 }
 
+async function checkProductIdentity(page, path) {
+  const expected = PRODUCT_EXPECTATIONS.get(path);
+  if (!expected) return [];
+
+  return page.evaluate(async ({ id, prefix }) => {
+    const issues = [];
+    const containsExpected = (url) => String(url || '').includes(prefix);
+    const isVisible = (el) => {
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return rect.width > 0 &&
+        rect.height > 0 &&
+        rect.bottom > 0 &&
+        rect.top < innerHeight &&
+        rect.right > 0 &&
+        rect.left < innerWidth &&
+        style.display !== 'none' &&
+        style.visibility !== 'hidden' &&
+        Number(style.opacity || 1) > 0.04;
+    };
+    const sectionAtCenter = () => {
+      const centerY = innerHeight / 2;
+      let containing = null;
+      let nearest = null;
+      [...document.querySelectorAll('.scene--product')].forEach((section) => {
+        const rect = section.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
+        const contains = rect.top <= centerY && rect.bottom >= centerY;
+        const distance = contains
+          ? Math.abs((rect.top + rect.bottom) / 2 - centerY)
+          : Math.max(0, rect.top > centerY ? rect.top - centerY : centerY - rect.bottom);
+        const candidate = { id: section.id, distance };
+        if (contains && (!containing || distance < containing.distance)) containing = candidate;
+        if (!nearest || distance < nearest.distance) nearest = candidate;
+      });
+      return containing || nearest;
+    };
+    const cardAtCenter = () => {
+      const centerY = innerHeight / 2;
+      let containing = null;
+      let nearest = null;
+      [...document.querySelectorAll('.scene--product .product__card')].forEach((card) => {
+        if (!isVisible(card)) return;
+        const rect = card.getBoundingClientRect();
+        const sectionId = card.closest('.scene--product')?.id || '';
+        const contains = rect.top <= centerY && rect.bottom >= centerY;
+        const distance = contains
+          ? Math.abs((rect.top + rect.bottom) / 2 - centerY)
+          : Math.max(0, rect.top > centerY ? rect.top - centerY : centerY - rect.bottom);
+        const candidate = { id: sectionId, distance };
+        if (contains && (!containing || distance < containing.distance)) containing = candidate;
+        if (!nearest || distance < nearest.distance) nearest = candidate;
+      });
+      return containing || nearest;
+    };
+
+    const section = document.getElementById(id);
+    if (!section) return [`missing product section ${id}`];
+
+    const debug = window.__swivelDebug?.corridor?.() || null;
+    const corridorVisible = !!debug && !debug.viewportDisabled && Number(debug.masterOpacity || 0) > 0.01;
+    if (corridorVisible) {
+      const activeSection = sectionAtCenter();
+      if (activeSection?.id && activeSection.id !== id) {
+        issues.push(`viewport center is ${activeSection.id}, expected ${id}`);
+      }
+      if (debug.activeProductId !== id) {
+        issues.push(`corridor active product ${debug.activeProductId || 'none'}, expected ${id}`);
+      }
+      if (debug.activeImageUrl && !containsExpected(debug.activeImageUrl)) {
+        issues.push(`corridor active image ${debug.activeImageUrl}, expected ${prefix}`);
+      }
+    }
+
+    if (!corridorVisible) {
+      const card = section.querySelector('.product__card');
+      card?.scrollIntoView({ block: 'center', inline: 'nearest' });
+      await new Promise((resolveWait) => setTimeout(resolveWait, 280));
+
+      const centeredCard = cardAtCenter();
+      if (centeredCard?.id && centeredCard.id !== id) {
+        issues.push(`visible HTML product card is ${centeredCard.id}, expected ${id}`);
+      }
+      if (!isVisible(card)) {
+        issues.push(`expected HTML product card for ${id} is not visible`);
+      }
+      const imageUrls = [...section.querySelectorAll('.product__card img, .device img, picture img')]
+        .map((img) => img.currentSrc || img.src || img.getAttribute('src') || '')
+        .filter(Boolean);
+      const wrongImage = imageUrls.find((url) => !containsExpected(url));
+      if (wrongImage) {
+        issues.push(`HTML product card image ${wrongImage}, expected ${prefix}`);
+      }
+    }
+
+    return issues;
+  }, expected);
+}
+
 function summarizeFailure(result, consoleErrors, overlayIssues) {
   const failures = [];
   if (result.overflowDoc) failures.push(`document scrollWidth ${result.docScrollWidth}`);
@@ -339,9 +457,10 @@ try {
       if (msg.type() === 'error') consoleErrors.push(msg.text());
     });
 
-    for (const path of PAGES) {
-      await driver.goto(page, `${origin}${path}`);
-      await driver.wait(page, 900);
+    for (let pathIndex = 0; pathIndex < PAGES.length; pathIndex++) {
+      const path = PAGES[pathIndex];
+      await driver.goto(page, `${origin}${cacheBustedPath(path, width, height, pathIndex)}`);
+      await driver.wait(page, PRODUCT_EXPECTATIONS.has(path) ? 1500 : 900);
       const result = await evaluatePage(page);
       const overlayIssues = [];
       if (path === '/index.html') {
@@ -351,7 +470,9 @@ try {
           await driver.wait(page, 80);
         }
       }
-      const pageFailures = summarizeFailure(result, consoleErrors.splice(0), overlayIssues);
+      const identityIssues = await checkProductIdentity(page, path);
+      const pageFailures = summarizeFailure(result, consoleErrors.splice(0), overlayIssues)
+        .concat(identityIssues);
       if (pageFailures.length) {
         failures.push(`${width}x${height} ${path}: ${pageFailures.join('; ')}`);
       }
