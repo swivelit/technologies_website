@@ -39,9 +39,16 @@ const GrabSection = () => (
         {/* Good One */}
         <div className="grab-box grab-box-alt reveal-right">
           <div className="grab-box-inner">
-            <div className="grab-box-ico" style={{ background: 'rgba(249,115,22,0.12)' }}>
-              <svg viewBox="0 0 24 24" style={{ stroke: '#f97316', width: 32, height: 32, fill: 'none', strokeWidth: 1.7 }}>
-                <polyline points="20 6 9 17 4 12" />
+            <div className="grab-box-ico" style={{ background: "rgba(249,115,22,0.12)" }}>
+              <svg
+                viewBox="0 0 24 24"
+                style={{ stroke: "#f97316", width: 32, height: 32, fill: "none", strokeWidth: 1.8 }}
+              >
+                <circle cx="8" cy="8" r="3" />
+                <circle cx="16" cy="16" r="3" />
+                <path d="M10 10l4 4" />
+                <path d="M5 19l4-4" />
+                <path d="M15 9l4-4" />
               </svg>
             </div>
             <h3 className="grab-box-title">Good One</h3>
@@ -65,9 +72,20 @@ const GrabSection = () => (
         {/* Swico AI */}
         <div className="grab-box grab-box-alt reveal-right">
           <div className="grab-box-inner">
-            <div className="grab-box-ico" style={{ background: 'rgba(249,115,22,0.12)' }}>
-              <svg viewBox="0 0 24 24" style={{ stroke: '#f97316', width: 32, height: 32, fill: 'none', strokeWidth: 1.7 }}>
-                <polyline points="20 6 9 17 4 12" />
+            <div className="grab-box-ico" style={{ background: "rgba(59,130,246,0.12)" }}>
+              <svg
+                viewBox="0 0 24 24"
+                style={{ stroke: "#3b82f6", width: 32, height: 32, fill: "none", strokeWidth: 1.8 }}
+              >
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="6" cy="6" r="2" />
+                <circle cx="18" cy="6" r="2" />
+                <circle cx="6" cy="18" r="2" />
+                <circle cx="18" cy="18" r="2" />
+                <path d="M8 7l3 3" />
+                <path d="M16 7l-3 3" />
+                <path d="M8 17l3-3" />
+                <path d="M16 17l-3-3" />
               </svg>
             </div>
             <h3 className="grab-box-title">Swico AI</h3>
@@ -92,9 +110,14 @@ const GrabSection = () => (
         {/* Defect Detector */}
         <div className="grab-box grab-box-alt reveal-right">
           <div className="grab-box-inner">
-            <div className="grab-box-ico" style={{ background: 'rgba(249,115,22,0.12)' }}>
-              <svg viewBox="0 0 24 24" style={{ stroke: '#f97316', width: 32, height: 32, fill: 'none', strokeWidth: 1.7 }}>
-                <polyline points="20 6 9 17 4 12" />
+            <div className="grab-box-ico" style={{ background: "rgba(239,68,68,0.12)" }}>
+              <svg
+                viewBox="0 0 24 24"
+                style={{ stroke: "#ef4444", width: 32, height: 32, fill: "none", strokeWidth: 1.8 }}
+              >
+                <circle cx="11" cy="11" r="6" />
+                <line x1="16" y1="16" x2="21" y2="21" />
+                <path d="M9 11l2 2 4-4" />
               </svg>
             </div>
             <h3 className="grab-box-title">Defect Detector</h3>
