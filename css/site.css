@@ -1687,28 +1687,8 @@ html.is-compact-theatre:not(.is-stacked-products) .product__card-wrap {
   opacity: 0.9;
 }
 
-html.is-compact-theatre .product__card-wrap[data-reveal],
-html.is-stacked-products .product__card-wrap[data-reveal] {
-  opacity: 1;
-  transform: none;
-}
-
-html.gl.is-dense-view:not(.gl-mobile) .product__card-wrap.in,
 html.gl.is-compact-theatre:not(.is-stacked-products) .product__card-wrap.in {
-  opacity: 0.88;
-  filter: saturate(0.96) brightness(0.98);
-  transform: none;
-}
-
-html.gl.is-dense-view:not(.gl-mobile) .product__card-wrap.in:hover,
-html.gl.is-compact-theatre:not(.is-stacked-products) .product__card-wrap.in:hover {
-  opacity: 1;
-  filter: saturate(1) brightness(1);
-}
-
-html.gl.is-dense-view:not(.gl-mobile) .product__card .device,
-html.gl.is-compact-theatre:not(.is-stacked-products) .product__card .device {
-  opacity: 1;
+  opacity: 0.22;
 }
 
 html.is-stacked-products .product {
@@ -1740,7 +1720,6 @@ html.gl.is-stacked-products .scene--product {
 
 html.is-stacked-products .product__card,
 html.is-compact-theatre .product__card {
-  opacity: 1;
   transform: none;
 }
 

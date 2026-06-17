@@ -1118,8 +1118,10 @@ function clamp(v, min, max) {
   return Math.min(max, Math.max(min, v));
 }
 
-const RICH_SCENE_MIN_WIDTH = 1600;
+const RICH_SCENE_MIN_WIDTH = 1500;
 const RICH_SCENE_MIN_HEIGHT = 820;
+const FULL_CORRIDOR_MIN_WIDTH = 1600;
+const FULL_CORRIDOR_MIN_HEIGHT = 860;
 
 function readViewportSize() {
   const vv = window.visualViewport;
@@ -1371,36 +1373,6 @@ export async function initGL(canvas, options = {}) {
     });
   }
 
-  function getActiveProductIndexFromViewport() {
-    viewport = readViewportSize();
-    const centerY = viewport.h / 2;
-    let containing = null;
-    let nearest = null;
-
-    PRODUCT_IDS.forEach((id, index) => {
-      const section = document.getElementById(id);
-      if (!section) return;
-      const rect = section.getBoundingClientRect();
-      if (rect.height <= 0 || rect.width <= 0) return;
-      const midpointDistance = Math.abs((rect.top + rect.bottom) / 2 - centerY);
-      const edgeDistance = rect.top > centerY ? rect.top - centerY : centerY - rect.bottom;
-      const contains = rect.top <= centerY && rect.bottom >= centerY;
-      const candidate = {
-        index,
-        id,
-        rect,
-        distance: contains ? midpointDistance : Math.max(0, edgeDistance),
-        midpointDistance,
-      };
-      if (contains && (!containing || candidate.midpointDistance < containing.midpointDistance)) {
-        containing = candidate;
-      }
-      if (!nearest || candidate.distance < nearest.distance) nearest = candidate;
-    });
-
-    return containing || nearest || { index: 0, id: PRODUCT_IDS[0], rect: null, distance: 0 };
-  }
-
   function updateSceneStickiness() {
     viewport = readViewportSize();
     const viewportH = viewport.h;
@@ -1414,6 +1386,8 @@ export async function initGL(canvas, options = {}) {
       !isMobile &&
       viewport.w >= RICH_SCENE_MIN_WIDTH &&
       viewportH >= RICH_SCENE_MIN_HEIGHT &&
+      viewport.w >= FULL_CORRIDOR_MIN_WIDTH &&
+      viewportH >= FULL_CORRIDOR_MIN_HEIGHT &&
       !dense &&
       !short &&
       !zoomLike &&
@@ -1605,43 +1579,11 @@ export async function initGL(canvas, options = {}) {
      centre, and anchor the planes to the right-hand product-card column so each
      screenshot reads as part of that exact product, not a floating centrepiece. */
   let anchorToCard = () => {};
-  let syncCorridorToViewport = () => {};
   if (corridor) {
     const FIRST = '#good-one';
     const LAST = '#defect-detector';
-    let activeProductIndex = 0;
     window.__swivelDebug = window.__swivelDebug || {};
     window.__swivelDebug.corridor = () => corridor?.getDebugState?.() || null;
-
-    const productProgressFromRect = (rect) => {
-      if (!rect || rect.height <= 0) return 0;
-      return clamp((viewport.h / 2 - rect.top) / rect.height, 0, 1);
-    };
-
-    anchorToCard = () => {
-      const active = getActiveProductIndexFromViewport();
-      activeProductIndex = active.index;
-      const id = PRODUCT_IDS[activeProductIndex] || PRODUCT_IDS[0];
-      const card = document.querySelector(`#${id} .product__card-wrap`);
-      const rect = card?.getBoundingClientRect();
-      if (rect && rect.width > 0 && rect.height > 0) {
-        corridor.setAnchorRect(rect);
-        return;
-      }
-      corridor.setAnchorRect({
-        left: viewport.w * 0.58,
-        width: viewport.w * 0.34,
-      });
-    };
-
-    syncCorridorToViewport = ({ immediate = false, forceVisible = false } = {}) => {
-      const active = getActiveProductIndexFromViewport();
-      activeProductIndex = active.index;
-      corridor.setHead(activeProductIndex, { immediate });
-      corridor.setProductProgress(activeProductIndex, productProgressFromRect(active.rect));
-      if (forceVisible) corridor.setVisible(true);
-      anchorToCard();
-    };
 
     // visibility: on only while the product run is on screen
     ScrollTrigger.create({
@@ -1653,21 +1595,18 @@ export async function initGL(canvas, options = {}) {
     // continuous active-room head: progress 0 at Good One's centre → 1 at Defect
     // Detector's centre, mapped onto room indices 0…count-1. Stays correct on
     // deep-links and refreshes (onRefresh re-reads progress).
-    const setHead = (self) => {
-      corridor.setHead(self.progress * (corridor.count - 1));
-      requestAnimationFrame(anchorToCard);
-    };
+    const setHead = (self) => { corridor.targetHead = self.progress * (corridor.count - 1); };
     ScrollTrigger.create({
       trigger: FIRST, start: 'center center',
       endTrigger: LAST, end: 'center center',
-      onUpdate: setHead,
-      onRefresh: () => requestAnimationFrame(() => syncCorridorToViewport({ immediate: true })),
+      onUpdate: setHead, onRefresh: setHead,
     });
 
     // local product progress: inside each product section, promote screenshot
     // 1 → 2 → 3… through the foreground hero position.
     PRODUCT_IDS.forEach((id, idx) => {
       const setImageProgress = (self) => {
+        corridor.setActive(idx);
         corridor.setProductProgress(idx, self.progress);
       };
       ScrollTrigger.create({
@@ -1678,21 +1617,15 @@ export async function initGL(canvas, options = {}) {
         onRefresh: setImageProgress,
       });
     });
+
+    // anchor the corridor to the product card area (all product cards share the
+    // right-hand column, so one measurement keeps every room on spot)
+    anchorToCard = () => {
+      const card = document.querySelector(`${FIRST} .product__card-wrap`);
+      if (card) corridor.setAnchorRect(card.getBoundingClientRect());
+    };
     anchorToCard();
     ScrollTrigger.addEventListener?.('refreshInit', anchorToCard);
-    ScrollTrigger.addEventListener?.('refresh', () => {
-      requestAnimationFrame(() => syncCorridorToViewport({ immediate: true }));
-    });
-    addEventListener('scroll', () => requestAnimationFrame(anchorToCard), { passive: true });
-    addEventListener('hashchange', () => {
-      requestAnimationFrame(() => {
-        const productId = location.hash ? location.hash.slice(1) : '';
-        syncCorridorToViewport({
-          immediate: true,
-          forceVisible: PRODUCT_IDS.includes(productId),
-        });
-      });
-    });
 
     // swipe / drag-to-scrub (touch) — a horizontal swipe over the product run
     // scrubs the active room's screenshot carousel. Available on every touch
@@ -1806,9 +1739,12 @@ export async function initGL(canvas, options = {}) {
     const productIndex = PRODUCTS.indexOf(id);
     if (productIndex >= 0) {
       const p = productPulse[id];
-      corridor?.setHead(productIndex, { immediate: true });
+      corridor?.setHead(productIndex);
       corridor?.setProductProgress(productIndex, 0);
-      corridor?.setVisible(true);
+      if (corridor) {
+        corridor.head = productIndex;
+        corridor.setVisible(true);
+      }
       cortexAccent(ACCENTS[id], 0);
       cortexOpacity(isMobile ? 0.1 : 0.16, 0);
       cortexEnergy(p ? p.energy + 0.05 : 0.12, 0);
@@ -1853,10 +1789,10 @@ export async function initGL(canvas, options = {}) {
         addEventListener('keydown', cancel, { once: true });
         const resetProductHash = () => {
           if (cancelled) return;
-          corridor.setHead(productIndex, { immediate: true });
-          corridor.setProductProgress(productIndex, 0);
+          corridor.setProductState(productIndex, 0);
+          corridor.head = productIndex;
+          corridor.targetHead = productIndex;
           corridor.setVisible(true);
-          syncCorridorToViewport({ immediate: true, forceVisible: true });
         };
         resetProductHash();
         [140, 520, 1300, 2800, 5200].forEach((ms) => setTimeout(resetProductHash, ms));
@@ -1884,7 +1820,7 @@ export async function initGL(canvas, options = {}) {
     bloom?.setSize(viewport.w, viewport.h, d);
     fitCamera();
     corridor?.resize(viewport.w, viewport.h);
-    syncCorridorToViewport({ immediate: true });
+    anchorToCard();
     queueRefresh(true);
   };
   addEventListener('resize', () => {
