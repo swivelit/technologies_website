@@ -1171,7 +1171,9 @@ function meshBudget({ mobile = false, reducedMotion = false } = {}) {
   const memory = navigator.deviceMemory || 4;
   if (mobile) {
     if (cores <= 4 || memory <= 3) return { nodes: 0, k: 0, maxSegments: 0, pulses: 0, lineOpacity: 0, maxDistance: 0 };
-    return { nodes: 260, k: 2, maxSegments: 460, pulses: reducedMotion ? 0 : 12, lineOpacity: 0.22, maxDistance: 10 };
+    // slightly brighter synapses so the network reads on the sparser mobile field
+    // — same node/segment count (zero extra cost, no FPS-probe risk).
+    return { nodes: 260, k: 2, maxSegments: 460, pulses: reducedMotion ? 0 : 12, lineOpacity: 0.26, maxDistance: 10 };
   }
   if (cores <= 4 || memory <= 4) {
     return { nodes: 440, k: 3, maxSegments: 760, pulses: reducedMotion ? 0 : 22, lineOpacity: 0.24, maxDistance: 12 };
