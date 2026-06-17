@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 const topDepts = [
   {
     title: 'Digital Marketing',
@@ -51,7 +52,7 @@ const botDepts = [
   },
   {
     title: 'Customer Support',
-    desc: 'Responsible for system monitoring, technical support, infrastructure maintenance, and operational stability.',
+    desc: 'Delivers exceptional customer experiences through responsive, reliable, and multi-channel support solutions.',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
@@ -71,8 +72,11 @@ const botDepts = [
   },
 ];
  
-const CareerSection = () => (
-  <section className="section career-section" id="career">
+const CareerSection = () => {
+  const navigate = useNavigate();
+
+  return (
+    <section className="section career-section" id="career">
     <div className="section-inner">
       <div className="career-head reveal">
         <h2 className="career-main-title">Join Our Team</h2>
@@ -87,7 +91,23 @@ const CareerSection = () => (
  
       <div className="dept-grid-top stagger-children reveal">
         {topDepts.map((d) => (
-          <div className={`dept-card${d.featured ? ' dept-card-featured' : ''}`} key={d.title}>
+  <div
+    className={`dept-card${d.featured ? ' dept-card-featured' : ''}`}
+    key={d.title}
+    onClick={() => {
+      if (d.title === "Digital Marketing") {
+        navigate("/digital-marketing");
+      }
+      if (d.title === "Customer Support") {
+        navigate("/customer-support");
+      }
+      if (d.title === "Full Stack") {
+        navigate("/full-stack");
+      }
+    }}
+    style={{ cursor: "pointer" }}
+  >
+
             <div className="dept-ico-wrap">{d.icon}</div>
             <h4>{d.title}</h4>
             <p>{d.desc}</p>
@@ -96,16 +116,29 @@ const CareerSection = () => (
       </div>
  
       <div className="dept-grid-bot stagger-children reveal">
-        {botDepts.map((d) => (
-          <div className="dept-card" key={d.title}>
-            <div className="dept-ico-wrap">{d.icon}</div>
-            <h4>{d.title}</h4>
-            <p>{d.desc}</p>
-          </div>
-        ))}
-      </div>
+  {botDepts.map((d) => (
+    <div
+      className="dept-card"
+      key={d.title}
+      onClick={() => {
+        if (d.title === "Customer Support") {
+          navigate("/customer-support");
+        }
+        if (d.title === "Full Stack") {
+          navigate("/full-stack");
+        }
+      }}
+      style={{ cursor: "pointer" }}
+    >
+      <div className="dept-ico-wrap">{d.icon}</div>
+      <h4>{d.title}</h4>
+      <p>{d.desc}</p>
+    </div>
+  ))}
+</div>
     </div>
   </section>
 );
+};
  
 export default CareerSection;

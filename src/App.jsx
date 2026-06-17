@@ -1,3 +1,5 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
 import Navbar from './components/Navbar';
 import ScrollTop from './components/ScrollTop';
 import HeroSection from './components/HeroSection';
@@ -9,10 +11,11 @@ import CareerSection from './components/CareerSection';
 import CTABanner from './components/CTABanner';
 import Footer from './components/Footer';
 import useScrollReveal from './hooks/useScrollReveal';
+import DigitalMarketing from './pages/Digital';
+import CustomerSupport from "./pages/Customer";
+import FullStack from "./pages/FullStack";
 
-function App() {
-  useScrollReveal();
-
+function HomePage() {
   return (
     <>
       <ScrollTop />
@@ -26,6 +29,30 @@ function App() {
       <CTABanner />
       <Footer />
     </>
+  );
+}
+
+function App() {
+  useScrollReveal();
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route
+          path="/digital-marketing"
+          element={<DigitalMarketing />}
+        />
+        <Route
+          path="/customer-support"
+          element={<CustomerSupport />}
+        />
+        <Route
+          path="/full-stack"
+          element={<FullStack />}
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
