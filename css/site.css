@@ -192,7 +192,21 @@ html.gl-loading .loader, html.gl .loader { display: flex; }
   pointer-events: none;
 }
 .chrome--top > * { pointer-events: auto; }
-
+/* masking scrim so page content scrolling under the fixed header never collides
+   with the bare wordmark / pills. Sits below the brand+pills (z-index:-1) but
+   above page content (the whole .chrome is z-index:10), fades smoothly to
+   transparent, and never intercepts taps. Taller than header + notch inset. */
+.chrome--top::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: calc(130px + env(safe-area-inset-top, 0px));
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(5, 6, 10, 0.92) 0%, rgba(5, 6, 10, 0.75) 40%, transparent 100%);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
 .brand { display: flex; flex-direction: column; line-height: 1; gap: 4px; }
 .brand__main {
   font-weight: 700; font-size: 1.06rem; letter-spacing: 0.06em;
