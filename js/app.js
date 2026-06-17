@@ -91,105 +91,20 @@ function viewportCanFitRichScene() {
     !mobile;
 }
 
-function rectsOverlap(a, b, padding = 12) {
-  if (!a || !b || a.width <= 0 || a.height <= 0 || b.width <= 0 || b.height <= 0) return false;
-  return !(
-    a.right < b.left - padding ||
-    a.left > b.right + padding ||
-    a.bottom < b.top - padding ||
-    a.top > b.bottom + padding
-  );
-}
-
-function getActiveProductSection() {
-  const { h } = viewportSize();
-  const centerY = h / 2;
-  let containing = null;
-  let nearest = null;
-
-  document.querySelectorAll('.scene--product').forEach((scene) => {
-    const rect = scene.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0 || rect.bottom < 0 || rect.top > h) return;
-    const contains = rect.top <= centerY && rect.bottom >= centerY;
-    const distance = contains
-      ? Math.abs((rect.top + rect.bottom) / 2 - centerY)
-      : Math.max(0, rect.top > centerY ? rect.top - centerY : centerY - rect.bottom);
-    const candidate = { scene, distance };
-    if (contains && (!containing || distance < containing.distance)) containing = candidate;
-    if (!nearest || distance < nearest.distance) nearest = candidate;
-  });
-
-  return containing?.scene || nearest?.scene || null;
-}
-
-function syncSideIndexVisibility() {
-  const { w, h } = viewportSize();
-  const sideIndex = document.querySelector('.chrome--index');
-  const activeProduct = getActiveProductSection();
-  const productActive = !!activeProduct;
-  const cls = html.classList;
-  const viewportUnsafe = productActive && (
-    w < 1920 ||
-    h < 930 ||
-    cls.contains('is-dense-view') ||
-    cls.contains('is-short-view') ||
-    cls.contains('is-compact-theatre') ||
-    cls.contains('is-stacked-products') ||
-    cls.contains('is-zoom-like-view')
-  );
-  let collides = false;
-
-  if (sideIndex && activeProduct && !viewportUnsafe) {
-    const indexRect = sideIndex.getBoundingClientRect();
-    const targets = activeProduct.querySelectorAll('.product__info, .product__foot, .feature-list, .industry-grid');
-    collides = [...targets].some((target) => rectsOverlap(indexRect, target.getBoundingClientRect(), 14));
-  }
-
-  cls.toggle('hide-side-index', viewportUnsafe);
-  cls.toggle('side-index-collides', productActive && collides);
-}
-
-let sideIndexFrame = 0;
-function queueSideIndexSync() {
-  cancelAnimationFrame(sideIndexFrame);
-  sideIndexFrame = requestAnimationFrame(syncSideIndexVisibility);
-}
-
 syncViewportLayout();
-queueSideIndexSync();
-addEventListener('scroll', queueSideIndexSync, { passive: true });
-addEventListener('resize', () => {
-  syncViewportLayout();
-  queueSideIndexSync();
-}, { passive: true });
+addEventListener('resize', syncViewportLayout, { passive: true });
 addEventListener('orientationchange', () => {
   syncViewportLayout();
-  queueSideIndexSync();
   setTimeout(syncViewportLayout, 180);
-  setTimeout(queueSideIndexSync, 180);
 }, { passive: true });
-addEventListener('hashchange', queueSideIndexSync, { passive: true });
-window.visualViewport?.addEventListener('resize', () => {
-  syncViewportLayout();
-  queueSideIndexSync();
-}, { passive: true });
-document.fonts?.ready?.then(() => {
-  syncViewportLayout();
-  queueSideIndexSync();
-}).catch(() => {});
+window.visualViewport?.addEventListener('resize', syncViewportLayout, { passive: true });
+document.fonts?.ready?.then(syncViewportLayout).catch(() => {});
 addEventListener('load', () => {
   syncViewportLayout();
-  queueSideIndexSync();
   document.querySelectorAll('img').forEach((img) => {
-    if (!img.complete) {
-      img.addEventListener('load', () => {
-        syncViewportLayout();
-        queueSideIndexSync();
-      }, { once: true });
-    }
+    if (!img.complete) img.addEventListener('load', syncViewportLayout, { once: true });
   });
 }, { once: true });
-window.__swivelSyncSideIndex = queueSideIndexSync;
 
 /* High-power tablets (e.g. iPad Pro / Air) can drive the richer desktop corridor
    instead of always falling back to the conservative mobile path. We only opt a
