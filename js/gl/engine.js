@@ -1118,17 +1118,6 @@ function clamp(v, min, max) {
   return Math.min(max, Math.max(min, v));
 }
 
-const RICH_SCENE_MIN_WIDTH = 1120;
-const RICH_SCENE_MIN_HEIGHT = 760;
-
-function readViewportSize() {
-  const vv = window.visualViewport;
-  return {
-    w: Math.max(1, Math.round(vv?.width || innerWidth || document.documentElement.clientWidth || 1)),
-    h: Math.max(1, Math.round(vv?.height || innerHeight || document.documentElement.clientHeight || 1)),
-  };
-}
-
 /* DPR is capped well below the native ratio on desktop: smoothness beats the
    marginal sharpness of full 2× on a field of soft additive sprites. */
 function renderPixelRatio(isMobile) {
@@ -1216,18 +1205,17 @@ export async function initGL(canvas, options = {}) {
     powerPreference: 'high-performance',
   });
   const dpr = renderPixelRatio(isMobile);
-  let viewport = readViewportSize();
   renderer.setPixelRatio(dpr);
-  renderer.setSize(viewport.w, viewport.h, false);
+  renderer.setSize(innerWidth, innerHeight, false);
   renderer.setClearColor(0x000000, 0);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(50, viewport.w / viewport.h, 0.1, 500);
+  const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 500);
 
   const LOGO_W = 30;
   const cam = { baseZ: 46, dolly: 0, px: 0, py: 0, tx: 0, ty: 0 };
   function fitCamera() {
-    camera.aspect = viewport.w / viewport.h;
+    camera.aspect = innerWidth / innerHeight;
     const halfTan = Math.tan((camera.fov * Math.PI) / 360);
     cam.baseZ = Math.max(46, (LOGO_W * 0.72) / (halfTan * camera.aspect));
     camera.updateProjectionMatrix();
@@ -1273,7 +1261,7 @@ export async function initGL(canvas, options = {}) {
         reducedMotion,
         maxAnisotropy: renderer.capabilities.getMaxAnisotropy(),
       });
-      corridor.resize(viewport.w, viewport.h);
+      corridor.resize(innerWidth, innerHeight);
       corridor.load().catch((err) => console.warn('[swivel] corridor textures:', err));
     } catch (err) {
       console.warn('[swivel] image corridor unavailable:', err);
@@ -1288,7 +1276,7 @@ export async function initGL(canvas, options = {}) {
   if (highEnd && BLOOM_ENABLED) {
     try {
       bloom = new GlowBloom(renderer, BLOOM_PARAMS);
-      bloom.setSize(viewport.w, viewport.h, dpr);
+      bloom.setSize(innerWidth, innerHeight, dpr);
     } catch (err) {
       console.warn('[swivel] bloom unavailable:', err);
       bloom = null;
@@ -1347,7 +1335,7 @@ export async function initGL(canvas, options = {}) {
 
   let lenis = null;
   let refreshFrame = 0;
-  const sceneFitQuery = matchMedia(`(max-width: ${RICH_SCENE_MIN_WIDTH - 1}px), (max-height: ${RICH_SCENE_MIN_HEIGHT - 1}px)`);
+  const sceneFitQuery = matchMedia('(max-width: 1060px), (max-height: 720px), (hover: none), (pointer: coarse)');
 
   function getHashTarget(hash) {
     if (!hash || hash === '#') return null;
@@ -1372,22 +1360,21 @@ export async function initGL(canvas, options = {}) {
   }
 
   function updateSceneStickiness() {
-    viewport = readViewportSize();
-    const viewportH = viewport.h;
-    const theatreFitsViewport =
-      !isMobile &&
-      viewport.w >= RICH_SCENE_MIN_WIDTH &&
-      viewportH >= RICH_SCENE_MIN_HEIGHT &&
-      !sceneFitQuery.matches;
-
+    const viewportH = window.visualViewport?.height || innerHeight;
     document.querySelectorAll('.scene').forEach((sceneEl) => {
       const hold = sceneEl.querySelector('.scene__hold');
       if (!hold || sceneEl.classList.contains('scene--contact')) return;
+      const keepProductTheatre =
+        sceneEl.classList.contains('scene--product') &&
+        !isMobile &&
+        !sceneFitQuery.matches;
+      if (keepProductTheatre) {
+        sceneEl.classList.remove('scene--unstick');
+        return;
+      }
       sceneEl.classList.remove('scene--unstick');
-      const isProduct = sceneEl.classList.contains('scene--product');
-      const holdTooTall = hold.scrollHeight > viewportH + 1;
-      const shouldUnstick = holdTooTall || (isProduct && !theatreFitsViewport);
-      sceneEl.classList.toggle('scene--unstick', shouldUnstick);
+      const contentTooTall = hold.scrollHeight > viewportH + 8;
+      sceneEl.classList.toggle('scene--unstick', contentTooTall);
     });
   }
 
@@ -1412,19 +1399,6 @@ export async function initGL(canvas, options = {}) {
     if (document.readyState === 'complete') refresh();
     else addEventListener('load', refresh, { once: true });
     document.fonts?.ready?.then(refresh).catch(() => {});
-  }
-
-  function watchLayoutMedia() {
-    const schedule = () => queueRefresh(true);
-    addEventListener('orientationchange', () => {
-      schedule();
-      setTimeout(schedule, 180);
-      setTimeout(schedule, 520);
-    }, { passive: true });
-    document.querySelectorAll('img').forEach((img) => {
-      if (!img.complete) img.addEventListener('load', schedule, { once: true });
-      img.addEventListener('error', schedule, { once: true });
-    });
   }
 
   function disableLenis(err) {
@@ -1452,7 +1426,6 @@ export async function initGL(canvas, options = {}) {
     }
   }
   updateSceneStickiness();
-  watchLayoutMedia();
 
   /* scroll choreography */
   // bursts are deliberately small — particles reflow/settle into the next
@@ -1766,38 +1739,29 @@ export async function initGL(canvas, options = {}) {
   /* pointer parallax (fine pointers only) */
   if (matchMedia('(pointer: fine)').matches) {
     addEventListener('pointermove', (e) => {
-      cam.tx = (e.clientX / viewport.w - 0.5) * 4.4;
-      cam.ty = (e.clientY / viewport.h - 0.5) * -3.0;
+      cam.tx = (e.clientX / innerWidth - 0.5) * 4.4;
+      cam.ty = (e.clientY / innerHeight - 0.5) * -3.0;
     }, { passive: true });
   }
 
   /* resize */
   let resizeT;
-  const applyResize = () => {
-    viewport = readViewportSize();
-    const d = renderPixelRatio(isMobile);
-    renderer.setPixelRatio(d);
-    renderer.setSize(viewport.w, viewport.h, false);
-    particles.uniforms.uPixelRatio.value = d;
-    if (cortex) cortex.uniforms.uPixelRatio.value = d;
-    bloom?.setSize(viewport.w, viewport.h, d);
-    fitCamera();
-    corridor?.resize(viewport.w, viewport.h);
-    anchorToCard();
-    queueRefresh(true);
-  };
   addEventListener('resize', () => {
     clearTimeout(resizeT);
-    resizeT = setTimeout(applyResize, 120);
+    resizeT = setTimeout(() => {
+      const d = renderPixelRatio(isMobile);
+      renderer.setPixelRatio(d);
+      renderer.setSize(innerWidth, innerHeight, false);
+      particles.uniforms.uPixelRatio.value = d;
+      if (cortex) cortex.uniforms.uPixelRatio.value = d;
+      bloom?.setSize(innerWidth, innerHeight, d);
+      fitCamera();
+      corridor?.resize(innerWidth, innerHeight);
+      anchorToCard();
+      queueRefresh(true);
+    }, 120);
   });
-  window.visualViewport?.addEventListener('resize', () => {
-    clearTimeout(resizeT);
-    resizeT = setTimeout(applyResize, 80);
-  }, { passive: true });
-  addEventListener('orientationchange', () => {
-    clearTimeout(resizeT);
-    resizeT = setTimeout(applyResize, 160);
-  }, { passive: true });
+  window.visualViewport?.addEventListener('resize', () => queueRefresh(true), { passive: true });
   if (sceneFitQuery.addEventListener) sceneFitQuery.addEventListener('change', () => queueRefresh(true));
   else sceneFitQuery.addListener?.(() => queueRefresh(true));
 
@@ -1996,7 +1960,7 @@ export async function initGL(canvas, options = {}) {
      switched on through any of the paths above, force it on. */
   if (!hash || hash === '#intro') {
     gsap.delayedCall(reducedMotion ? 1.4 : 3.0, () => {
-      const nearIntro = (window.scrollY || 0) < viewport.h * 0.85;
+      const nearIntro = (window.scrollY || 0) < innerHeight * 0.85;
       if (nearIntro && !logoEl?.classList.contains('is-on')) revealWordmark();
     });
   }

@@ -177,8 +177,6 @@ const VIEW = 10;        // how far in front of the active room the camera sits
 const FOG_NEAR = 9;     // view-space distance where planes start fading to bg
 const FOG_FAR = 50;     // …and where they're fully absorbed by the dark
 const ANCHOR_Y = 0.02;  // vertical anchor in NDC (~viewport centre, card height)
-const RICH_SCENE_MIN_WIDTH = 1120;
-const RICH_SCENE_MIN_HEIGHT = 760;
 
 /* ------------------------------------------------------------------ *
  * glass-screen shader — texture + rounded corners + soft inner vignette,
@@ -474,51 +472,14 @@ function mixLayout(a, b, t) {
   };
 }
 
-function viewportMetrics(w, h, isMobile) {
-  const width = Math.max(1, Math.round(w || window.visualViewport?.width || innerWidth || 1));
-  const height = Math.max(1, Math.round(h || window.visualViewport?.height || innerHeight || 1));
-  const fit = Math.min(width / 1440, height / 900);
-  const compactW = width < RICH_SCENE_MIN_WIDTH;
-  const compactH = height < RICH_SCENE_MIN_HEIGHT;
-  const coarse = matchMedia('(pointer: coarse), (hover: none)').matches;
-  const compactScale =
-    Math.min(
-      compactW ? clamp(width / RICH_SCENE_MIN_WIDTH, 0.68, 1) : 1,
-      compactH ? clamp(height / RICH_SCENE_MIN_HEIGHT, 0.66, 1) : 1
-    );
-  const base = clamp(fit, isMobile ? 0.48 : 0.62, isMobile ? 0.88 : 1.16);
-  const planeScale = clamp(
-    base * compactScale * (coarse ? 0.82 : 1),
-    isMobile ? 0.42 : 0.5,
-    isMobile ? 0.88 : 1.16
-  );
-  const spreadScale = clamp(0.62 + planeScale * 0.38, 0.58, width > 2200 ? 1.18 : 1.1);
-  const depthScale = clamp(0.78 + planeScale * 0.24, 0.72, 1.08);
-  const yScale = clamp(0.68 + planeScale * 0.28, 0.62, 1.02);
-  const opacityScale = clamp((coarse ? 0.42 : 0.62) + planeScale * 0.34, 0.34, 0.98);
-  return {
-    width,
-    height,
-    aspect: width / height,
-    planeScale,
-    spreadScale,
-    depthScale,
-    yScale,
-    opacityScale,
-    anchorClamp: width > 2200 ? 0.62 : 0.78,
-    disabled: !isMobile && (width < 900 || height < 520),
-    compact: compactW || compactH || coarse,
-  };
-}
-
-function carouselSlot(offset, profile, isMobile, orient = 'portrait', metrics = viewportMetrics(1440, 900, isMobile)) {
+function carouselSlot(offset, profile, isMobile, orient = 'portrait') {
   const d = Math.abs(offset);
   const side = offset < 0 ? -1 : 1;
   const heroScale = (profile.heroScale || 1) * (orient === 'landscape' ? 1.03 : 1);
   const sideScale = profile.sideScale || 1;
   const rackScale = profile.rackScale || 1;
-  const spread = (profile.spread || 1) * (orient === 'landscape' ? 1.1 : 1) * metrics.spreadScale;
-  const depth = (profile.depth || 1) * metrics.depthScale;
+  const spread = (profile.spread || 1) * (orient === 'landscape' ? 1.1 : 1);
+  const depth = profile.depth || 1;
   const calm = profile.calm || 1;
 
   const stops = isMobile
@@ -539,7 +500,6 @@ function carouselSlot(offset, profile, isMobile, orient = 'portrait', metrics = 
   const i = Math.min(stops.length - 2, Math.floor(capped));
   const t = smoothstep(0, 1, capped - i);
   const out = mixLayout(stops[i], stops[i + 1], t);
-  out.y *= metrics.yScale;
 
   const wave = profile.wave || 0;
   const shelf = profile.shelf || 0;
@@ -576,11 +536,11 @@ function carouselSlot(offset, profile, isMobile, orient = 'portrait', metrics = 
   return out;
 }
 
-function naturalSize(aspect, isMobile, scale = 1) {
+function naturalSize(aspect, isMobile) {
   const portraitH = isMobile ? 6.2 : 7.05;
   const landscapeW = isMobile ? 8.1 : 9.65;
-  if (aspect < 1) return { w: portraitH * aspect * scale, h: portraitH * scale };
-  return { w: landscapeW * scale, h: (landscapeW / aspect) * scale };
+  if (aspect < 1) return { w: portraitH * aspect, h: portraitH };
+  return { w: landscapeW, h: landscapeW / aspect };
 }
 
 /* ------------------------------------------------------------------ *
@@ -595,17 +555,14 @@ export function createCorridor(THREE, opts = {}) {
   } = opts;
 
   const maxDim = mobile ? 560 : 1080;
-  let metrics = viewportMetrics(window.visualViewport?.width || innerWidth, window.visualViewport?.height || innerHeight, mobile);
-  const roomSpacing = () => SPACING * metrics.depthScale;
-  const viewDistance = () => VIEW + (1 - metrics.planeScale) * (mobile ? 1.5 : 3.4);
   // default horizontal anchor in NDC: desktop pushes the rooms toward the
   // right-hand product-card column (text sits on the left); mobile stacks the
   // layout, so keep the corridor centred behind the content.
-  const defaultAnchorX = mobile ? 0.0 : (metrics.aspect > 2.15 ? 0.34 : 0.42);
+  const defaultAnchorX = mobile ? 0.0 : 0.42;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 260);
-  camera.position.set(0, 0, viewDistance());
+  camera.position.set(0, 0, VIEW);
 
   // anchorGroup offsets every room toward the product-card area without moving
   // the camera, so the active hero screen lands beside the product copy
@@ -620,7 +577,7 @@ export function createCorridor(THREE, opts = {}) {
   CORRIDOR_PRODUCTS.forEach((product, ri) => {
     const profile = productProfile(product);
     const group = new THREE.Group();
-    const rz = -ri * roomSpacing();
+    const rz = -ri * SPACING;
     // gentle per-room drift so the corridor isn't a dead-straight pipe
     const rx = Math.sin(ri * 1.3) * profile.roomX;
     const ry = Math.cos(ri * 0.7) * profile.roomY;
@@ -670,7 +627,7 @@ export function createCorridor(THREE, opts = {}) {
 
     const planes = [];
     product.images.forEach((url, i) => {
-      const layout = carouselSlot(i, profile, mobile, product.orient, metrics);
+      const layout = carouselSlot(i, profile, mobile, product.orient);
       const mat = new THREE.ShaderMaterial({
         uniforms: {
           uTex: { value: null },
@@ -768,8 +725,7 @@ export function createCorridor(THREE, opts = {}) {
   });
 
   function setNaturalSize(plane, aspect) {
-    plane.aspect = aspect;
-    const size = naturalSize(aspect, mobile, metrics.planeScale);
+    const size = naturalSize(aspect, mobile);
     plane.naturalW = size.w;
     plane.naturalH = size.h;
   }
@@ -785,20 +741,6 @@ export function createCorridor(THREE, opts = {}) {
         sy * (1.07 + trail.lag * 0.05),
         1
       );
-    }
-  }
-
-  function relayoutForViewport() {
-    const spacing = roomSpacing();
-    rooms.forEach((room, ri) => {
-      const z = -ri * spacing;
-      room.z = z;
-      room.base.z = z;
-      room.group.position.z = z;
-    });
-    for (const plane of allPlanes) {
-      if (plane.aspect) setNaturalSize(plane, plane.aspect);
-      sizePlane(plane, plane.layout?.scale || 1);
     }
   }
 
@@ -879,7 +821,7 @@ export function createCorridor(THREE, opts = {}) {
     setAnchorRect(rect) {
       if (!rect || !rect.width || mobile) return;   // mobile stays centred
       const cx = rect.left + rect.width / 2;
-      this._anchorTargetX = clamp((cx / Math.max(1, metrics.width)) * 2 - 1, -metrics.anchorClamp, metrics.anchorClamp);
+      this._anchorTargetX = clamp((cx / Math.max(1, innerWidth)) * 2 - 1, -0.85, 0.85);
     },
 
     /* lazy texture load — prioritises hero planes, small concurrency pool so
@@ -928,9 +870,7 @@ export function createCorridor(THREE, opts = {}) {
     update(dt, px = 0, py = 0) {
       // master fade follows the engine's visibility flag (set across the product
       // run), so the corridor only appears during the product sections.
-      const mTarget = (this.visible && !metrics.disabled)
-        ? masterOpacity * (this.qualityScale || 1) * metrics.opacityScale
-        : 0;
+      const mTarget = this.visible ? masterOpacity * (this.qualityScale || 1) : 0;
       this.master += (mTarget - this.master) * Math.min(1, dt * 3);
       if (this.master < 0.002 && mTarget === 0) {
         this.master = 0;
@@ -948,14 +888,12 @@ export function createCorridor(THREE, opts = {}) {
       this._velocity += (rawVelocity * 0.22 - this._velocity) * Math.min(1, dt * 7);
       const vel = clamp(Math.abs(this._velocity), 0, 1);
       const head = clamp(this.head, -0.6, (N - 1) + 0.6);
-      const spacing = roomSpacing();
-      const view = viewDistance();
-      const camZ = view - head * spacing;
+      const camZ = VIEW - head * SPACING;
 
       // anchor the corridor beside the product card: convert the NDC anchor into
       // a world offset at the active room's depth and shift every room there.
       this._anchorX += (this._anchorTargetX - this._anchorX) * Math.min(1, dt * 4);
-      const halfH = Math.tan((camera.fov * Math.PI) / 360) * view;
+      const halfH = Math.tan((camera.fov * Math.PI) / 360) * VIEW;
       const halfW = halfH * camera.aspect;
       anchorGroup.position.x = this._anchorX * halfW;
       anchorGroup.position.y = ANCHOR_Y * halfH;
@@ -973,7 +911,7 @@ export function createCorridor(THREE, opts = {}) {
         const isActiveRoom = i === activeIdx;
         updateRoomImageHead(room, dt, isActiveRoom);
         const ahead = camZ - room.z;                 // >0 in front, <0 passed
-        const visible = ahead > -spacing * 0.6 && ahead < FOG_FAR + spacing * 1.5;
+        const visible = ahead > -SPACING * 0.6 && ahead < FOG_FAR + SPACING * 1.5;
         room.group.visible = visible;
         room.visibleImageIndices = [];
         room.frontPlaneCount = 0;
@@ -1014,7 +952,7 @@ export function createCorridor(THREE, opts = {}) {
             for (const trail of plane.trails) { trail.mesh.visible = false; trail.ready = false; }
             continue;
           }
-          const layout = carouselSlot(offset, plane.profile, mobile, plane.product.orient, metrics);
+          const layout = carouselSlot(offset, plane.profile, mobile, plane.product.orient);
           // small products (e.g. 6 shots) wrap at a depth where the panel is
           // still faintly visible — fade it fully to nothing near the antipode so
           // it never pops from one side to the other as the head crosses.
@@ -1117,13 +1055,8 @@ export function createCorridor(THREE, opts = {}) {
     },
 
     resize(w, h) {
-      metrics = viewportMetrics(w, h, mobile);
-      camera.fov = mobile ? 58 : (metrics.compact ? 60 : 55);
       camera.aspect = (w || 1) / (h || 1);
       camera.updateProjectionMatrix();
-      this._anchorTargetX = mobile ? 0 : clamp(this._anchorTargetX, -metrics.anchorClamp, metrics.anchorClamp);
-      this._anchorX = mobile ? 0 : clamp(this._anchorX, -metrics.anchorClamp, metrics.anchorClamp);
-      relayoutForViewport();
     },
 
     dispose() {
@@ -1156,9 +1089,6 @@ export function createCorridor(THREE, opts = {}) {
         sectionProgress: room?.localProgress || 0,
         isCyclicMode: !reducedMotion,
         masterOpacity: this.master,
-        viewportScale: metrics.planeScale,
-        viewportOpacityScale: metrics.opacityScale,
-        viewportDisabled: metrics.disabled,
         missingImages: room ? room.planes.filter((p) => p.missing).map((p) => p.imageIndex) : [],
       };
     },

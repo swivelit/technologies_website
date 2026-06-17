@@ -37,30 +37,14 @@
   --f-display: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
   --f-mono: "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
 
-  --pad-x: clamp(16px, 5vw, 84px);
-  --chrome-pad: clamp(14px, 2.2vw, 34px);
-  --section-pad-y: clamp(86px, 12svh, 150px);
-  --scene-min-h: 100svh;
-  --content-max: 1560px;
-  --card-scale: 1;
-  --text-scale: 1;
-  --product-card-max-h: min(62dvh, 650px);
-  --product-card-w: min(100%, 760px, calc(var(--product-card-max-h) * 1.5238));
-  --chrome-hit: 42px;
+  --pad-x: clamp(20px, 5vw, 84px);
+  --chrome-pad: clamp(16px, 2.4vw, 34px);
 }
 
 /* ---------- reset ---------- */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  min-width: 0;
-}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: clip;
   background: var(--bg);
   color-scheme: dark;
   scroll-behavior: smooth;
@@ -69,18 +53,15 @@ html {
 }
 
 body {
-  width: 100%;
-  max-width: 100%;
   background: var(--bg);
   color: var(--text);
   font-family: var(--f-display);
   font-weight: 400;
   line-height: 1.55;
   letter-spacing: 0.01em;
-  overflow-x: clip;
+  overflow-x: hidden;
   min-height: 100vh;
   min-height: 100svh;
-  overflow-wrap: break-word;
 }
 
 html.lenis,
@@ -117,76 +98,10 @@ html:not(.overlay-open) body {
   overflow-y: visible;
 }
 
-body,
-main,
-section,
-header,
-nav,
-aside,
-footer,
-article,
-form,
-fieldset,
-.scene,
-.scene__hold,
-.product,
-.product__info,
-.product__card-wrap,
-.contact-grid,
-.overlay,
-.overlay__panel {
-  max-width: 100%;
-}
-
-main,
-section,
-.scene__hold,
-.product,
-.contact-grid,
-.founder,
-.team-grid,
-.stat-strip,
-.dept-grid,
-.role-grid,
-.ogrid {
-  min-width: 0;
-}
-
-img,
-svg,
-video,
-canvas,
-picture {
-  max-width: 100%;
-}
-
-img { height: auto; display: block; }
+img { max-width: 100%; display: block; }
 a { color: inherit; text-decoration: none; }
 ul, ol { list-style: none; }
-button,
-input,
-textarea,
-select {
-  font: inherit;
-  max-width: 100%;
-}
-button { color: inherit; background: none; border: 0; cursor: pointer; }
-
-h1,
-h2,
-h3,
-h4,
-p,
-li,
-a,
-button,
-label,
-input,
-textarea,
-select,
-.mono {
-  overflow-wrap: anywhere;
-}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 
 ::selection { background: var(--ember); color: #04070e; }
 
@@ -213,10 +128,7 @@ select,
 /* ---------- stage ---------- */
 #gl {
   position: fixed; inset: 0; z-index: 0;
-  width: 100vw;
-  height: 100vh;
-  height: 100svh;
-  height: 100dvh;
+  width: 100%; height: 100%;
   display: none;
   pointer-events: none;
 }
@@ -238,12 +150,7 @@ html.gl-mobile .vignette {
     linear-gradient(180deg, rgba(5, 5, 8, 0.22), rgba(5, 5, 8, 0.66));
 }
 
-main {
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  overflow-x: clip;
-}
+main { position: relative; z-index: 2; }
 
 /* ---------- loader ---------- */
 .loader {
@@ -275,7 +182,6 @@ html.gl-loading .loader, html.gl .loader { display: flex; }
 .chrome--top {
   top: 0; left: 0; right: 0;
   display: flex; align-items: center; justify-content: space-between;
-  gap: clamp(12px, 2vw, 28px);
   /* keep clear of notch / rounded corners on viewport-fit=cover devices;
      env() is 0 on non-notched screens, so desktop is unchanged */
   padding:
@@ -301,39 +207,25 @@ html.gl-loading .loader, html.gl .loader { display: flex; }
   -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
 }
-.brand {
-  display: flex;
-  flex: 0 1 auto;
-  flex-direction: column;
-  line-height: 1;
-  gap: 4px;
-  min-width: max-content;
-}
+.brand { display: flex; flex-direction: column; line-height: 1; gap: 4px; }
 .brand__main {
-  font-weight: 700; font-size: clamp(0.88rem, 1.1vw, 1.06rem); letter-spacing: 0.06em;
+  font-weight: 700; font-size: 1.06rem; letter-spacing: 0.06em;
   background: linear-gradient(120deg, #ffffff 35%, #bcd4ff);
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;
 }
 .brand__sub { font-size: 0.5rem; letter-spacing: 0.42em; color: var(--dim); }
 
-.pills {
-  display: flex;
-  flex: 0 1 auto;
-  gap: clamp(6px, 1vw, 10px);
-  justify-content: flex-end;
-  min-width: 0;
-}
+.pills { display: flex; gap: 10px; }
 .pill {
   display: inline-flex; align-items: center; gap: 8px;
-  min-height: var(--chrome-hit);
-  padding: 0.62em clamp(0.82em, 1.4vw, 1.25em);
+  padding: 0.62em 1.25em;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: rgba(8, 8, 14, 0.45);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-  font-family: var(--f-mono); font-size: clamp(0.56rem, 0.72vw, 0.66rem); font-weight: 500;
-  letter-spacing: clamp(0.12em, 0.35vw, 0.2em); text-transform: uppercase;
+  font-family: var(--f-mono); font-size: 0.66rem; font-weight: 500;
+  letter-spacing: 0.2em; text-transform: uppercase;
   color: var(--text);
   transition: border-color 0.3s, box-shadow 0.3s, background 0.3s, color 0.3s;
 }
@@ -380,11 +272,10 @@ html.gl-loading .loader, html.gl .loader { display: flex; }
 
 .btn-outline {
   align-self: flex-start;
-  min-height: var(--chrome-hit);
-  padding: 0.7em clamp(1em, 1.4vw, 1.3em);
+  padding: 0.7em 1.3em;
   border: 1px solid var(--line);
-  font-family: var(--f-mono); font-size: clamp(0.56rem, 0.66vw, 0.6rem); font-weight: 500;
-  letter-spacing: clamp(0.12em, 0.3vw, 0.22em); text-transform: uppercase;
+  font-family: var(--f-mono); font-size: 0.6rem; font-weight: 500;
+  letter-spacing: 0.22em; text-transform: uppercase;
   color: var(--dim);
   transition: border-color 0.3s, color 0.3s, box-shadow 0.3s;
 }
@@ -419,14 +310,12 @@ html.gl-loading .loader, html.gl .loader { display: flex; }
 .scene,
 #work { scroll-margin-top: calc(var(--chrome-pad) + 76px); }
 .scene__hold {
-  min-height: var(--scene-min-h);
+  min-height: 100vh;
+  min-height: 100svh;
   min-height: 100dvh;
   display: flex; flex-direction: column; justify-content: center;
-  padding:
-    max(var(--section-pad-y), calc(78px + env(safe-area-inset-top, 0px)))
-    var(--pad-x)
-    max(var(--section-pad-y), calc(54px + env(safe-area-inset-bottom, 0px)));
-  max-width: var(--content-max); margin: 0 auto; width: 100%;
+  padding: clamp(90px, 14vh, 150px) var(--pad-x);
+  max-width: 1560px; margin: 0 auto; width: 100%;
 }
 
 /* immersive heights only when the GL stage is live */
@@ -434,7 +323,8 @@ html.gl-loading .loader, html.gl .loader { display: flex; }
    while particles transition; JS marks oversized scenes as .scene--unstick. */
 html.gl .scene__hold {
   position: sticky; top: 0;
-  min-height: var(--scene-min-h);
+  min-height: 100vh;
+  min-height: 100svh;
   min-height: 100dvh;
 }
 html.gl .scene--intro { height: 140vh; height: 140svh; height: 140dvh; }
@@ -460,16 +350,11 @@ html.gl .scene.scene--unstick .scene__hold {
 .eyebrow { color: var(--dim); margin-bottom: 26px; }
 .eyebrow b { color: var(--ember); font-weight: 500; }
 
-h1, h2, h3 {
-  font-weight: 700;
-  line-height: 1.02;
-  letter-spacing: 0;
-  max-width: 100%;
-}
+h1, h2, h3 { font-weight: 700; line-height: 1.02; letter-spacing: -0.025em; }
 
-.title-xl { font-size: calc(clamp(2.45rem, 8.2vw, 8.2rem) * var(--text-scale)); text-wrap: balance; }
-.title-lg { font-size: calc(clamp(2rem, 5.35vw, 5.1rem) * var(--text-scale)); text-wrap: balance; }
-.title-md { font-size: calc(clamp(1.58rem, 3.7vw, 3.25rem) * var(--text-scale)); text-wrap: balance; }
+.title-xl { font-size: clamp(2.9rem, 9.2vw, 8.6rem); text-wrap: balance; }
+.title-lg { font-size: clamp(2.2rem, 6vw, 5.2rem); text-wrap: balance; }
+.title-md { font-size: clamp(1.7rem, 4.2vw, 3.4rem); }
 
 .lede {
   font-size: clamp(1.02rem, 1.45vw, 1.3rem);
@@ -507,7 +392,7 @@ html.gl .scene--intro .scene__hold::before {
 }
 .intro__wordmark {
   font-weight: 700; line-height: 1;
-  font-size: calc(clamp(3rem, 12vw, 8.2rem) * var(--text-scale)); letter-spacing: 0;
+  font-size: clamp(3.4rem, 13vw, 8.5rem); letter-spacing: -0.01em;
   background: linear-gradient(180deg, #ffffff 28%, #c3d6ff);
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;
@@ -670,7 +555,7 @@ html.gl .scene--hero .scene__hold::before {
 .hero__title {
   /* the hero is now the proposition (not the wordmark) — size it below the intro
      brand reveal for hierarchy, and so the longer line never overflows wide. */
-  font-size: calc(clamp(2.02rem, 4.75vw, 4.45rem) * var(--text-scale));
+  font-size: clamp(2.2rem, 5vw, 4.6rem);
   line-height: 1.05;
   background: linear-gradient(180deg, #fff 30%, #b9b4cc);
   -webkit-background-clip: text; background-clip: text;
@@ -689,18 +574,17 @@ html.gl .scene--hero .scene__hold::before {
 
 .product {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(300px, 6fr);
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
   gap: clamp(28px, 4.5vw, 80px);
   align-items: center;
   width: 100%;
-  overflow: visible;
 }
 
 /* readable glass panel so product copy stays crisp over the moving stage */
 .product__info {
   position: relative; z-index: 1;
-  padding: clamp(18px, 2.1vw, 34px);
-  border-radius: clamp(10px, 1.2vw, 16px);
+  padding: clamp(20px, 2.3vw, 34px);
+  border-radius: 16px;
   background:
     linear-gradient(145deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent 34%),
     linear-gradient(180deg, rgba(8, 10, 18, 0.78), rgba(8, 10, 18, 0.56));
@@ -734,34 +618,22 @@ html.gl .scene--hero .scene__hold::before {
 .product__info > * { position: relative; z-index: 1; }
 .product__kicker { color: var(--accent); margin-bottom: 20px; }
 .product__kicker .idx { color: var(--faint); margin-right: 10px; }
-.product__title {
-  font-family: var(--f-mono);
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1.06;
-  overflow-wrap: anywhere;
-}
+.product__title { font-family: var(--f-mono); font-weight: 700; letter-spacing: -0.01em; }
 .product__tagline {
   margin-top: 16px;
-  font-size: calc(clamp(0.96rem, 1.25vw, 1.2rem) * var(--text-scale));
+  font-size: clamp(1.0rem, 1.4vw, 1.24rem);
   color: var(--text); font-weight: 500;
 }
-.product__desc {
-  margin-top: clamp(16px, 2vh, 22px);
-  color: var(--dim);
-  font-size: calc(clamp(0.88rem, 0.98vw, 1rem) * var(--text-scale));
-  line-height: 1.72;
-  max-width: 58ch;
-}
+.product__desc { margin-top: 22px; color: var(--dim); font-size: 1.0rem; line-height: 1.78; max-width: 54ch; }
 
 .feature-list {
-  margin-top: clamp(18px, 2.8vh, 26px);
+  margin-top: 26px;
   display: grid; grid-template-columns: 1fr 1fr;
-  gap: clamp(7px, 1.2vh, 9px) clamp(14px, 2vw, 22px);
+  gap: 9px 22px;
 }
 .feature-list li {
-  font-family: var(--f-mono); font-size: calc(clamp(0.58rem, 0.62vw, 0.68rem) * var(--text-scale)); font-weight: 500;
-  letter-spacing: clamp(0.02em, 0.12vw, 0.07em); text-transform: uppercase;
+  font-family: var(--f-mono); font-size: 0.68rem; font-weight: 500;
+  letter-spacing: 0.07em; text-transform: uppercase;
   color: var(--dim);
   padding-left: 14px; position: relative;
 }
@@ -771,16 +643,16 @@ html.gl .scene--hero .scene__hold::before {
 }
 
 .product__foot {
-  margin-top: clamp(18px, 2.9vh, 28px); padding-top: clamp(14px, 2vh, 18px);
+  margin-top: 28px; padding-top: 18px;
   border-top: 1px solid var(--line-soft);
-  color: var(--dim); font-size: calc(clamp(0.62rem, 0.7vw, 0.74rem) * var(--text-scale)); line-height: 1.76; letter-spacing: 0.02em;
+  color: var(--dim); font-size: 0.74rem; line-height: 1.85; letter-spacing: 0.02em;
   max-width: 62ch;
 }
 .product__foot b { color: var(--accent); font-weight: 500; }
 
-.product__stat { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: baseline; margin-top: 26px; }
+.product__stat { display: flex; gap: 18px; align-items: baseline; margin-top: 26px; }
 .product__stat strong {
-  font-size: calc(clamp(2.2rem, 4vw, 3.8rem) * var(--text-scale)); font-weight: 700; letter-spacing: 0;
+  font-size: clamp(2.6rem, 4.5vw, 4rem); font-weight: 700; letter-spacing: -0.03em;
   color: var(--accent);
 }
 .product__stat span { color: var(--faint); max-width: 22ch; font-size: 0.62rem; }
@@ -800,21 +672,11 @@ html.gl .scene--hero .scene__hold::before {
 .industry-grid p { font-size: 0.78rem; color: var(--dim); line-height: 1.6; }
 
 /* glassy 3d card */
-.product__card-wrap {
-  perspective: 1400px;
-  width: 100%;
-  min-width: 0;
-  justify-self: center;
-  display: grid;
-  place-items: center;
-}
+.product__card-wrap { perspective: 1400px; }
 .product__card {
   position: relative;
-  width: var(--product-card-w);
-  max-width: 100%;
-  max-height: var(--product-card-max-h);
   aspect-ratio: 16 / 10.5;
-  border-radius: clamp(12px, 1.4vw, 20px);
+  border-radius: 20px;
   border: 1px solid var(--line);
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.015) 55%),
@@ -836,26 +698,18 @@ html.gl .scene--hero .scene__hold::before {
 
 .card__bar {
   display: flex; align-items: center; gap: 10px;
-  min-width: 0;
-  padding: clamp(10px, 1.1vw, 13px) clamp(12px, 1.5vw, 18px);
+  padding: 13px 18px;
   border-bottom: 1px solid var(--line-soft);
-  font-family: var(--f-mono); font-size: clamp(0.48rem, 0.56vw, 0.56rem); letter-spacing: clamp(0.04em, 0.16vw, 0.18em);
+  font-family: var(--f-mono); font-size: 0.56rem; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--faint);
-  white-space: nowrap;
-  overflow: hidden;
 }
 .card__bar .dots { display: flex; gap: 5px; }
 .card__bar .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
 .card__bar .dots i:first-child { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
-.card__bar .addr {
-  margin-left: auto;
-  color: var(--accent);
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.card__bar .addr { margin-left: auto; color: var(--accent); }
 
 .card__screen {
-  position: absolute; inset: clamp(38px, 3.2vw, 44px) 0 0 0;
+  position: absolute; inset: 44px 0 0 0;
   display: flex; align-items: center; justify-content: center;
 }
 
@@ -876,8 +730,8 @@ html.gl .scene--hero .scene__hold::before {
 
 /* phone frame — portrait app screenshots */
 .device--phone {
-  height: min(95%, calc(var(--product-card-max-h) - 54px)); aspect-ratio: 9 / 19.5; max-width: 62%;
-  padding: clamp(4px, 0.55vw, 6px); border-radius: clamp(20px, 2vw, 28px);
+  height: 95%; aspect-ratio: 9 / 19.5; max-width: 62%;
+  padding: 6px; border-radius: 28px;
   background: linear-gradient(160deg, #1a1d27, #07090f);
   border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow:
@@ -885,7 +739,7 @@ html.gl .scene--hero .scene__hold::before {
     0 0 46px -18px color-mix(in srgb, var(--accent) 75%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
-.device--phone .device__sc { width: 100%; height: 100%; border-radius: clamp(16px, 1.7vw, 22px); }
+.device--phone .device__sc { width: 100%; height: 100%; border-radius: 22px; }
 .device--phone .device__notch {
   position: absolute; top: 7px; left: 50%; transform: translateX(-50%);
   width: 32%; height: 12px; border-radius: 0 0 11px 11px;
@@ -1120,11 +974,7 @@ html.gl .scene--hero .scene__hold::before {
 .overlay {
   position: fixed; inset: 0; z-index: 60;
   display: flex; align-items: center; justify-content: center;
-  padding:
-    max(clamp(14px, 4vw, 60px), env(safe-area-inset-top, 0px))
-    max(clamp(14px, 4vw, 60px), env(safe-area-inset-right, 0px))
-    max(clamp(14px, 4vw, 60px), env(safe-area-inset-bottom, 0px))
-    max(clamp(14px, 4vw, 60px), env(safe-area-inset-left, 0px));
+  padding: clamp(18px, 4vw, 60px);
   visibility: hidden; opacity: 0;
   transition: opacity 0.45s ease, visibility 0.45s;
 }
@@ -1136,21 +986,16 @@ html.gl .scene--hero .scene__hold::before {
 }
 .overlay__panel {
   position: relative; width: min(860px, 100%);
-  max-height: min(86vh, 900px);
-  max-height: min(86svh, 900px);
-  max-height: min(86dvh, 900px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
+  max-height: min(86vh, 900px); overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: 18px;
   background: rgba(9, 9, 16, 0.82);
-  padding: clamp(20px, 4vw, 54px);
+  padding: clamp(26px, 4vw, 54px);
   transform: translateY(26px) scale(0.985);
   transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .overlay.is-open .overlay__panel { transform: none; }
-.overlay__head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 30px; gap: 16px; min-width: 0; }
+.overlay__head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 30px; gap: 16px; }
 .overlay__title { font-size: clamp(1.4rem, 3vw, 2.2rem); }
 .overlay__close { color: var(--faint); font-family: var(--f-mono); font-size: 0.62rem; letter-spacing: 0.2em; transition: color 0.3s; }
 .overlay__close:hover { color: var(--ember); }
@@ -1161,7 +1006,6 @@ html.gl .scene--hero .scene__hold::before {
   border: 1px solid var(--line-soft); border-radius: 12px;
   padding: 20px;
   display: grid; gap: 8px;
-  min-width: 0;
   transition: border-color 0.3s, background 0.3s, transform 0.3s;
 }
 .ogrid a:hover {
@@ -1205,7 +1049,9 @@ html.gl:not(.gl-mobile) .scene--product .product {
   z-index: 1;
 }
 html.gl:not(.gl-mobile) .scene--product .product__info {
-  overflow: hidden;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 html.gl:not(.gl-mobile) .product__card-wrap.in {
   opacity: 0.3;
@@ -1343,56 +1189,22 @@ html.no-gl .scene--contact::before {
 .role-card ul li::before { content: ""; position: absolute; left: 0; top: 0.5em; width: 6px; height: 1px; background: var(--ember); }
 
 /* ---------- responsive ---------- */
-@media (min-width: 1920px) {
-  :root {
-    --pad-x: clamp(72px, 6vw, 132px);
-    --content-max: 1760px;
-    --product-card-max-h: min(64dvh, 720px);
-    --product-card-w: min(100%, 840px, calc(var(--product-card-max-h) * 1.5238));
-  }
-  .product { grid-template-columns: minmax(0, 4.9fr) minmax(420px, 6.1fr); }
-}
-
-@media (min-width: 2400px) {
-  :root {
-    --content-max: 1880px;
-    --pad-x: clamp(96px, 7vw, 180px);
-    --product-card-max-h: min(60dvh, 760px);
-  }
-  .scene__hold { max-width: var(--content-max); }
-}
-
-@media (max-width: 1366px) {
-  :root {
-    --pad-x: clamp(18px, 4.4vw, 64px);
-    --product-card-max-h: min(58dvh, 590px);
-    --product-card-w: min(100%, 700px, calc(var(--product-card-max-h) * 1.5238));
-  }
-  .product { gap: clamp(24px, 3.6vw, 56px); }
-}
-
-@media (max-width: 1119px), (max-height: 759px) {
-  :root {
-    --section-pad-y: clamp(70px, 10svh, 118px);
-    --product-card-max-h: min(56dvh, 560px);
-    --product-card-w: min(100%, 720px, calc(var(--product-card-max-h) * 1.5238));
-  }
-
-  .product {
-    grid-template-columns: minmax(0, 1fr);
-    align-items: start;
-    gap: clamp(26px, 5vw, 42px);
-  }
-  .product__info {
-    width: min(100%, 780px);
-    justify-self: start;
-  }
-  .product__card-wrap {
-    width: min(100%, 760px);
-    justify-self: center;
-  }
+@media (max-width: 1060px) {
+  .product { grid-template-columns: 1fr; gap: 38px; }
+  .product__card { max-width: 640px; }
   .contact-grid { grid-template-columns: 1fr; }
-  .stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 0; }
+  .stat-strip { grid-template-columns: repeat(2, 1fr); gap: 18px 0; }
+}
+
+@media (max-width: 1060px), (max-height: 720px), (hover: none), (pointer: coarse) {
+  html.gl-mobile #gl {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100svh;
+    height: 100dvh;
+  }
 
   html.gl .scene__hold {
     position: relative;
@@ -1417,185 +1229,27 @@ html.no-gl .scene--contact::before {
   }
 }
 
-@media (max-height: 759px) and (min-width: 900px) {
-  :root {
-    --chrome-pad: clamp(12px, 1.4vw, 20px);
-    --section-pad-y: clamp(62px, 8svh, 86px);
-    --text-scale: 0.9;
-    --product-card-max-h: min(52dvh, 430px);
-  }
-  .chrome--top::before { height: calc(96px + env(safe-area-inset-top, 0px)); }
-  .scene__hold {
-    padding-top: max(calc(var(--section-pad-y) + 12px), calc(76px + env(safe-area-inset-top, 0px)));
-    padding-bottom: max(var(--section-pad-y), calc(36px + env(safe-area-inset-bottom, 0px)));
-  }
-  .product__info { padding: clamp(16px, 1.5vw, 24px); }
-  .product__kicker { margin-bottom: 12px; }
-  .product__tagline { margin-top: 10px; }
-  .feature-list,
-  .industry-grid { margin-top: 16px; }
-  .product__foot { margin-top: 16px; }
-  .page-static main { padding-top: clamp(92px, 14svh, 130px); }
-}
-
-@media (max-width: 1024px) {
-  :root {
-    --pad-x: clamp(18px, 5vw, 52px);
-    --content-max: 980px;
-    --product-card-max-h: min(54dvh, 520px);
-  }
-  .founder { grid-template-columns: minmax(0, 260px) minmax(0, 1fr); }
-  .team-grid { max-width: 720px; }
-  .page-static .section { max-width: 980px; }
-}
-
 @media (max-width: 900px) {
-  :root {
-    --section-pad-y: clamp(76px, 9svh, 112px);
-    --product-card-max-h: min(50dvh, 480px);
-  }
-  .windex,
+  .windex { display: none; }
   .chrome--index { display: none; }
-  .chrome--progress { display: none; }
-  .title-xl { font-size: calc(clamp(2.3rem, 11vw, 4.8rem) * var(--text-scale)); }
-  .title-lg { font-size: calc(clamp(2rem, 8vw, 4.2rem) * var(--text-scale)); }
-  .hero__title { font-size: calc(clamp(2rem, 8.4vw, 4rem) * var(--text-scale)); }
-  .product__card { transform: none; }
-  .product:nth-child(even) .product__card,
-  .scene--product:nth-of-type(even) .product__card { transform: none; }
-  .product__card:hover { transform: none; }
-  .contact-grid { gap: 34px; }
-  .form { gap: 24px; }
-  .overlay { align-items: stretch; }
-  .overlay__panel { width: 100%; border-radius: 14px; }
+  .chrome--progress .progress__track { height: 48px; }
 }
 
-@media (max-width: 768px) {
-  :root {
-    --pad-x: clamp(16px, 5.4vw, 34px);
-    --chrome-pad: 16px;
-    --text-scale: 0.96;
-    --product-card-max-h: min(48dvh, 460px);
-  }
+@media (max-width: 700px) {
+  :root { --chrome-pad: 16px; }
   .brand__sub { display: none; }
-  .feature-list,
+  .feature-list { grid-template-columns: 1fr; }
   .industry-grid { grid-template-columns: 1fr; }
-  .team-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 460px; gap: 14px; }
+  /* stacked: founder stays the larger lead, team drops to a 2-up of smaller
+     cards so they never out-size the founder photo */
+  .team-grid { grid-template-columns: 1fr 1fr; max-width: 420px; gap: 14px; }
   .founder { grid-template-columns: 1fr; }
-  .founder__photo { width: min(100%, 300px); }
+  .founder__photo { max-width: 300px; }
   .mv-grid article:nth-child(2) { justify-self: start; text-align: left; }
   .ogrid { grid-template-columns: 1fr; }
   .why-list li { grid-template-columns: 1fr; gap: 8px; }
-  .scene__hold { padding-top: max(104px, calc(var(--section-pad-y) + env(safe-area-inset-top, 0px))); }
-  .scene--contact .scene__hold { justify-content: flex-start; padding-bottom: max(40px, env(safe-area-inset-bottom, 0px)); }
-  .site-foot { display: grid; justify-content: stretch; }
-  .dept-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); }
-  .role-grid { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 560px) {
-  :root {
-    --pad-x: clamp(14px, 4.8vw, 22px);
-    --chrome-pad: 14px;
-    --chrome-hit: 38px;
-    --section-pad-y: clamp(70px, 8svh, 96px);
-    --text-scale: 0.92;
-    --product-card-max-h: min(44dvh, 390px);
-  }
-  .chrome--top {
-    align-items: flex-start;
-    gap: 10px;
-  }
-  .brand { padding-top: 4px; }
-  .pills { gap: 6px; }
-  .pill__dot { display: none; }
-  .intro__wordsub { letter-spacing: 0.24em; text-indent: 0.24em; }
-  .lede,
-  .body-copy,
-  .product__desc,
-  .product__foot { max-width: 100%; }
-  .product__info { padding: 18px; border-radius: 12px; }
-  .product__card {
-    width: min(100%, calc(var(--product-card-max-h) * 1.5238));
-    border-radius: 12px;
-  }
-  .card__bar { gap: 7px; }
-  .card__bar .dots { display: none; }
-  .card__bar .addr { max-width: 38%; }
-  .device--phone { max-width: 68%; }
-  .stat-strip { grid-template-columns: 1fr; gap: 18px; }
-  .socials { flex-wrap: wrap; gap: 12px 18px; }
-  .overlay__head { align-items: flex-start; flex-direction: column; margin-bottom: 22px; }
-  .overlay__close { align-self: flex-start; min-height: 34px; }
-  .btn-solid,
-  .btn-outline { width: auto; max-width: 100%; text-align: center; }
-  .careers-cta { align-items: flex-start; }
-  .team-card h3 { font-size: 0.95rem; }
-}
-
-@media (max-width: 390px) {
-  :root {
-    --text-scale: 0.86;
-    --product-card-max-h: min(42dvh, 350px);
-  }
-  .brand__main { font-size: 0.82rem; }
-  .pill {
-    padding-inline: 0.74em;
-    font-size: 0.52rem;
-    letter-spacing: 0.1em;
-  }
-  .scene__hold { padding-top: max(98px, calc(var(--section-pad-y) + env(safe-area-inset-top, 0px))); }
-  .product__info { padding: 16px; }
-  .feature-list li,
-  .role-card ul li { letter-spacing: 0.02em; }
-  .team-grid { grid-template-columns: 1fr; max-width: 270px; }
-  .overlay__panel { padding: 18px; }
-}
-
-@media (max-width: 340px) {
-  :root {
-    --pad-x: 12px;
-    --chrome-pad: 12px;
-    --text-scale: 0.8;
-    --product-card-max-h: min(40dvh, 320px);
-  }
-  .pill {
-    min-height: 36px;
-    padding-inline: 0.62em;
-    font-size: 0.5rem;
-  }
-  .product__info { padding: 14px; }
-  .card__bar .addr { display: none; }
-  .device--phone { max-width: 74%; }
-  .role-card,
-  .dept-grid article { padding: 20px; }
-}
-
-@media (orientation: landscape) and (max-height: 480px) {
-  :root {
-    --section-pad-y: 58px;
-    --text-scale: 0.78;
-    --product-card-max-h: min(64svh, 260px);
-  }
-  .chrome--top {
-    padding-top: max(10px, env(safe-area-inset-top, 0px));
-    padding-bottom: 10px;
-  }
-  .chrome--top::before { height: calc(78px + env(safe-area-inset-top, 0px)); }
-  .scene__hold {
-    min-height: auto;
-    padding-top: max(74px, calc(48px + env(safe-area-inset-top, 0px)));
-    padding-bottom: max(36px, env(safe-area-inset-bottom, 0px));
-  }
-  .scene--intro .scene__hold,
-  .scene--hero .scene__hold {
-    min-height: 100svh;
-    min-height: 100dvh;
-  }
-  .product { gap: 22px; }
-  .product__card-wrap { width: min(78vw, 500px); }
-  .overlay { align-items: stretch; }
-  .overlay__panel { max-height: calc(100svh - 20px); max-height: calc(100dvh - 20px); }
+  .chrome--index { bottom: calc(var(--chrome-pad) + 2px); }
+  .scene__hold { padding-top: 110px; padding-bottom: 110px; }
 }
 
 /* ---------- reduced motion ---------- */
