@@ -389,7 +389,21 @@ html.gl-loading .loader, html.gl .loader { display: flex; }
   left: max(var(--chrome-pad), env(safe-area-inset-left));
   bottom: max(var(--chrome-pad), env(safe-area-inset-bottom));
   display: flex; flex-direction: column; gap: 16px;
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+  transition:
+    opacity 0.28s ease,
+    transform 0.28s ease;
 }
+
+html.hide-side-index .chrome--index,
+html.side-index-collides .chrome--index {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px);
+}
+
 .windex { display: flex; flex-direction: column; gap: 7px; }
 .windex a {
   display: inline-flex; align-items: baseline; gap: 10px;
@@ -837,7 +851,7 @@ html.gl .scene--hero .scene__hold::before {
 /* glassy 3d card */
 .product__card-wrap {
   perspective: 1400px;
-  width: min(100%, calc(760px * var(--product-visual-scale)));
+  width: min(100%, 55vw, calc(760px * var(--product-visual-scale)));
   min-width: 0;
   justify-self: center;
   display: grid;
@@ -932,7 +946,34 @@ html.gl .scene--hero .scene__hold::before {
 /* browser-style screen — landscape dashboards fill the card window, with the
    card__bar acting as the browser chrome */
 .device--screen { position: absolute; inset: 0; }
-.device--screen .device__sc { width: 100%; height: 100%; }
+.device--screen .device__sc {
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(80% 80% at 50% 35%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 72%),
+    linear-gradient(180deg, rgba(8, 11, 20, 0.98), rgba(4, 6, 12, 0.98));
+}
+.device--screen .device__sc img {
+  object-fit: contain;
+  object-position: center;
+}
+.product__card[data-mockup="ai-business-assistant"],
+.product__card[data-mockup="defect-detector"] {
+  width: var(--product-card-w);
+  max-height: min(var(--product-card-max-h), 70dvh);
+}
+html:not(.is-stacked-products) .product__card[data-mockup="ai-business-assistant"],
+html:not(.is-stacked-products) .product__card[data-mockup="defect-detector"] {
+  width: min(var(--product-card-w), 55vw);
+}
+html.is-stacked-products .product__card[data-mockup="ai-business-assistant"],
+html.is-stacked-products .product__card[data-mockup="defect-detector"] {
+  width: min(var(--product-card-w), 96vw);
+}
+.product__card[data-mockup="ai-business-assistant"] .device__sc,
+.product__card[data-mockup="defect-detector"] .device__sc {
+  padding: clamp(6px, 0.8vw, 12px);
+}
 
 /* legacy placeholder cover (no longer rendered) */
 .card__cover { text-align: center; position: relative; z-index: 1; }
@@ -1634,10 +1675,15 @@ html.no-gl .scene--contact::before {
 }
 
 html.is-short-view .chrome--index,
-html.is-short-view .chrome--progress,
 html.is-compact-theatre .chrome--index,
+html.is-zoom-like-view:not(.is-wide-view) .chrome--index {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px);
+}
+
+html.is-short-view .chrome--progress,
 html.is-compact-theatre .chrome--progress,
-html.is-zoom-like-view:not(.is-wide-view) .chrome--index,
 html.is-zoom-like-view:not(.is-wide-view) .chrome--progress {
   display: none;
 }

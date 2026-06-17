@@ -1120,6 +1120,8 @@ function clamp(v, min, max) {
 
 const RICH_SCENE_MIN_WIDTH = 1600;
 const RICH_SCENE_MIN_HEIGHT = 820;
+const FULL_CORRIDOR_MIN_WIDTH = 1880;
+const FULL_CORRIDOR_MIN_HEIGHT = 900;
 
 function readViewportSize() {
   const vv = window.visualViewport;
@@ -1454,8 +1456,22 @@ export async function initGL(canvas, options = {}) {
     });
   }
 
+  function canShowProductCorridor() {
+    viewport = readViewportSize();
+    const cls = html.classList;
+    return !isMobile &&
+      viewport.w >= FULL_CORRIDOR_MIN_WIDTH &&
+      viewport.h >= FULL_CORRIDOR_MIN_HEIGHT &&
+      !cls.contains('is-dense-view') &&
+      !cls.contains('is-short-view') &&
+      !cls.contains('is-compact-theatre') &&
+      !cls.contains('is-stacked-products') &&
+      !cls.contains('is-zoom-like-view');
+  }
+
   function refreshScroll(safe = false) {
     updateSceneStickiness();
+    window.__swivelSyncSideIndex?.();
     try { lenis?.resize?.(); } catch (err) {
       console.warn('[swivel] Lenis resize failed:', err);
     }
@@ -1639,15 +1655,18 @@ export async function initGL(canvas, options = {}) {
       activeProductIndex = active.index;
       corridor.setHead(activeProductIndex, { immediate });
       corridor.setProductProgress(activeProductIndex, productProgressFromRect(active.rect));
-      if (forceVisible) corridor.setVisible(true);
+      const canShow = canShowProductCorridor();
+      if (forceVisible) corridor.setVisible(canShow);
+      else if (!canShow) corridor.setVisible(false);
       anchorToCard();
+      window.__swivelSyncSideIndex?.();
     };
 
     // visibility: on only while the product run is on screen
     ScrollTrigger.create({
       trigger: FIRST, start: 'top 80%',
       endTrigger: LAST, end: 'bottom 20%',
-      onToggle: (self) => corridor.setVisible(self.isActive),
+      onToggle: (self) => corridor.setVisible(self.isActive && canShowProductCorridor()),
     });
 
     // continuous active-room head: progress 0 at Good One's centre → 1 at Defect
@@ -1681,7 +1700,10 @@ export async function initGL(canvas, options = {}) {
     anchorToCard();
     ScrollTrigger.addEventListener?.('refreshInit', anchorToCard);
     ScrollTrigger.addEventListener?.('refresh', () => {
-      requestAnimationFrame(() => syncCorridorToViewport({ immediate: true }));
+      requestAnimationFrame(() => {
+        syncCorridorToViewport({ immediate: true });
+        window.__swivelSyncSideIndex?.();
+      });
     });
     addEventListener('scroll', () => requestAnimationFrame(anchorToCard), { passive: true });
     addEventListener('hashchange', () => {
@@ -1808,7 +1830,7 @@ export async function initGL(canvas, options = {}) {
       const p = productPulse[id];
       corridor?.setHead(productIndex, { immediate: true });
       corridor?.setProductProgress(productIndex, 0);
-      corridor?.setVisible(true);
+      corridor?.setVisible(canShowProductCorridor());
       cortexAccent(ACCENTS[id], 0);
       cortexOpacity(isMobile ? 0.1 : 0.16, 0);
       cortexEnergy(p ? p.energy + 0.05 : 0.12, 0);
@@ -1855,7 +1877,7 @@ export async function initGL(canvas, options = {}) {
           if (cancelled) return;
           corridor.setHead(productIndex, { immediate: true });
           corridor.setProductProgress(productIndex, 0);
-          corridor.setVisible(true);
+          corridor.setVisible(canShowProductCorridor());
           syncCorridorToViewport({ immediate: true, forceVisible: true });
         };
         resetProductHash();
@@ -1885,6 +1907,7 @@ export async function initGL(canvas, options = {}) {
     fitCamera();
     corridor?.resize(viewport.w, viewport.h);
     syncCorridorToViewport({ immediate: true });
+    window.__swivelSyncSideIndex?.();
     queueRefresh(true);
   };
   addEventListener('resize', () => {

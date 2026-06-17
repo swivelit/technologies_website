@@ -184,6 +184,16 @@ async function evaluatePage(page) {
     const inViewportX = (rect, tolerance = 1) => rect.left >= -tolerance && rect.right <= vw + tolerance;
     const overlaps = (a, b) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) > 2 &&
       Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)) > 2;
+    const chromeVisible = (el) => {
+      const rect = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return rect.width > 0 &&
+        rect.height > 0 &&
+        style.display !== 'none' &&
+        style.visibility !== 'hidden' &&
+        Number(style.opacity || 1) > 0.05 &&
+        style.pointerEvents !== 'none';
+    };
 
     const wideElements = [...document.body.querySelectorAll('*')]
       .map((el) => {
@@ -252,7 +262,7 @@ async function evaluatePage(page) {
 
     const chromeIndexIssue = (dense || short || compact || (zoomLike && !wide))
       ? [...document.querySelectorAll('.chrome--index, .chrome--progress')]
-          .filter((el) => getComputedStyle(el).display !== 'none')
+          .filter((el) => chromeVisible(el))
           .map((el) => el.className || el.tagName)
       : [];
 
@@ -425,6 +435,108 @@ async function checkProductIdentity(page, path) {
   }, expected);
 }
 
+async function checkSideIndexCollision(page, path) {
+  const expected = PRODUCT_EXPECTATIONS.get(path);
+  if (!expected) return [];
+
+  return page.evaluate(({ id }) => {
+    const issues = [];
+    const html = document.documentElement;
+    const vw = innerWidth;
+    const vh = innerHeight;
+    const index = document.querySelector('.chrome--index');
+    const section = document.getElementById(id);
+    if (!index || !section) return issues;
+
+    const style = getComputedStyle(index);
+    const indexRect = index.getBoundingClientRect();
+    const indexVisible = indexRect.width > 0 &&
+      indexRect.height > 0 &&
+      style.display !== 'none' &&
+      style.visibility !== 'hidden' &&
+      Number(style.opacity || 1) > 0.05 &&
+      style.pointerEvents !== 'none';
+
+    const unsafeViewport = vw < 1920 ||
+      vh < 930 ||
+      html.classList.contains('is-dense-view') ||
+      html.classList.contains('is-short-view') ||
+      html.classList.contains('is-compact-theatre') ||
+      html.classList.contains('is-stacked-products') ||
+      html.classList.contains('is-zoom-like-view');
+
+    if (unsafeViewport && indexVisible) {
+      issues.push(`side index visible on unsafe product viewport ${vw}x${vh}`);
+    }
+
+    if (!indexVisible) return issues;
+
+    const overlaps = (a, b, padding = 12) => !(a.right < b.left - padding ||
+      a.left > b.right + padding ||
+      a.bottom < b.top - padding ||
+      a.top > b.bottom + padding);
+    const targets = [...section.querySelectorAll('.product__info, .product__foot, .feature-list, .industry-grid')];
+    const hit = targets.find((target) => {
+      const rect = target.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0 && overlaps(indexRect, rect, 14);
+    });
+    if (hit) {
+      issues.push(`side index overlaps ${hit.className || hit.tagName} in ${id}`);
+    }
+    return issues;
+  }, expected);
+}
+
+async function checkProductVisualFit(page, path) {
+  const expected = PRODUCT_EXPECTATIONS.get(path);
+  if (!expected) return [];
+
+  return page.evaluate(async ({ id }) => {
+    const issues = [];
+    const section = document.getElementById(id);
+    if (!section) return [`missing product section ${id}`];
+    const card = section.querySelector('.product__card');
+    const product = section.querySelector('.product');
+    const info = section.querySelector('.product__info');
+    if (!card) return [`missing product card ${id}`];
+
+    card.scrollIntoView({ block: 'center', inline: 'nearest' });
+    await new Promise((resolveWait) => setTimeout(resolveWait, 280));
+
+    const rect = card.getBoundingClientRect();
+    const style = getComputedStyle(card);
+    const html = document.documentElement;
+    const stacked =
+      html.classList.contains('is-stacked-products') ||
+      getComputedStyle(product).gridTemplateColumns.split(' ').filter(Boolean).length <= 1 ||
+      (info && Math.abs(info.getBoundingClientRect().left - rect.left) < 6);
+    const widthLimit = stacked ? innerWidth * 0.96 : innerWidth * 0.55;
+
+    if (rect.left < -8 || rect.right > innerWidth + 8) {
+      issues.push(`product card outside viewport ${Math.round(rect.left)}..${Math.round(rect.right)}`);
+    }
+    if (rect.height > innerHeight * 0.7 + 1) {
+      issues.push(`product card too tall ${Math.round(rect.height)} > 70% of ${innerHeight}`);
+    }
+    if (rect.width > widthLimit + 2) {
+      issues.push(`product card too wide ${Math.round(rect.width)} > ${Math.round(widthLimit)} (${stacked ? 'stacked' : 'two-column'})`);
+    }
+
+    section.querySelectorAll('.device--screen .device__sc img').forEach((img) => {
+      const fit = getComputedStyle(img).objectFit;
+      if (fit !== 'contain') issues.push(`screen image object-fit is ${fit}`);
+    });
+
+    const debug = window.__swivelDebug?.corridor?.() || null;
+    const nonWide = !html.classList.contains('is-wide-view');
+    if (debug && nonWide && !debug.viewportDisabled && Number(debug.masterOpacity || 0) >= 0.16) {
+      issues.push(`corridor too dominant: disabled=${debug.viewportDisabled}, opacity=${Number(debug.masterOpacity || 0).toFixed(3)}`);
+    }
+
+    return issues;
+  }, expected);
+}
+
 function summarizeFailure(result, consoleErrors, overlayIssues) {
   const failures = [];
   if (result.overflowDoc) failures.push(`document scrollWidth ${result.docScrollWidth}`);
@@ -470,8 +582,12 @@ try {
           await driver.wait(page, 80);
         }
       }
+      const sideIndexIssues = await checkSideIndexCollision(page, path);
+      const visualIssues = await checkProductVisualFit(page, path);
       const identityIssues = await checkProductIdentity(page, path);
       const pageFailures = summarizeFailure(result, consoleErrors.splice(0), overlayIssues)
+        .concat(sideIndexIssues)
+        .concat(visualIssues)
         .concat(identityIssues);
       if (pageFailures.length) {
         failures.push(`${width}x${height} ${path}: ${pageFailures.join('; ')}`);

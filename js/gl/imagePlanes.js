@@ -531,9 +531,10 @@ function viewportMetrics(w, h, isMobile) {
   const spreadScale = clamp(0.42 + planeScale * 0.42 - density * 0.18, 0.32, width > 2200 ? 1.12 : 0.98);
   const depthScale = clamp(0.6 + planeScale * 0.22 - density * 0.12, 0.48, 1.04);
   const yScale = clamp(0.5 + planeScale * 0.28 - density * 0.12, 0.42, 0.98);
-  const opacityScale = stacked
+  const disabled = stacked || short || zoomLike || compactW || compactH;
+  const opacityScale = disabled
     ? 0
-    : clamp((coarse ? 0.14 : 0.34) + planeScale * 0.36 - density * 0.3 - (compactW || compactH ? 0.18 : 0), 0.02, 0.94);
+    : clamp((coarse ? 0.14 : 0.34) + planeScale * 0.36 - density * 0.3, 0.02, 0.94);
   return {
     width,
     height,
@@ -553,7 +554,7 @@ function viewportMetrics(w, h, isMobile) {
     opacityScale,
     anchorClamp: stacked ? 0.38 : (dense || zoomLike ? 0.52 : (width > 2200 ? 0.62 : 0.74)),
     anchorBias: dense || zoomLike ? 0.08 : 0,
-    disabled: stacked || (!isMobile && (width < COMPACT_THEATRE_WIDTH || height < COMPACT_THEATRE_HEIGHT)),
+    disabled,
   };
 }
 
@@ -622,11 +623,14 @@ function carouselSlot(offset, profile, isMobile, orient = 'portrait', metrics = 
   return out;
 }
 
-function naturalSize(aspect, isMobile, scale = 1) {
-  const portraitH = isMobile ? 6.2 : 7.05;
-  const landscapeW = isMobile ? 8.1 : 9.65;
-  if (aspect < 1) return { w: portraitH * aspect * scale, h: portraitH * scale };
-  return { w: landscapeW * scale, h: (landscapeW / aspect) * scale };
+function naturalSize(aspect, isMobile, metrics = viewportMetrics(1440, 900, isMobile)) {
+  const wideFit = clamp((metrics.width - FULL_CORRIDOR_MIN_WIDTH) / 680, 0, 1);
+  const compactPenalty = (metrics.dense || metrics.short || metrics.zoomLike || metrics.compact) ? 0.8 : 1;
+  const responsiveScale = clamp(metrics.planeScale, isMobile ? 0.42 : 0.58, 1.02) * compactPenalty;
+  const portraitH = (isMobile ? 5.55 : lerp(5.8, 6.55, wideFit)) * responsiveScale;
+  const landscapeW = (isMobile ? 6.2 : lerp(5.2, 7.35, wideFit)) * responsiveScale;
+  if (aspect < 1) return { w: portraitH * aspect, h: portraitH };
+  return { w: landscapeW, h: landscapeW / aspect };
 }
 
 /* ------------------------------------------------------------------ *
@@ -642,6 +646,7 @@ export function createCorridor(THREE, opts = {}) {
 
   const maxDim = mobile ? 560 : 1080;
   let metrics = viewportMetrics(window.visualViewport?.width || innerWidth, window.visualViewport?.height || innerHeight, mobile);
+  let anchorRect = null;
   const roomSpacing = () => SPACING * metrics.depthScale;
   const viewDistance = () => VIEW + (1 - metrics.planeScale) * (mobile ? 1.5 : 3.4);
   // default horizontal anchor in NDC: desktop pushes the rooms toward the
@@ -815,14 +820,33 @@ export function createCorridor(THREE, opts = {}) {
 
   function setNaturalSize(plane, aspect) {
     plane.aspect = aspect;
-    const size = naturalSize(aspect, mobile, metrics.planeScale);
+    const size = naturalSize(aspect, mobile, metrics);
     plane.naturalW = size.w;
     plane.naturalH = size.h;
   }
 
+  function safePlaneScale(plane, scale = 1) {
+    if (!anchorRect || !plane.naturalW || !plane.naturalH) return scale;
+    const view = viewDistance();
+    const halfH = Math.tan((camera.fov * Math.PI) / 360) * view;
+    const halfW = halfH * camera.aspect;
+    const worldPerPxX = (halfW * 2) / Math.max(1, metrics.width);
+    const worldPerPxY = (halfH * 2) / Math.max(1, metrics.height);
+    const maxPxW = Math.min(metrics.width * 0.44, anchorRect.width * 0.92);
+    const maxPxH = Math.min(metrics.height * 0.62, anchorRect.height * 0.92);
+    const maxWorldW = maxPxW * worldPerPxX;
+    const maxWorldH = maxPxH * worldPerPxY;
+    return Math.min(
+      scale,
+      maxWorldW / Math.max(0.001, plane.naturalW),
+      maxWorldH / Math.max(0.001, plane.naturalH)
+    );
+  }
+
   function sizePlane(plane, scale = 1) {
-    const sx = plane.naturalW * scale;
-    const sy = plane.naturalH * scale;
+    const fittedScale = safePlaneScale(plane, scale);
+    const sx = plane.naturalW * fittedScale;
+    const sy = plane.naturalH * fittedScale;
     plane.mesh.scale.set(sx, sy, 1);
     plane.aura.scale.set(sx * 1.12, sy * 1.12, 1);
     for (const trail of plane.trails) {
@@ -931,7 +955,16 @@ export function createCorridor(THREE, opts = {}) {
     },
     setVisible(on) { this.visible = !!on; },
     setAnchorRect(rect) {
-      if (!rect || !rect.width || mobile) return;   // mobile stays centred
+      if (!rect || !rect.width) return;
+      anchorRect = {
+        left: rect.left || 0,
+        top: rect.top || 0,
+        width: Math.max(1, rect.width || metrics.width * 0.34),
+        height: Math.max(1, rect.height || metrics.height * 0.62),
+        centerX: (rect.left || 0) + (rect.width || 0) / 2,
+        centerY: (rect.top || 0) + (rect.height || 0) / 2,
+      };
+      if (mobile) return;   // mobile stays centred
       const cx = rect.left + rect.width / 2;
       this._anchorTargetX = clamp(
         (cx / Math.max(1, metrics.width)) * 2 - 1 + metrics.anchorBias,
@@ -1221,6 +1254,7 @@ export function createCorridor(THREE, opts = {}) {
         viewportScale: metrics.planeScale,
         viewportOpacityScale: metrics.opacityScale,
         viewportDisabled: metrics.disabled,
+        anchorRect,
         missingImageIndexes,
         missingImages: missingImageIndexes,
       };
