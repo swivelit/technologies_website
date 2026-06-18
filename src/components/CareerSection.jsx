@@ -98,8 +98,8 @@ const CareerSection = () => {
       if (d.title === "Digital Marketing") {
         navigate("/digital-marketing");
       }
-      if (d.title === "Customer Support") {
-        navigate("/customer-support");
+      if (d.title === "Artificial Intelligence Research Team") {
+        navigate("/ai-research");
       }
       if (d.title === "Full Stack") {
         navigate("/full-stack");
@@ -120,14 +120,17 @@ const CareerSection = () => {
     <div
       className="dept-card"
       key={d.title}
-      onClick={() => {
-        if (d.title === "Customer Support") {
-          navigate("/customer-support");
-        }
-        if (d.title === "Full Stack") {
-          navigate("/full-stack");
-        }
-      }}
+    onClick={() => {
+      if (d.title === "Administration and HR") {
+        navigate("/hr");
+      }
+      if (d.title === "Customer Support") {
+        navigate("/customer-support");
+      }
+      if (d.title === "Maintenance") {
+        navigate("/maintenance");
+      }
+    }}
       style={{ cursor: "pointer" }}
     >
       <div className="dept-ico-wrap">{d.icon}</div>

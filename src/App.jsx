@@ -18,6 +18,9 @@ import GrabBasketPage from "./pages/GrabBasketPage";
 import GoodOnePage from "./pages/GoodOnePage";
 import SwicoAIPage from "./pages/SwicoAIPage";
 import DefectDetectorPage from "./pages/DefectDetectorPage";
+import HRShowcase from "./pages/HRShowcase";
+import Maintenance from "./pages/Maintenance";
+import AIShowcase from "./pages/AIShowcase";
 
 function HomePage() {
   return (
@@ -43,22 +46,16 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route
-          path="/digital-marketing"
-          element={<DigitalMarketing />}
-        />
-        <Route
-          path="/customer-support"
-          element={<CustomerSupport />}
-        />
-        <Route
-          path="/full-stack"
-          element={<FullStack />}
-        />
-          <Route path="/grab-basket" element={<GrabBasketPage />} />
+        <Route path="/grab-basket" element={<GrabBasketPage />} />
         <Route path="/good-one" element={<GoodOnePage />} />
         <Route path="/swico-ai" element={<SwicoAIPage />} />
         <Route path="/defect-detector" element={<DefectDetectorPage />} />
+        <Route path="/hr" element={<HRShowcase />} />
+        <Route path="/maintenance" element={<Maintenance />} />
+        <Route path="/digital-marketing" element={<DigitalMarketing />}/>
+        <Route path="/customer-support" element={<CustomerSupport />}/>
+        <Route path="/full-stack" element={<FullStack />}/>
+        <Route path="/ai-research" element={<AIShowcase />}/>
       </Routes>
     </BrowserRouter>
   );
