@@ -1,0 +1,180 @@
+.digital-marketing-page {
+  max-width: 1200px;
+  margin: auto;
+  padding: 60px 30px;
+  background: #faf7f5;
+}
+
+.banner-image {
+  width: 100%;
+  border-radius: 24px;
+  margin-bottom: 50px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+}
+
+.content h1 {
+  font-size: 64px;
+  font-weight: 700;
+  color: #2b2438;
+  margin-bottom: 10px;
+  font-family: "Playfair Display", serif;
+}
+
+.content h2 {
+  font-size: 28px;
+  color: #d96b57;
+  margin-bottom: 25px;
+  font-weight: 600;
+}
+
+.content p {
+  color: #6b7280;
+  font-size: 18px;
+  line-height: 1.9;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+:root {
+  --primary: #d96b57;
+  --primary-dark: #c45b48;
+  --text-dark: #2b2438;
+  --text-light: #6b7280;
+  --bg-light: #faf7f5;
+  --card-bg: #ffffff;
+  --border: #ece7e3;
+}
+
+.digital body {
+  background: #faf7f5;
+  color: var(--text-dark);
+  font-family: "Inter", sans-serif;
+}
+
+.digital .hero {
+  min-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: #faf7f5;
+  padding: 80px 20px;
+}
+
+.digital .hero h1 {
+  font-size: 72px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #2b2438;
+}
+
+.digital .hero h1 span {
+  color: #d96b57;
+  font-style: italic;
+}
+
+.digital .hero p {
+  max-width: 650px;
+  margin: 24px auto;
+  color: #6b7280;
+  font-size: 18px;
+  line-height: 1.8;
+}
+
+.digital .primary-btn {
+  background: #d96b57;
+  color: white;
+  border: none;
+  padding: 14px 30px;
+  border-radius: 999px;
+  font-weight: 600;
+  transition: 0.3s;
+}
+
+.digital .primary-btn:hover {
+  background: #c45b48;
+  transform: translateY(-2px);
+}
+
+.digital .secondary-btn {
+  background: white;
+  border: 1px solid #ece7e3;
+  color: #2b2438;
+  padding: 14px 30px;
+  border-radius: 999px;
+}
+
+.digital .feature-card {
+  background: white;
+  border: 1px solid #ece7e3;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+}
+
+.digital .feature-card:hover {
+  transform: translateY(-6px);
+  transition: 0.3s;
+}
+
+.digital .section-tag {
+  color: #d96b57;
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.digital .section-title {
+  font-size: 58px;
+  line-height: 1.15;
+  color: #2b2438;
+  max-width: 700px;
+}
+
+.digital .container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 0 24px;
+}
+
+.digital .hero-image {
+  border-radius: 30px;
+  overflow: hidden;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.08);
+}
+
+.digital h1,h2,h3 {
+  font-family: "Playfair Display", serif;
+}
+
+.digital .hero-section {
+  text-align: center;
+  padding: 80px 20px;
+}
+
+.digital .hero-section h1 {
+  font-size: 72px;
+  line-height: 1.1;
+  color: #2b2438;
+  margin-bottom: 20px;
+}
+
+.digital .hero-section h1 span {
+  color: #d96b57;
+  font-style: italic;
+}
+
+.digital .hero-section p {
+  max-width: 700px;
+  margin: auto;
+  font-size: 20px;
+  color: #6b7280;
+}
+
+.digital .hero-buttons {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
