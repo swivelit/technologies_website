@@ -1,15 +1,15 @@
 import { useEffect, useRef } from "react";
 
 const imgs = {
-  welcome: "/images/goodone/6.png",
-  home: "images/goodone/1.png",
-  browse: "/images/goodone/7.png",
-  createAccount: "images/goodone/2.png",
+  welcome: "src/assets/images/goodone/6.png",
+  home: "src/assets/images/goodone/1.png",
+  browse: "src/assets//images/goodone/7.png",
+  createAccount: "src/assets/images/goodone/2.png",
   signupFlow: "/mnt/user-data/uploads/Screenshot_2026-06-15_at_1_18_33_am.png",
-  addListing: "/images/goodone/8.png",
-  dashboard: "images/goodone/5.png",
-  chat: "images/goodone/4.png",
-  vendorProfile: "images/goodone/3.png",
+  addListing: "src/assets/images/goodone/8.png",
+  dashboard: "src/assets/images/goodone/5.png",
+  chat: "src/assets/images/goodone/4.png",
+  vendorProfile: "src/assets/images/goodone/3.png",
   becomeVendor: "/mnt/user-data/uploads/Screenshot_2026-06-15_at_1_19_24_am.png",
   admin: "/mnt/user-data/uploads/Screenshot_2026-06-15_at_1_19_41_am.png",
 };

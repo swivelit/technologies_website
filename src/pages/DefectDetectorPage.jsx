@@ -53,37 +53,37 @@ const screens = [
     label: "Overview",
     title: "Command Center for Quality",
     desc: "One screen shows total inspections, defect counts, accuracy, active cameras, and system uptime — with live alerts and recent detections side by side so nothing slips through.",
-    img: "/images/Defect detectors/1.png",
+    img: "src/assets//images/Defect detectors/1.png",
   },
   {
     label: "Live Monitoring",
     title: "See Every Line, Right Now",
     desc: "Multi-camera feeds with bounding-box overlays, confidence scores, and a live inspection timeline give your team situational awareness across the entire plant floor in real time.",
-    img: "/images/Defect detectors/2.png",
+    img: "src/assets//images/Defect detectors/2.png",
   },
   {
     label: "Defect Cases",
     title: "Triage, Assign, Resolve",
     desc: "Every detected defect becomes a structured case with image evidence, root-cause fields, reviewer assignment, and a full audit trail — approve, reject, or escalate with one click.",
-    img: "/images/Defect detectors/3.png",
+    img: "src/assets//images/Defect detectors/3.png",
   },
   {
     label: "Analytics",
     title: "Patterns That Drive Action",
     desc: "Defect trend charts, station heat maps, and yield-rate tracking surface exactly which stations, shifts, and defect types need attention before they become costly problems.",
-    img: "/images/Defect detectors/4.png",
+    img: "src/assets//images/Defect detectors/4.png",
   },
   {
     label: "Models",
     title: "AI That Learns Your Product",
     desc: "Train, version, and deploy inspection models without leaving the platform. Accuracy, precision, recall, and latency metrics are tracked per model so you always know what's running.",
-    img: "/images/Defect detectors/5.png",
+    img: "src/assets//images/Defect detectors/5.png",
   },
   {
     label: "Devices",
     title: "Every Camera, Always Healthy",
     desc: "Manage edge devices and cameras across stations. Spot offline units, high-CPU warnings, and firmware versions at a glance, with restart and reassign actions one click away.",
-    img: "/images/Defect detectors/6.png",
+    img: "src/assets//images/Defect detectors/6.png",
   },
 ];
 

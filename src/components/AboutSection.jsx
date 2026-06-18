@@ -52,11 +52,11 @@ const AboutSection = () => (
           }}
         >
           <img
-            src="/about.png"
+            src="src/assets/about.png"
             alt="Swivel Technology - Digital Innovation"
             style={{
               width: '90%',
-              maxWidth: '350px',
+              maxWidth: '400px',
               height: 'auto',
               borderRadius: '16px',
               objectFit: 'cover',

@@ -314,7 +314,7 @@ function Narrative() {
             }}
           >
             <img
-              src="/images/grab basket/1.png"
+              src="src/assets/images/grab basket/1.png"
               alt="Consumer Store"
               style={{ width: "110%", display: "fill" }}
             />
@@ -340,7 +340,7 @@ const features = [
       "Get personalized picks and bestseller badges",
       "Flat discounts and promo codes applied instantly",
     ],
-    img: "/images/grab basket/2.png",
+    img: "src/assets/images/grab basket/2.png",
     glow: "radial-gradient(circle, rgba(232,55,42,0.12) 0%, transparent 70%)",
     reverse: false,
   },
@@ -354,7 +354,7 @@ const features = [
       "Saved delivery addresses for one-tap checkout",
       "Quantity controls that update totals in real-time",
     ],
-    img: "/images/grab basket/5.png",
+    img: "src/assets/images/grab basket/5.png",
     glow: "radial-gradient(circle, rgba(245,166,35,0.12) 0%, transparent 70%)",
     reverse: true,
   },
@@ -368,7 +368,7 @@ const features = [
       "One-tap quick actions: add products, manage offers",
       "Catalog management with stock toggle controls",
     ],
-    img: "/images/grab basket/4.png",
+    img: "src/assets/images/grab basket/4.png",
     glow: "radial-gradient(circle, rgba(34,197,94,0.1) 0%, transparent 70%)",
     reverse: false,
   },
@@ -382,7 +382,7 @@ const features = [
       "Real-time earnings, deliveries, and hours online",
       "Toggle online/offline to control availability",
     ],
-    img: "/images/grab basket/8.png",
+    img: "src/assets/images/grab basket/8.png",
     glow: "radial-gradient(circle, rgba(232,55,42,0.12) 0%, transparent 70%)",
     reverse: true,
   },
@@ -498,10 +498,10 @@ function Features() {
 
 // ── WORKFLOW ──
 const workflowSteps = [
-  { num: "1", img: "/images/grab basket/2.png", title: "Browse & Discover", desc: "Customer opens GrabIt, sees personalized picks and offers nearby." },
-  { num: "2", img: "/images/grab basket/3.png", title: "Order & Pay", desc: "Add items, apply coupon, confirm address, place order in seconds." },
-  { num: "3", img: "/images/grab basket/7.png", title: "Partner Prepares", desc: "Store gets notified, accepts order, packs items for pickup." },
-  { num: "✓", img: "/images/grab basket/6.png", title: "Track & Receive", desc: "Live map tracking, ETA updates, and delivery confirmation.", isLast: true },
+  { num: "1", img: "src/assets/images/grab basket/2.png", title: "Browse & Discover", desc: "Customer opens GrabIt, sees personalized picks and offers nearby." },
+  { num: "2", img: "src/assets/images/grab basket/3.png", title: "Order & Pay", desc: "Add items, apply coupon, confirm address, place order in seconds." },
+  { num: "3", img: "src/assets/images/grab basket/7.png", title: "Partner Prepares", desc: "Store gets notified, accepts order, packs items for pickup." },
+  { num: "✓", img: "src/assets/images/grab basket/6.png", title: "Track & Receive", desc: "Live map tracking, ETA updates, and delivery confirmation.", isLast: true },
 ];
 
 function Workflow() {
@@ -509,7 +509,7 @@ function Workflow() {
     <section
       style={{
         background: colors.black,
-        padding: "120px 6vw",
+        padding: "121px 6vw",
         color: "white",
         position: "relative",
         overflow: "hidden",
