@@ -1335,7 +1335,7 @@ export async function initGL(canvas, options = {}) {
 
   let lenis = null;
   let refreshFrame = 0;
-  const sceneFitQuery = matchMedia('(max-width: 1060px), (max-height: 720px), (hover: none), (pointer: coarse)');
+  const sceneFitQuery = matchMedia('(max-width: 1180px), (max-height: 780px), (hover: none), (pointer: coarse)');
 
   function getHashTarget(hash) {
     if (!hash || hash === '#') return null;
@@ -1762,6 +1762,7 @@ export async function initGL(canvas, options = {}) {
     }, 120);
   });
   window.visualViewport?.addEventListener('resize', () => queueRefresh(true), { passive: true });
+  window.visualViewport?.addEventListener('scroll', () => queueRefresh(true), { passive: true });
   if (sceneFitQuery.addEventListener) sceneFitQuery.addEventListener('change', () => queueRefresh(true));
   else sceneFitQuery.addListener?.(() => queueRefresh(true));
 

@@ -9,6 +9,7 @@ const EMAILJS_SDK = 'https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.j
 const EMAILJS_PUBLIC_KEY = '-7wkbGnC_50wjRavn';
 const EMAILJS_SERVICE = 'service_8unkljg';
 const EMAILJS_TEMPLATE = 'template_7bvvb7l';
+const COMPACT_VIEWPORT_QUERY = '(max-width: 1180px), (max-height: 780px), (pointer: coarse), (hover: none)';
 
 let reduceMotion = false;
 
@@ -66,7 +67,7 @@ function initReveals() {
   const observedEls = [...new Set([...revealEls, ...scrambleEls])];
   if (!observedEls.length) return;
 
-  const isMobile = matchMedia('(max-width: 820px), (pointer: coarse), (hover: none)').matches;
+  const isCompact = matchMedia(COMPACT_VIEWPORT_QUERY).matches;
   const revealOne = (el) => {
     if (el.hasAttribute('data-reveal')) el.classList.add('in');
     if (el.hasAttribute('data-scramble') && !reduceMotion && !el.dataset.scrambled) {
@@ -95,8 +96,8 @@ function initReveals() {
       }
     },
     {
-      threshold: isMobile ? 0.1 : 0.25,
-      rootMargin: isMobile ? '0px 0px -2% 0px' : '0px 0px -6% 0px',
+      threshold: isCompact ? 0.1 : 0.25,
+      rootMargin: isCompact ? '0px 0px -2% 0px' : '0px 0px -6% 0px',
     }
   );
 
@@ -111,7 +112,7 @@ function initReveals() {
       if (el.getBoundingClientRect().top < vh * 0.9) el.classList.add('in');
     });
   };
-  setTimeout(revealInView, isMobile ? 1400 : 2200);
+  setTimeout(revealInView, isCompact ? 1400 : 2200);
 }
 
 /* ---------- product card galleries (cross-fade, pause when off-screen) ---------- */
