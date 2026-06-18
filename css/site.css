@@ -367,30 +367,11 @@ h1, h2, h3 { font-weight: 700; line-height: 1.02; letter-spacing: -0.025em; }
 /* ---------- intro ---------- */
 .scene--intro .scene__hold { align-items: center; text-align: center; justify-content: center; }
 /* the intro hold owns a stacking context so the wordmark / boot / hint always
-   sit above the readability haze (::before) and the WebGL canvas behind it. */
+   sit above the WebGL canvas behind it. */
 html.gl .scene--intro .scene__hold { isolation: isolate; z-index: 2; }
-/* The readability haze lives on the STICKY hold — never on the tall scrolling
-   section — so it stays locked behind the wordmark and cannot drift upward as
-   the section scrolls under the pinned content. A single soft, edgeless radial
-   blob centred behind the wordmark: it must never read as a panel/slab. */
 html.gl .scene--intro::before { content: none; }
 html.gl .scene--intro .scene__hold::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: min(940px, 84vw);
-  height: min(440px, 46vh);
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse at center,
-      rgba(4, 6, 12, 0.6) 0%,
-      rgba(4, 6, 12, 0.38) 36%,
-      rgba(34, 211, 238, 0.035) 56%,
-      transparent 76%);
-  filter: blur(20px);
+  content: none;
 }
 .intro__wordmark {
   font-weight: 700; line-height: 1;
@@ -398,11 +379,11 @@ html.gl .scene--intro .scene__hold::before {
   background: linear-gradient(180deg, #ffffff 28%, #c3d6ff);
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;
-  filter: drop-shadow(0 6px 30px rgba(4, 8, 18, 0.85));
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.72));
 }
 .intro__wordsub {
   margin-top: 18px; color: var(--ice); letter-spacing: 0.42em;
-  text-shadow: 0 2px 16px rgba(4, 8, 18, 0.9);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.78);
 }
 /* GL mode: the WebGL neural field renders BEHIND this real HTML wordmark, so
    "SWIVEL TECHNOLOGIES" is always crisp and readable. It fades in once the
@@ -416,8 +397,7 @@ html.gl .intro__logo {
   filter: saturate(0.54) brightness(0.58);
   will-change: opacity, transform, filter;
 }
-html.gl .intro__logo::before,
-html.gl .intro__logo::after {
+html.gl .intro__logo::before {
   content: "";
   position: absolute;
   left: 50%;
@@ -432,14 +412,6 @@ html.gl .intro__logo::before {
   background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.98), rgba(255, 255, 255, 0.98), rgba(156, 196, 255, 0.82), transparent);
   box-shadow: 0 0 34px rgba(34, 211, 238, 0.62), 0 0 82px rgba(59, 130, 246, 0.22);
 }
-html.gl .intro__logo::after {
-  width: min(760px, 96vw);
-  height: 130%;
-  border: 1px solid rgba(120, 219, 255, 0.15);
-  border-left-color: transparent;
-  border-right-color: transparent;
-  filter: blur(0.2px);
-}
 html.gl .intro__logo.is-on {
   opacity: 1;
   transform: none;
@@ -447,15 +419,11 @@ html.gl .intro__logo.is-on {
   animation: intro-logo-ignite 1.55s cubic-bezier(0.16, 0.7, 0.2, 1) both;
 }
 html.gl .intro__logo.is-on::before { animation: intro-power-line 1.15s cubic-bezier(0.16, 0.7, 0.2, 1) both; }
-html.gl .intro__logo.is-on::after { animation: intro-power-frame 1.45s ease both; }
 html.no-gl .scene--intro { display: none; } /* static fallback opens on the hero */
 
 html.gl .intro__wordmark {
   position: relative;
-  text-shadow:
-    0 0 16px rgba(156, 196, 255, 0.16),
-    0 0 48px rgba(34, 211, 238, 0.1),
-    0 10px 42px rgba(0, 0, 0, 0.74);
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.78);
 }
 html.gl .intro__logo.is-on .intro__wordmark {
   animation: wordmark-power 1.35s cubic-bezier(0.16, 0.7, 0.2, 1) both;
@@ -476,9 +444,7 @@ html.gl .intro__logo.is-on .intro__wordmark::after {
   animation: wordmark-sheen 1.55s 0.18s ease-out both;
 }
 html.gl .intro__logo.is-on .intro__wordsub {
-  text-shadow:
-    0 0 12px rgba(156, 196, 255, 0.32),
-    0 0 30px rgba(34, 211, 238, 0.22);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.78);
 }
 
 @keyframes intro-power-line {
@@ -486,18 +452,11 @@ html.gl .intro__logo.is-on .intro__wordsub {
   38% { opacity: 1; transform: translate(-50%, -50%) scaleX(1); }
   100% { opacity: 0; transform: translate(-50%, -50%) scaleX(1.12); }
 }
-/* a brief power-frame flourish during ignite, then it fully disappears — no
-   persistent border/frame is left between the wordmark and the boot status. */
-@keyframes intro-power-frame {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.94, 0.72); }
-  40% { opacity: 0.5; }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(1, 1); }
-}
 @keyframes wordmark-power {
-  0% { text-shadow: 0 0 0 rgba(34, 211, 238, 0); filter: brightness(0.58); }
-  16% { text-shadow: 0 0 10px rgba(34, 211, 238, 0.72), 0 0 38px rgba(59, 130, 246, 0.44); filter: brightness(1.38); }
+  0% { text-shadow: 0 2px 8px rgba(0, 0, 0, 0.78); filter: brightness(0.58); }
+  16% { text-shadow: 0 4px 14px rgba(0, 0, 0, 0.82); filter: brightness(1.38); }
   30% { filter: brightness(0.9); }
-  58%, 100% { text-shadow: 0 0 18px rgba(156, 196, 255, 0.2), 0 0 58px rgba(34, 211, 238, 0.2); filter: brightness(1); }
+  58%, 100% { text-shadow: 0 4px 14px rgba(0, 0, 0, 0.78); filter: brightness(1); }
 }
 @keyframes intro-logo-ignite {
   0% { filter: saturate(0.5) brightness(0.62); }
