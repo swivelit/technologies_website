@@ -397,28 +397,12 @@ html.gl .intro__logo {
   filter: saturate(0.54) brightness(0.58);
   will-change: opacity, transform, filter;
 }
-html.gl .intro__logo::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  pointer-events: none;
-  opacity: 0;
-  transform: translate(-50%, -50%) scaleX(0.18);
-}
-html.gl .intro__logo::before {
-  width: 118%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.98), rgba(255, 255, 255, 0.98), rgba(156, 196, 255, 0.82), transparent);
-  box-shadow: 0 0 34px rgba(34, 211, 238, 0.62), 0 0 82px rgba(59, 130, 246, 0.22);
-}
 html.gl .intro__logo.is-on {
   opacity: 1;
   transform: none;
   filter: saturate(1.1) brightness(1);
   animation: intro-logo-ignite 1.55s cubic-bezier(0.16, 0.7, 0.2, 1) both;
 }
-html.gl .intro__logo.is-on::before { animation: intro-power-line 1.15s cubic-bezier(0.16, 0.7, 0.2, 1) both; }
 html.no-gl .scene--intro { display: none; } /* static fallback opens on the hero */
 
 html.gl .intro__wordmark {
@@ -447,11 +431,6 @@ html.gl .intro__logo.is-on .intro__wordsub {
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.78);
 }
 
-@keyframes intro-power-line {
-  0% { opacity: 0; transform: translate(-50%, -50%) scaleX(0.08); }
-  38% { opacity: 1; transform: translate(-50%, -50%) scaleX(1); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scaleX(1.12); }
-}
 @keyframes wordmark-power {
   0% { text-shadow: 0 2px 8px rgba(0, 0, 0, 0.78); filter: brightness(0.58); }
   16% { text-shadow: 0 4px 14px rgba(0, 0, 0, 0.82); filter: brightness(1.38); }
