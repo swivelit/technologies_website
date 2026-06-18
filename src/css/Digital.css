@@ -45,13 +45,13 @@
   --border: #ece7e3;
 }
 
-body {
+.digital body {
   background: #faf7f5;
   color: var(--text-dark);
   font-family: "Inter", sans-serif;
 }
 
-.hero {
+.digital .hero {
   min-height: 90vh;
   display: flex;
   align-items: center;
@@ -61,19 +61,19 @@ body {
   padding: 80px 20px;
 }
 
-.hero h1 {
+.digital .hero h1 {
   font-size: 72px;
   font-weight: 700;
   line-height: 1.1;
   color: #2b2438;
 }
 
-.hero h1 span {
+.digital .hero h1 span {
   color: #d96b57;
   font-style: italic;
 }
 
-.hero p {
+.digital .hero p {
   max-width: 650px;
   margin: 24px auto;
   color: #6b7280;
@@ -81,7 +81,7 @@ body {
   line-height: 1.8;
 }
 
-.primary-btn {
+.digital .primary-btn {
   background: #d96b57;
   color: white;
   border: none;
@@ -91,12 +91,12 @@ body {
   transition: 0.3s;
 }
 
-.primary-btn:hover {
+.digital .primary-btn:hover {
   background: #c45b48;
   transform: translateY(-2px);
 }
 
-.secondary-btn {
+.digital .secondary-btn {
   background: white;
   border: 1px solid #ece7e3;
   color: #2b2438;
@@ -104,7 +104,7 @@ body {
   border-radius: 999px;
 }
 
-.feature-card {
+.digital .feature-card {
   background: white;
   border: 1px solid #ece7e3;
   border-radius: 20px;
@@ -112,12 +112,12 @@ body {
   box-shadow: 0 4px 20px rgba(0,0,0,0.04);
 }
 
-.feature-card:hover {
+.digital .feature-card:hover {
   transform: translateY(-6px);
   transition: 0.3s;
 }
 
-.section-tag {
+.digital .section-tag {
   color: #d96b57;
   font-size: 13px;
   letter-spacing: 2px;
@@ -125,54 +125,54 @@ body {
   font-weight: 600;
 }
 
-.section-title {
+.digital .section-title {
   font-size: 58px;
   line-height: 1.15;
   color: #2b2438;
   max-width: 700px;
 }
 
-.container {
+.digital .container {
   max-width: 1200px;
   margin: auto;
   padding: 0 24px;
 }
 
-.hero-image {
+.digital .hero-image {
   border-radius: 30px;
   overflow: hidden;
   box-shadow: 0 30px 60px rgba(0,0,0,0.08);
 }
 
-h1,h2,h3 {
+.digital h1,h2,h3 {
   font-family: "Playfair Display", serif;
 }
 
-.hero-section {
+.digital .hero-section {
   text-align: center;
   padding: 80px 20px;
 }
 
-.hero-section h1 {
+.digital .hero-section h1 {
   font-size: 72px;
   line-height: 1.1;
   color: #2b2438;
   margin-bottom: 20px;
 }
 
-.hero-section h1 span {
+.digital .hero-section h1 span {
   color: #d96b57;
   font-style: italic;
 }
 
-.hero-section p {
+.digital .hero-section p {
   max-width: 700px;
   margin: auto;
   font-size: 20px;
   color: #6b7280;
 }
 
-.hero-buttons {
+.digital .hero-buttons {
   margin-top: 30px;
   display: flex;
   justify-content: center;
