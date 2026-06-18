@@ -32,7 +32,7 @@ const GrabSection = () => (
               <li>Fast and reliable order management</li>
               <li>Convenient doorstep delivery support</li>
             </ul>
-            <a href="#footer" className="grab-box-btn">Learn more →</a>
+            <a href="/grab-basket" className="grab-box-btn" target="_blank">Learn more →</a>
           </div>
         </div>
 
@@ -65,7 +65,7 @@ const GrabSection = () => (
               <li>Wide range of product categories</li>
               <li>Cost-effective and sustainable shopping experience</li>
             </ul>
-            <a href="#footer" className="grab-box-btn">Learn more →</a>
+            <a href="/good-one" className="grab-box-btn" target="_blank">Learn more →</a>
           </div>
         </div>
 
@@ -103,7 +103,7 @@ const GrabSection = () => (
               <li>User-friendly conversational interface</li>
               <li>Continuous learning and improvement capabilities</li>
             </ul>
-            <a href="#footer" className="grab-box-btn">Learn more →</a>
+            <a href="/swico-ai" className="grab-box-btn" target="_blank">Learn more →</a>
           </div>
         </div>
 
@@ -135,7 +135,7 @@ const GrabSection = () => (
               <li>Improved production quality control</li>
               <li>Reduced operational errors and rework costs</li>
             </ul>
-            <a href="#footer" className="grab-box-btn">Learn more →</a>
+            <a href="/defect-detector" className="grab-box-btn" target="_blank">Learn more →</a>
           </div>
         </div>
 

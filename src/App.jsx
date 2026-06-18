@@ -14,6 +14,10 @@ import useScrollReveal from './hooks/useScrollReveal';
 import DigitalMarketing from './pages/Digital';
 import CustomerSupport from "./pages/Customer";
 import FullStack from "./pages/FullStack";
+import GrabBasketPage from "./pages/GrabBasketPage";
+import GoodOnePage from "./pages/GoodOnePage";
+import SwicoAIPage from "./pages/SwicoAIPage";
+import DefectDetectorPage from "./pages/DefectDetectorPage";
 
 function HomePage() {
   return (
@@ -51,6 +55,10 @@ function App() {
           path="/full-stack"
           element={<FullStack />}
         />
+          <Route path="/grab-basket" element={<GrabBasketPage />} />
+        <Route path="/good-one" element={<GoodOnePage />} />
+        <Route path="/swico-ai" element={<SwicoAIPage />} />
+        <Route path="/defect-detector" element={<DefectDetectorPage />} />
       </Routes>
     </BrowserRouter>
   );

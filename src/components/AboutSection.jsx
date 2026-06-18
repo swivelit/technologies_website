@@ -1,7 +1,18 @@
 const AboutSection = () => (
   <section className="section about" id="about">
     <div className="section-inner">
-      <div className="about-grid" style={{ gridTemplateColumns: '1fr', maxWidth: '700px' }}>
+      <div
+        className="about-grid"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '3rem',
+          alignItems: 'center',
+          maxWidth: '1200px',
+          margin: '0 auto',
+        }}
+      >
+        {/* Left: Text Content */}
         <div className="reveal-left">
           <div className="label">Who We Are</div>
           <h2 className="h2">About Swivel <em>Technology</em></h2>
@@ -30,8 +41,43 @@ const AboutSection = () => (
             </div>
           </div>
         </div>
+
+        {/* Right: Image */}
+        <div
+          className="reveal-right"
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <img
+            src="src/assets/about.png"
+            alt="Swivel Technology - Digital Innovation"
+            style={{
+              width: '90%',
+              maxWidth: '400px',
+              height: 'auto',
+              borderRadius: '16px',
+              objectFit: 'cover',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+            }}
+          />
+        </div>
       </div>
     </div>
+
+    {/* Responsive styles */}
+    <style>{`
+      @media (max-width: 768px) {
+        .about-grid {
+          grid-template-columns: 1fr !important;
+        }
+        .about-grid .reveal-right {
+          margin-top: 2rem;
+        }
+      }
+    `}</style>
   </section>
 );
 
