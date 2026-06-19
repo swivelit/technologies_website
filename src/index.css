@@ -262,6 +262,7 @@ footer{background:var(--ink);padding:72px 6% 36px}
 .social-btn:hover svg{stroke:var(--teal)}
 .logo-name{font-family:var(--serif);font-size:18px;font-weight:700;color:var(--ink)}
 .logo-name span{color:var(--teal)}
+.logo{text-decoration: none;}
 
 /* ─── SCROLL TO TOP ─── */
 .scroll-top{position:fixed;bottom:28px;right:28px;width:44px;height:44px;background:var(--ink);border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:300;opacity:0;transform:translateY(20px);transition:opacity 0.3s,transform 0.3s,background 0.2s,box-shadow 0.2s;box-shadow:0 4px 20px rgba(0,0,0,0.2)}
