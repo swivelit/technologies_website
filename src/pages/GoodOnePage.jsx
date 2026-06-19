@@ -366,6 +366,11 @@ function Reveal({ children, style, className = "" }) {
 }
 
 export default function GoodOneShowcase() {
+
+    useEffect(() => {
+    document.title = "Good One | Swivel Technologies";
+    }, []);
+
   return (
     <>
       <style>{css}</style>

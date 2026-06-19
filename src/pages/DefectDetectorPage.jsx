@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import screen1 from "../assets/images/Defect detectors/1.png";
 import screen2 from "../assets/images/Defect detectors/2.png";
@@ -110,6 +110,10 @@ const steps = [
 
 export default function DefectDetectorShowcase() {
   const [activeScreen, setActiveScreen] = useState(0);
+
+    useEffect(() => {
+    document.title = "Defect Detector | Swivel Technologies";
+    }, []);
 
   return (
     <div style={{ fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif", color: "#1a1a1a", background: "#ffffff", lineHeight: 1.6 }}>

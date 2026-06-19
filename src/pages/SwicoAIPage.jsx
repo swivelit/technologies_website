@@ -2,6 +2,7 @@ import voiceImg from "../assets/images/swico/voice.png";
 import signinImg from "../assets/images/swico/signin.png";
 import chatImg from "../assets/images/swico/chat.png";
 import scheduleImg from "../assets/images/swico/schedule.png";
+import { useEffect } from "react";
 
 const css = `
 
@@ -484,6 +485,11 @@ const screens = [
 ];
 
 export default function SwicoAI() {
+
+    useEffect(() => {
+    document.title = "Swico AI | Swivel Technologies";
+    }, []);
+
   return (
     <>
       <style>{css}</style>

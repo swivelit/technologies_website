@@ -112,6 +112,10 @@ function SectionLabel({ children, style = {} }) {
 function Hero() {
   const phonesRef = useRef(null);
 
+    useEffect(() => {
+    document.title = "Grab Basket | Swivel Technologies";
+    }, []);
+
   useEffect(() => {
     const handleScroll = () => {
       const scrolled = window.scrollY;
