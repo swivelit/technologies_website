@@ -51,7 +51,7 @@ const botDepts = [
     ),
   },
   {
-    title: 'Customer Support',
+    title: 'Technical Support',
     desc: 'Delivers exceptional customer experiences through responsive, reliable, and multi-channel support solutions.',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -124,7 +124,7 @@ const CareerSection = () => {
           if (d.title === "Administration and HR") {
             window.open("/hr", "_blank");
           }
-          if (d.title === "Customer Support") {
+          if (d.title === "Technical Support") {
             window.open("/customer-support", "_blank");
           }
           if (d.title === "Maintenance") {

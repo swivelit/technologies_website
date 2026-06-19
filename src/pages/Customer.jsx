@@ -8,7 +8,7 @@ function CustomerSupport() {
 
   {/* HERO SECTION START */}
   <div className="hero-section">
-    <span className="section-tag">CUSTOMER SUPPORT</span>
+    <span className="section-tag">TECHNICAL SUPPORT</span>
 
     <h1>
       Support Your Customers.
