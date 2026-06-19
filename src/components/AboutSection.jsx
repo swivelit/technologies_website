@@ -1,3 +1,5 @@
+import aboutImg from '../assets/about.jpg'; 
+
 const AboutSection = () => (
   <section className="section about" id="about">
     <div className="section-inner">
@@ -52,7 +54,7 @@ const AboutSection = () => (
           }}
         >
           <img
-            src="src/assets/about.png"
+            src={aboutImg}
             alt="Swivel Technology - Digital Innovation"
             style={{
               width: '90%',

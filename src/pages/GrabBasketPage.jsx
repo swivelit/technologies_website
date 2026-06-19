@@ -1,5 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 
+import grab1 from "../assets/images/grab basket/1.png";
+import grab2 from "../assets/images/grab basket/2.png";
+import grab3 from "../assets/images/grab basket/3.png";
+import grab4 from "../assets/images/grab basket/4.png";
+import grab5 from "../assets/images/grab basket/5.png";
+import grab6 from "../assets/images/grab basket/6.png";
+import grab7 from "../assets/images/grab basket/7.png";
+import grab8 from "../assets/images/grab basket/8.png";
+
 const colors = {
   cream: "#FAF8F5",
   red: "#E8372A",
@@ -314,9 +323,9 @@ function Narrative() {
             }}
           >
             <img
-              src="src/assets/images/grab basket/1.png"
+              src={grab1}
               alt="Consumer Store"
-              style={{ width: "110%", display: "fill" }}
+              style={{ width: "110%", objectFit: "cover" }}
             />
           </div>
         
@@ -340,7 +349,7 @@ const features = [
       "Get personalized picks and bestseller badges",
       "Flat discounts and promo codes applied instantly",
     ],
-    img: "src/assets/images/grab basket/2.png",
+    img: grab2,
     glow: "radial-gradient(circle, rgba(232,55,42,0.12) 0%, transparent 70%)",
     reverse: false,
   },
@@ -354,7 +363,7 @@ const features = [
       "Saved delivery addresses for one-tap checkout",
       "Quantity controls that update totals in real-time",
     ],
-    img: "src/assets/images/grab basket/5.png",
+    img: grab5,
     glow: "radial-gradient(circle, rgba(245,166,35,0.12) 0%, transparent 70%)",
     reverse: true,
   },
@@ -368,7 +377,7 @@ const features = [
       "One-tap quick actions: add products, manage offers",
       "Catalog management with stock toggle controls",
     ],
-    img: "src/assets/images/grab basket/4.png",
+    img: grab4,
     glow: "radial-gradient(circle, rgba(34,197,94,0.1) 0%, transparent 70%)",
     reverse: false,
   },
@@ -382,7 +391,7 @@ const features = [
       "Real-time earnings, deliveries, and hours online",
       "Toggle online/offline to control availability",
     ],
-    img: "src/assets/images/grab basket/8.png",
+    img: grab8,
     glow: "radial-gradient(circle, rgba(232,55,42,0.12) 0%, transparent 70%)",
     reverse: true,
   },
@@ -498,10 +507,10 @@ function Features() {
 
 // ── WORKFLOW ──
 const workflowSteps = [
-  { num: "1", img: "src/assets/images/grab basket/2.png", title: "Browse & Discover", desc: "Customer opens GrabIt, sees personalized picks and offers nearby." },
-  { num: "2", img: "src/assets/images/grab basket/3.png", title: "Order & Pay", desc: "Add items, apply coupon, confirm address, place order in seconds." },
-  { num: "3", img: "src/assets/images/grab basket/7.png", title: "Partner Prepares", desc: "Store gets notified, accepts order, packs items for pickup." },
-  { num: "✓", img: "src/assets/images/grab basket/6.png", title: "Track & Receive", desc: "Live map tracking, ETA updates, and delivery confirmation.", isLast: true },
+  { num: "1", img: grab2, title: "Browse & Discover", desc: "Customer opens GrabIt, sees personalized picks and offers nearby." },
+  { num: "2", img: grab3, title: "Order & Pay", desc: "Add items, apply coupon, confirm address, place order in seconds." },
+  { num: "3", img: grab7, title: "Partner Prepares", desc: "Store gets notified, accepts order, packs items for pickup." },
+  { num: "✓", img: grab6, title: "Track & Receive", desc: "Live map tracking, ETA updates, and delivery confirmation.", isLast: true },
 ];
 
 function Workflow() {

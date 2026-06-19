@@ -1,3 +1,8 @@
+import voiceImg from "../assets/images/swico/voice.png";
+import signinImg from "../assets/images/swico/signin.png";
+import chatImg from "../assets/images/swico/chat.png";
+import scheduleImg from "../assets/images/swico/schedule.png";
+
 const css = `
 
   :root {
@@ -472,10 +477,10 @@ const steps = [
 
 
 const screens = [
-  { file: "src/assets/images/swico/voice.png", caption: "Voice Home" },
-  { file: "src/assets/images/swico/signin.png", caption: "Sign In" },
-  { file: "src/assets/images/swico/chat.png", caption: "Chat Interface" },
-  { file: "src/assets/images/swico/schedule.png", caption: "Schedule View" },
+  { file: voiceImg, caption: "Voice Home" },
+  { file: signinImg, caption: "Sign In" },
+  { file: chatImg, caption: "Chat Interface" },
+  { file: scheduleImg, caption: "Schedule View" },
 ];
 
 export default function SwicoAI() {

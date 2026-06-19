@@ -1,22 +1,30 @@
 import { useEffect, useRef } from "react";
+import goodone6 from "../assets/images/goodone/6.png";
+import goodone1 from "../assets/images/goodone/1.png";
+import goodone7 from "../assets/images/goodone/7.png";
+import goodone2 from "../assets/images/goodone/2.png";
+import goodone8 from "../assets/images/goodone/8.png";
+import goodone5 from "../assets/images/goodone/5.png";
+import goodone4 from "../assets/images/goodone/4.png";
+import goodone3 from "../assets/images/goodone/3.png";
+
 
 const imgs = {
-  welcome: "src/assets/images/goodone/6.png",
-  home: "src/assets/images/goodone/1.png",
-  browse: "src/assets//images/goodone/7.png",
-  createAccount: "src/assets/images/goodone/2.png",
-  signupFlow: "/mnt/user-data/uploads/Screenshot_2026-06-15_at_1_18_33_am.png",
-  addListing: "src/assets/images/goodone/8.png",
-  dashboard: "src/assets/images/goodone/5.png",
-  chat: "src/assets/images/goodone/4.png",
-  vendorProfile: "src/assets/images/goodone/3.png",
-  becomeVendor: "/mnt/user-data/uploads/Screenshot_2026-06-15_at_1_19_24_am.png",
-  admin: "/mnt/user-data/uploads/Screenshot_2026-06-15_at_1_19_41_am.png",
+  welcome: goodone6,
+  home: goodone1,
+  browse: goodone7,
+  createAccount: goodone2,
+  signupFlow: null, 
+  addListing: goodone8,
+  dashboard: goodone5,
+  chat: goodone4,
+  vendorProfile: goodone3,
+  becomeVendor: null, 
+  admin: null, 
 };
 
 const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap');
-
+  
   :root {
     --orange: #E8450A;
     --orange-light: #FF5722;

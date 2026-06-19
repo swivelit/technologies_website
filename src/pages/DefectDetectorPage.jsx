@@ -1,5 +1,12 @@
 import { useState } from "react";
 
+import screen1 from "../assets/images/Defect detectors/1.png";
+import screen2 from "../assets/images/Defect detectors/2.png";
+import screen3 from "../assets/images/Defect detectors/3.png";
+import screen4 from "../assets/images/Defect detectors/4.png";
+import screen5 from "../assets/images/Defect detectors/5.png";
+import screen6 from "../assets/images/Defect detectors/6.png";
+
 const features = [
   {
     icon: (
@@ -53,39 +60,39 @@ const screens = [
     label: "Overview",
     title: "Command Center for Quality",
     desc: "One screen shows total inspections, defect counts, accuracy, active cameras, and system uptime — with live alerts and recent detections side by side so nothing slips through.",
-    img: "src/assets//images/Defect detectors/1.png",
+    img: screen1,
   },
   {
     label: "Live Monitoring",
     title: "See Every Line, Right Now",
     desc: "Multi-camera feeds with bounding-box overlays, confidence scores, and a live inspection timeline give your team situational awareness across the entire plant floor in real time.",
-    img: "src/assets//images/Defect detectors/2.png",
+    img: screen2,
   },
   {
     label: "Defect Cases",
     title: "Triage, Assign, Resolve",
     desc: "Every detected defect becomes a structured case with image evidence, root-cause fields, reviewer assignment, and a full audit trail — approve, reject, or escalate with one click.",
-    img: "src/assets//images/Defect detectors/3.png",
+    img: screen3,
   },
   {
     label: "Analytics",
     title: "Patterns That Drive Action",
     desc: "Defect trend charts, station heat maps, and yield-rate tracking surface exactly which stations, shifts, and defect types need attention before they become costly problems.",
-    img: "src/assets//images/Defect detectors/4.png",
+    img: screen4,
   },
   {
     label: "Models",
     title: "AI That Learns Your Product",
     desc: "Train, version, and deploy inspection models without leaving the platform. Accuracy, precision, recall, and latency metrics are tracked per model so you always know what's running.",
-    img: "src/assets//images/Defect detectors/5.png",
+    img: screen5,
   },
   {
     label: "Devices",
     title: "Every Camera, Always Healthy",
     desc: "Manage edge devices and cameras across stations. Spot offline units, high-CPU warnings, and firmware versions at a glance, with restart and reassign actions one click away.",
-    img: "src/assets//images/Defect detectors/6.png",
+    img: screen6,
   },
-];
+]
 
 const stats = [
   { value: "98.62%", label: "Detection Accuracy" },
@@ -107,9 +114,7 @@ export default function DefectDetectorShowcase() {
   return (
     <div style={{ fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif", color: "#1a1a1a", background: "#ffffff", lineHeight: 1.6 }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+       
 
         .dd-hero {
           background: linear-gradient(135deg, #FF6B00 0%, #FF8C38 40%, #FFB347 100%);
