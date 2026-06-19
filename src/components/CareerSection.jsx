@@ -94,17 +94,17 @@ const CareerSection = () => {
   <div
     className={`dept-card${d.featured ? ' dept-card-featured' : ''}`}
     key={d.title}
-    onClick={() => {
-      if (d.title === "Digital Marketing") {
-        navigate("/digital-marketing");
-      }
-      if (d.title === "Artificial Intelligence Research Team") {
-        navigate("/ai-research");
-      }
-      if (d.title === "Full Stack") {
-        navigate("/full-stack");
-      }
-    }}
+      onClick={() => {
+        if (d.title === "Digital Marketing") {
+          window.open("/digital-marketing", "_blank");
+        }
+        if (d.title === "Artificial Intelligence Research Team") {
+          window.open("/ai-research", "_blank");
+        }
+        if (d.title === "Full Stack") {
+          window.open("/full-stack", "_blank");
+        }
+      }}
     style={{ cursor: "pointer" }}
   >
 
@@ -120,17 +120,17 @@ const CareerSection = () => {
     <div
       className="dept-card"
       key={d.title}
-    onClick={() => {
-      if (d.title === "Administration and HR") {
-        navigate("/hr");
-      }
-      if (d.title === "Customer Support") {
-        navigate("/customer-support");
-      }
-      if (d.title === "Maintenance") {
-        navigate("/maintenance");
-      }
-    }}
+        onClick={() => {
+          if (d.title === "Administration and HR") {
+            window.open("/hr", "_blank");
+          }
+          if (d.title === "Customer Support") {
+            window.open("/customer-support", "_blank");
+          }
+          if (d.title === "Maintenance") {
+            window.open("/maintenance", "_blank");
+          }
+        }}
       style={{ cursor: "pointer" }}
     >
       <div className="dept-ico-wrap">{d.icon}</div>
