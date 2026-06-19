@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import "../css/AIShowcase.css";
 import Ai1 from "../assets/ai_1.jpg";
 import Ai2 from "../assets/ai_2.jpg";
+import Ai3 from "../assets/ai_3.jpg";
+import Ai4 from "../assets/ai_4.jpg";
 
 const capabilities = [
   { icon: "⚙️", title: "Process Automation", desc: "Eliminate repetitive tasks and streamline daily operations so your team can focus on work that matters." },
@@ -125,10 +127,10 @@ export default function AIShowcase() {
         {/* Image pair */}
         <div className="image-pair">
           <div className="image-pair-item">
-            <img src={Ai1} alt="AI assistant on laptop" />
+            <img src={Ai3} alt="AI assistant on laptop" />
           </div>
           <div className="image-pair-item">
-            <img src={Ai2} alt="Smart workspace automation" />
+            <img src={Ai4} alt="Smart workspace automation" />
           </div>
         </div>
 
