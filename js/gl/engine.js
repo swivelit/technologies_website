@@ -321,11 +321,18 @@ class Particles {
     this.group = new THREE.Group();
     this.group.add(this.points);
 
-    // firing-wave driver state (origins are written straight into the uniforms)
+    // firing-wave driver state (origins are written straight into the uniforms).
+    // RARE, natural signals: like a real brain, only 1–2 fire every ~20s, at most
+    // a couple on screen at once, each propagating out and fading with long quiet
+    // gaps between. Slots start IDLE; the scheduler spawns into free slots.
     this.fire = {
       origins: fireOrigins,
-      waves: Array.from({ length: 6 }, () => ({ r: 0, max: 1, speed: 1 })),
+      waves: Array.from({ length: 6 }, () => ({ r: 0, max: 1, speed: 1, active: false })),
       src: null, srcCount: 0, extent: 20,
+      gapMin: 10, gapMax: 20,        // seconds between signal events
+      maxConcurrent: 2,              // never more than this on screen at once
+      doubleChance: 0.3,            // chance an event fires a quick second signal
+      activeCount: 0, nextSpawn: 3,  // first signal arrives shortly after load
     };
   }
 
@@ -361,32 +368,77 @@ class Particles {
     // shell ~1–2 particle-spacings thick, derived from the field size (not hardcoded)
     const w = extent * 0.06;
     this.uniforms.uFireWidth.value = Math.max(0.6, w * w);
-    for (let k = 0; k < 6; k++) this._spawnWave(k, k / 6);   // staggered start radii
+    // start fully quiet: every slot idle at (0,0). The first signal is scheduled a
+    // few seconds out so it arrives shortly after load — not instantly, not never.
+    const f2 = this.fire;
+    for (let k = 0; k < 6; k++) {
+      f2.waves[k].active = false;
+      this.uniforms.uFireWaves.value[k].set(0, 0);
+    }
+    f2.activeCount = 0;
+    f2.nextSpawn = 2 + Math.random() * 2;   // 2–4s
   }
 
-  _spawnWave(k, startFrac) {
+  /* index of a free (idle) wave slot, or -1 if all are busy */
+  _freeWave() {
+    const ws = this.fire.waves;
+    for (let k = 0; k < ws.length; k++) if (!ws[k].active) return k;
+    return -1;
+  }
+
+  /* light up one wave: origin at a random core vertex, sweeping out from r=0.
+     Slowed so each signal takes ~4–6s to sweep across the wider field and fade. */
+  _spawnWave(k) {
     const f = this.fire, w = f.waves[k];
     const i = (Math.random() * f.srcCount) | 0;
     const o = f.origins[k];
     if (f.src) o.set(f.src[i * 3], f.src[i * 3 + 1], f.src[i * 3 + 2]);
     else o.set(0, 0, 0);
-    w.max = f.extent * (1.7 + Math.random() * 0.6);      // ~2× extent → sweeps across
-    w.speed = f.extent * (0.42 + Math.random() * 0.3);    // units / second
-    w.r = startFrac * w.max;
-    this.uniforms.uFireWaves.value[k].set(w.r, 0);
+    w.max = f.extent * (1.7 + Math.random() * 0.6);       // ~2× extent → sweeps across
+    w.speed = f.extent * (0.3 + Math.random() * 0.15);     // slower → graceful sweep
+    w.r = 0;
+    w.active = true;
+    f.activeCount++;
+    this.uniforms.uFireWaves.value[k].set(0, 0);
   }
 
-  /* advance the firing waves; each expands 0 → ~2× extent, intensity attacks then
-     fades as it grows, and respawns at a new core vertex on completion. */
+  /* advance ONLY active waves; each expands 0 → ~2× extent, intensity attacks then
+     fades, and when it completes the slot goes idle (0,0) — no auto-respawn, so the
+     field is fully quiet between signals. A scheduler drips in rare new signals. */
   updateFiring(dt) {
     if (this.reducedMotion) return;
+    const f = this.fire;
+    if (!f.src) return;
+
     for (let k = 0; k < 6; k++) {
-      const w = this.fire.waves[k];
+      const w = f.waves[k];
+      if (!w.active) continue;            // idle slots stay quiet at (0,0)
       w.r += w.speed * dt;
-      if (w.r >= w.max || !this.fire.src) this._spawnWave(k, 0);
+      if (w.r >= w.max) {                 // signal has swept out + faded → extinguish
+        w.active = false;
+        f.activeCount = Math.max(0, f.activeCount - 1);
+        this.uniforms.uFireWaves.value[k].set(0, 0);
+        continue;
+      }
       const ph = w.r / w.max;
       const inten = Math.pow(1 - ph, 1.3) * Math.min(1, ph / 0.12);
       this.uniforms.uFireWaves.value[k].set(w.r, inten);
+    }
+
+    // scheduler: rare signal events with long quiet gaps. ~1–2 signals per 20s.
+    f.nextSpawn -= dt;
+    if (f.nextSpawn > 0) return;
+    if (f.activeCount < f.maxConcurrent) {
+      const k = this._freeWave();
+      if (k >= 0) this._spawnWave(k);
+      // sometimes a quick second signal, then a long gap; otherwise straight to the gap
+      if (Math.random() < f.doubleChance && f.activeCount < f.maxConcurrent) {
+        f.nextSpawn = 1.5 + Math.random() * 1.5;             // 1.5–3s
+      } else {
+        f.nextSpawn = f.gapMin + Math.random() * (f.gapMax - f.gapMin);
+      }
+    } else {
+      f.nextSpawn = 1 + Math.random();   // at capacity → re-check shortly
     }
   }
 

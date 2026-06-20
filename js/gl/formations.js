@@ -219,9 +219,11 @@ export function nebulaFormation(count, { radius = 30, mobile = false } = {}) {
   const BRAIN = [0.30, 0.40, 0.74];
   const BRAIN_HI = [0.46, 0.62, 0.96];
 
-  // half-axes: WIDE in x, short in y, shallow real depth in z. Pulled in from
-  // 1.4 → 1.15 so the field doesn't fling edge-to-edge — calmer, more contained.
-  const AX = radius * 1.15, AY = radius * 0.5, AZ = radius * 0.6;
+  // half-axes: WIDE in x, short in y, shallow real depth in z. Spread the field
+  // across the hero (1.15 → 1.6) so it reads as a broad neural field that
+  // dissolves into the dark, NOT a compact brain-ish blob. meta.extent follows
+  // AX, so the firing waves sweep the full wider span.
+  const AX = radius * 1.6, AY = radius * 0.55, AZ = radius * 0.6;
   const clFreq = mobile ? 1.5 : 1.8;       // low-freq structural clustering
 
   const nCore = Math.floor(count * 0.3);   // dense central CORE — firing origins live here
