@@ -136,10 +136,12 @@ void main(){
   ps *= sizeMul * hubPulse * (1.0 + burst * 0.15);
   gl_PointSize = clamp(ps, 1.0, 40.0 * uPixelRatio);
 
-  float twinkle = 0.72 + 0.28 * sin(uTime * (1.2 + aSeed.y * 2.6) + aSeed.x * 6.28318);
+  float twinkle = 0.82 + 0.18 * sin(uTime * (1.2 + aSeed.y * 2.6) + aSeed.x * 6.28318);
   vHub = hub;
-  vAlpha = uOpacity * twinkle * smoothstep(0.0, 1.0, ps) * (1.0 + hub * (0.18 + uBootEnergy * 0.28));
-  vColor = mix(aColFrom, aColTo, t) * (1.0 + spark * 0.6 + burst * 0.3 + hub * (uHubGlow + uBootEnergy * 0.55));
+  // hubs read as prominent NODES via extra opacity (not via brightening — on the
+  // light ground normal-blend wants solid dark pigment, not a glow toward white).
+  vAlpha = uOpacity * twinkle * smoothstep(0.0, 1.0, ps) * (1.0 + hub * (0.34 + uBootEnergy * 0.3));
+  vColor = mix(aColFrom, aColTo, t) * (1.0 + spark * 0.35 + burst * 0.2 + hub * (uHubGlow * 0.35 + uBootEnergy * 0.22));
 }`;
 
 const FRAG = /* glsl */ `
@@ -152,8 +154,10 @@ void main(){
   float d = length(uv) * 2.0;
   if (d > 1.0) discard;
   float core = smoothstep(1.0, 0.0, d);
-  float a = core * core * (0.55 + 0.45 * core);
-  gl_FragColor = vec4(vColor * (1.0 + core * (0.7 + vHub * 0.6)), a * vAlpha);
+  // a touch more fill + a gentle (not white-hot) core so each node reads as a
+  // crisp solid mark of pigment on the light ground.
+  float a = core * core * (0.62 + 0.38 * core);
+  gl_FragColor = vec4(vColor * (0.88 + core * 0.18), a * vAlpha * 1.42);
 }`;
 
 /* network mesh — faint accent-tinted segments between nearest nodes. Shares the
@@ -182,9 +186,9 @@ uniform float uLineOpacity;
 uniform float uBootEnergy;
 varying float vAlpha;
 void main(){
-  // brighter line colour keeps each 1px synapse a crisp, bright filament on the
-  // dark field (no width change — reads thinner + more defined, not blooming)
-  gl_FragColor = vec4(uLineColor * (1.22 + uBootEnergy * 0.38), vAlpha * uLineOpacity * (1.0 + uBootEnergy * 0.9));
+  // saturated blue synapse painted (not added) over the light ground — keep the
+  // colour true (no white-boost) and just lift alpha so 1px edges stay crisp.
+  gl_FragColor = vec4(uLineColor * (0.96 + uBootEnergy * 0.2), vAlpha * uLineOpacity * (1.7 + uBootEnergy * 0.9));
 }`;
 
 /* data pulses — a few bright motes streaming node→node along the edges. Each
@@ -231,7 +235,7 @@ void main(){
   float d = length(uv) * 2.0;
   if (d > 1.0) discard;
   float core = smoothstep(1.0, 0.0, d);
-  gl_FragColor = vec4(uPulseColor * (0.6 + core + uBootEnergy * 0.5), core * core * vAlpha);
+  gl_FragColor = vec4(uPulseColor * (0.82 + core * 0.28), core * core * vAlpha * 1.25);
 }`;
 
 const CORTEX_HUB_VERT = /* glsl */ `
@@ -254,10 +258,10 @@ void main(){
   pos.z += sin(uTime * 0.32 + aSeed * 9.0) * 0.45 * (0.25 + uBootEnergy * 0.45);
   vec4 mv = modelViewMatrix * vec4(pos, 1.0);
   gl_Position = projectionMatrix * mv;
-  float ps = aSize * (15.0 + uBootEnergy * 7.0 + fire * 10.0) * uPixelRatio * (80.0 / max(1.0, -mv.z));
-  gl_PointSize = clamp(ps, 4.0, 70.0 * uPixelRatio);
-  vColor = mix(aColor, uAccent, 0.22 + uBootEnergy * 0.12) * (1.0 + fire * 0.7);
-  vAlpha = uOpacity * aIntensity * (0.62 + pulse * 0.5 + uBootEnergy * 0.22 + fire * 0.5);
+  float ps = aSize * (9.5 + uBootEnergy * 4.5 + fire * 7.0) * uPixelRatio * (80.0 / max(1.0, -mv.z));
+  gl_PointSize = clamp(ps, 3.0, 52.0 * uPixelRatio);
+  vColor = mix(aColor, uAccent, 0.22 + uBootEnergy * 0.12) * (1.0 + fire * 0.35);
+  vAlpha = uOpacity * aIntensity * (0.5 + pulse * 0.34 + uBootEnergy * 0.18 + fire * 0.42);
 }`;
 
 const CORTEX_HUB_FRAG = /* glsl */ `
@@ -270,8 +274,8 @@ void main(){
   if (d > 1.0) discard;
   float core = smoothstep(1.0, 0.0, d);
   float halo = smoothstep(1.0, 0.18, d);
-  vec3 col = vColor * (0.55 + core * 1.25 + halo * 0.35);
-  gl_FragColor = vec4(col, vAlpha * (core * core * 0.72 + halo * 0.24));
+  vec3 col = vColor * (0.74 + core * 0.36);
+  gl_FragColor = vec4(col, vAlpha * (core * core * 0.74 + halo * 0.12));
 }`;
 
 const CORTEX_LINE_VERT = /* glsl */ `
@@ -294,7 +298,7 @@ uniform vec3 uAccent;
 uniform float uLineOpacity;
 varying float vAlpha;
 void main(){
-  gl_FragColor = vec4(uAccent * 1.18, vAlpha * uLineOpacity);
+  gl_FragColor = vec4(uAccent * 0.94, vAlpha * uLineOpacity * 1.45);
 }`;
 
 const CORTEX_PULSE_VERT = /* glsl */ `
@@ -335,7 +339,7 @@ void main(){
   float d = length(uv) * 2.0;
   if (d > 1.0) discard;
   float core = smoothstep(1.0, 0.0, d);
-  gl_FragColor = vec4(vColor * (0.6 + core * 1.3), core * core * vAlpha);
+  gl_FragColor = vec4(vColor * (0.84 + core * 0.3), core * core * vAlpha);
 }`;
 
 /* ---------------- dependency loading ---------------- */
@@ -393,8 +397,8 @@ const PROFILES = {
 // scene accents (cool, considered, distinct) — mirror the CSS --accent per
 // product. Used to tint the network mesh; nebula leans electric blue.
 const ACCENTS = {
-  logo: 0x6cc6ff,     // intro circuit / idle-logo mesh — crisp electric blue
-  nebula: 0x4aa8ff,
+  logo: 0x3358cc,     // intro circuit / idle-logo mesh — deep electric blue (reads on light)
+  nebula: 0x2f59d6,   // saturated blue synapses on the light ground
   'good-one': 0x38bdf8,
   'swico-ai': 0x818cf8,
   'grab-basket': 0xc084fc,
@@ -463,7 +467,7 @@ class Particles {
       transparent: true,
       depthWrite: false,
       depthTest: false,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
     });
 
     this.points = new THREE.Points(geo, mat);
@@ -521,7 +525,7 @@ class Particles {
       transparent: true,
       depthWrite: false,
       depthTest: false,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
     }));
     this.lines.frustumCulled = false;
     this.group.add(this.lines);
@@ -551,7 +555,7 @@ class Particles {
       uPixelRatio: this.uniforms.uPixelRatio,
       uPulseSpeed: { value: this.mobile ? 0.18 : 0.22 },
       uPulseIntensity: { value: this.mobile ? 0.62 : 0.82 },
-      uPulseColor: { value: new THREE.Color(0x4fe3ff) },   // bright cyan data pulses
+      uPulseColor: { value: new THREE.Color(0x1aa3d4) },   // saturated cyan data pulses (light ground)
     };
     this.pulses = new THREE.Points(pgeo, new THREE.ShaderMaterial({
       uniforms: this.pulseUniforms,
@@ -560,7 +564,7 @@ class Particles {
       transparent: true,
       depthWrite: false,
       depthTest: false,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
     }));
     this.pulses.frustumCulled = false;
     this.group.add(this.pulses);
@@ -585,7 +589,7 @@ class Particles {
     const accent = this.accents[name] || this.accents.nebula;
     if (accent) this.lineUniforms.uLineColor.value.copy(accent);
     if (accent && this.pulseUniforms) {
-      const ice = new THREE.Color(name === 'defect-detector' ? 0xffc2b8 : 0x8ff7ff);
+      const ice = new THREE.Color(name === 'defect-detector' ? 0xd98a76 : 0x2bb8e0);
       this.pulseUniforms.uPulseColor.value.copy(accent).lerp(ice, name === 'manas' ? 0.45 : 0.28);
     }
     const edges = this.edges[name];
@@ -777,7 +781,7 @@ class NeuralCortexOverlay {
       pos[o] = hub.x;
       pos[o + 1] = hub.y;
       pos[o + 2] = hub.z;
-      const c = hub.color || [0.9, 0.96, 1.12];
+      const c = hub.color || [0.30, 0.33, 0.85];
       col[o] = c[0];
       col[o + 1] = c[1];
       col[o + 2] = c[2];
@@ -798,7 +802,7 @@ class NeuralCortexOverlay {
       transparent: true,
       depthWrite: false,
       depthTest: false,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
     }));
     this.hubs.frustumCulled = false;
     this.group.add(this.hubs);
@@ -836,7 +840,7 @@ class NeuralCortexOverlay {
       transparent: true,
       depthWrite: false,
       depthTest: false,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
     }));
     this.lines.frustumCulled = false;
     this.group.add(this.lines);
@@ -887,7 +891,7 @@ class NeuralCortexOverlay {
       transparent: true,
       depthWrite: false,
       depthTest: false,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
     }));
     this.pulses.frustumCulled = false;
     this.group.add(this.pulses);
@@ -1173,12 +1177,12 @@ function meshBudget({ mobile = false, reducedMotion = false } = {}) {
     if (cores <= 4 || memory <= 3) return { nodes: 0, k: 0, maxSegments: 0, pulses: 0, lineOpacity: 0, maxDistance: 0 };
     // slightly brighter synapses so the network reads on the sparser mobile field
     // — same node/segment count (zero extra cost, no FPS-probe risk).
-    return { nodes: 260, k: 2, maxSegments: 460, pulses: reducedMotion ? 0 : 12, lineOpacity: 0.26, maxDistance: 10 };
+    return { nodes: 260, k: 2, maxSegments: 460, pulses: reducedMotion ? 0 : 12, lineOpacity: 0.26, maxDistance: 8 };
   }
   if (cores <= 4 || memory <= 4) {
-    return { nodes: 440, k: 3, maxSegments: 760, pulses: reducedMotion ? 0 : 22, lineOpacity: 0.24, maxDistance: 12 };
+    return { nodes: 440, k: 3, maxSegments: 760, pulses: reducedMotion ? 0 : 22, lineOpacity: 0.24, maxDistance: 9 };
   }
-  return { nodes: 560, k: 3, maxSegments: 900, pulses: reducedMotion ? 0 : 30, lineOpacity: 0.26, maxDistance: 12 };
+  return { nodes: 560, k: 3, maxSegments: 900, pulses: reducedMotion ? 0 : 30, lineOpacity: 0.26, maxDistance: 9 };
 }
 
 export async function initGL(canvas, options = {}) {
