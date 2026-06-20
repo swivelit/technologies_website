@@ -382,9 +382,9 @@ async function loadDeps({ lenis = true } = {}) {
 const PROFILES = {
   spawn: { uTurbAmp: 0.5, uTurbFreq: 0.05, uTurbSpeed: 0.08, uSize: 2.0 },
   logo: { uTurbAmp: 0.18, uTurbFreq: 0.1, uTurbSpeed: 0.1, uSize: 2.3 },
-  // calm neural field — very low turbulence + smaller, crisper points so the
-  // network reads as a stable node/synapse diagram, not a wavy smoke cloud
-  nebula: { uTurbAmp: 0.2, uTurbFreq: 0.05, uTurbSpeed: 0.035, uSize: 2.4 },
+  // the BRAIN: very low turbulence so the folded cortex holds its shape (the
+  // life comes from firing waves + a gentle group sway, not from billowing)
+  nebula: { uTurbAmp: 0.1, uTurbFreq: 0.05, uTurbSpeed: 0.03, uSize: 2.4 },
   // per-product idle character — low amp keeps the detailed shapes legible
   'good-one': { uTurbAmp: 0.42, uTurbFreq: 0.08, uTurbSpeed: 0.11, uSize: 2.6 },
   'swico-ai': { uTurbAmp: 0.58, uTurbFreq: 0.07, uTurbSpeed: 0.13, uSize: 2.9 },
@@ -467,7 +467,8 @@ class Particles {
       transparent: true,
       depthWrite: false,
       depthTest: false,
-      blending: THREE.NormalBlending,
+      // the brain lives on a dark hero stage: firing is GLOW, glow needs additive
+      blending: THREE.AdditiveBlending,
     });
 
     this.points = new THREE.Points(geo, mat);
@@ -1293,7 +1294,6 @@ export async function initGL(canvas, options = {}) {
   particles.formations.spawn = spawnFormation(particles.count);
   const nebula = nebulaFormation(particles.count, {
     radius: isMobile ? 27 : 30,
-    hubCount: isMobile ? 16 : 32,
     mobile: isMobile,
   });
   particles.formations.nebula = nebula;
@@ -1318,7 +1318,9 @@ export async function initGL(canvas, options = {}) {
   // precompute a nearest-neighbour network for the nebula + each product so the
   // mesh roughly follows the active shape
   if (mesh.nodes > 0) {
-    for (const name of ['nebula', 'good-one', 'swico-ai', 'grab-basket', 'manas', 'ai-business-assistant', 'defect-detector']) {
+    // NB: 'nebula' (the brain) is intentionally excluded — it carries NO edges.
+    // Communication through the brain is shown only by firing, never by lines.
+    for (const name of ['good-one', 'swico-ai', 'grab-basket', 'manas', 'ai-business-assistant', 'defect-detector']) {
       particles.setEdges(name, buildEdges(particles.formations[name].positions, particles.count, mesh));
     }
     // the logo carries a sparse circuit so the intro can collapse the mesh into
@@ -1335,6 +1337,8 @@ export async function initGL(canvas, options = {}) {
   html.classList.add('gl');
   html.classList.toggle('gl-mobile', isMobile);
   html.classList.remove('gl-loading');
+  // the hero/intro open on the DARK stage (toggled off when the light page scrolls up)
+  html.classList.add('is-hero-dark');
   applyProductScreenCounts();
 
   let lenis = null;
@@ -1495,6 +1499,13 @@ export async function initGL(canvas, options = {}) {
       cortexPulse(isMobile ? 0.2 : 0.26, isMobile ? 0.56 : 0.76, 1.1);
       particles.morphTo('nebula', { duration: motion.heroMorph, stagger: isMobile ? 0.3 : 0.4, burst: motion.heroBurst });
     },
+  });
+  // DARK HERO STAGE: on while the intro/hero are in view, off once the light
+  // product page scrolls up. The CSS fades .hero-stage + reskins the chrome.
+  ScrollTrigger.create({
+    trigger: '#work', start: 'top 72%',
+    onEnter: () => html.classList.remove('is-hero-dark'),
+    onLeaveBack: () => html.classList.add('is-hero-dark'),
   });
   // dim the stage across the whole product run; restore to full above it
   ScrollTrigger.create({
@@ -1674,6 +1685,8 @@ export async function initGL(canvas, options = {}) {
   if (hash && hash !== '#intro') {
     // a deep link to a product lands directly on that shape, else the nebula
     const id = hash.slice(1);
+    // deep links below the hero open on the LIGHT page (hero deep-link stays dark)
+    if (id !== 'hero') html.classList.remove('is-hero-dark');
     particles.setImmediate(particles.formations[id] ? id : 'nebula');
     particles.uniforms.uOpacity.value = motion.workOpacity;
     const productIndex = PRODUCTS.indexOf(id);

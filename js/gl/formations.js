@@ -37,6 +37,36 @@ function gauss() {
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v);
 }
 
+function smooth01(t) {
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  return t * t * (3 - 2 * t);
+}
+
+/* tiny hash-based 3D value noise + fbm — CPU-side gyri/sulci displacement for
+   the brain cortex (the GLSL snoise lives only in the shader). Smoothstep-
+   interpolated lattice, returns roughly [-1, 1]. */
+function hash3(x, y, z) {
+  const s = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+function vnoise3(x, y, z) {
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+  const xf = x - xi, yf = y - yi, zf = z - zi;
+  const u = smooth01(xf), v = smooth01(yf), w = smooth01(zf);
+  const L = (a, b, t) => a + (b - a) * t;
+  const c = (i, j, k) => hash3(xi + i, yi + j, zi + k);
+  return L(
+    L(L(c(0, 0, 0), c(1, 0, 0), u), L(c(0, 1, 0), c(1, 1, 0), u), v),
+    L(L(c(0, 0, 1), c(1, 0, 1), u), L(c(0, 1, 1), c(1, 1, 1), u), v),
+    w,
+  ) * 2 - 1;
+}
+function fbm3(x, y, z) {
+  let a = 0, amp = 0.5, f = 1;
+  for (let o = 0; o < 3; o++) { a += amp * vnoise3(x * f, y * f, z * f); f *= 2.03; amp *= 0.5; }
+  return a;
+}
+
 function loadImage(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -165,198 +195,142 @@ export async function logoFormation(url, count, { width = 30 } = {}) {
   return { positions, colors };
 }
 
-/* ---------- intelligence core (hero / idle field) ----------
-   ONE contained, coherent orb — a single luminous "mind" centred behind the
-   wordmark: a dense near-navy heart, an indigo body of neuron clusters, and a
-   defined spherical shell. Hubs are wired to their nearest neighbours so the
-   network reads as a LOCAL, dense knowledge graph / circuit — not sparse,
-   long constellation lines. Saturated indigo with blue/cyan accent wiring and a
-   rare warm spark. (Same export name + return contract as before, so every
-   'nebula' morph + the cortex overlay are untouched.) */
-export function nebulaFormation(count, { radius = 30, hubCount = 32, mobile = false } = {}) {
+/* ---------- brain (hero / idle field) ----------
+   A living NEURAL BRAIN: two folded cerebral hemispheres split by a central
+   longitudinal fissure, a dense gyri/sulci cortex shell over a sparse interior,
+   a denser cerebellum at the lower-back and a short brain-stem tail. Surface-
+   biased so the form reads as folded cortex, not a cloud. Cool indigo pigment;
+   the firing waves (engine) supply ALL the light / communication — there are NO
+   edges. Same export name + return contract (positions/colors/sizes); meta now
+   carries { cortexCount, extent } for the firing driver (no hubEdges). */
+export function nebulaFormation(count, { radius = 30, mobile = false } = {}) {
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const sizes = new Float32Array(count);
-  const place = tiltWriter(-0.14, 0.18, 0.05);            // gentle 3D tilt on the orb
-  // a CONTAINED core: the orb radius is well under the wordmark width so the
-  // whole network sits as one object behind the centre of the headline rather
-  // than filling the viewport with a screen-wide web.
-  const R = radius * 0.6;
-  const flatZ = 0.82;                                     // slightly flatten depth → disc-orb facing the camera
+  // 3/4 view leaning side-on: enough yaw to show the iconic lateral profile
+  // (domed cerebrum + cerebellum bump + descending stem) while the top fissure
+  // still splits the hemispheres above the wordmark.
+  const place = tiltWriter(-0.14, 0.8, 0.04);
 
-  // ---- neuron hubs: a 3D ball of centres, denser toward the heart ----
-  const NC = Math.max(10, hubCount | 0);
-  const cx = new Float32Array(NC), cy = new Float32Array(NC), cz = new Float32Array(NC);
-  const cw = new Float32Array(NC);                         // density weight (central hubs are denser)
-  for (let n = 0; n < NC; n++) {
-    const rr = R * 0.62 * Math.pow(Math.random(), 0.72);  // bias hubs toward the centre
-    const th = Math.random() * TAU;
-    const ph = Math.acos(2 * Math.random() - 1);
-    cx[n] = rr * Math.sin(ph) * Math.cos(th);
-    cy[n] = rr * Math.sin(ph) * Math.sin(th);
-    cz[n] = rr * Math.cos(ph) * flatZ;
-    const central = 1 - rr / (R * 0.62);                  // 1 at centre → 0 at the rim
-    cw[n] = 0.35 + central * 0.75 + Math.random() * 0.2;
-  }
-  const brightHubs = Math.max(6, Math.round(NC * 0.3));
-  const hubOrder = Array.from({ length: NC }, (_, i) => i)
-    .sort((a, b) => cw[b] - cw[a])
-    .slice(0, brightHubs);
-  let tot = 0; for (let n = 0; n < NC; n++) tot += cw[n];
-  const cum = new Float32Array(NC);
-  let acc = 0; for (let n = 0; n < NC; n++) { acc += cw[n] / tot; cum[n] = acc; }
-  const pickNode = () => {
-    const u = Math.random();
-    for (let n = 0; n < NC; n++) if (u <= cum[n]) return n;
-    return NC - 1;
-  };
-  // nearest neighbour of each centre — for filament routing
-  const near = new Int32Array(NC);
-  for (let a = 0; a < NC; a++) {
-    let bd = Infinity, bi = a;
-    for (let b = 0; b < NC; b++) {
-      if (b === a) continue;
-      const dx = cx[b] - cx[a], dy = cy[b] - cy[a], dz = cz[b] - cz[a];
-      const d = dx * dx + dy * dy + dz * dz;
-      if (d < bd) { bd = d; bi = b; }
-    }
-    near[a] = bi;
-  }
-  const hubPositions = new Float32Array(NC * 3);
-  for (let n = 0; n < NC; n++) place(hubPositions, n, cx[n], cy[n], cz[n]);
+  // cool indigo cortex; a brighter cool tint marks the sparser "active" neurons
+  const BRAIN = [0.30, 0.40, 0.74];
+  const BRAIN_HI = [0.46, 0.62, 0.96];
 
-  // local hub graph: link each hub to its K nearest neighbours, but ONLY within a
-  // distance cap → short, dense synapses (a knowledge graph), never long lines
-  // spanning the viewport. (The cortex overlay draws these uncapped, so the cap
-  // has to live here.)
-  const hubLinkMax2 = (R * 0.42) * (R * 0.42);
-  const hubPairs = [];
-  const seenHubPair = new Set();
-  for (let a = 0; a < NC; a++) {
-    const best = [];
-    for (let b = 0; b < NC; b++) {
-      if (a === b) continue;
-      const dx = cx[b] - cx[a], dy = cy[b] - cy[a], dz = cz[b] - cz[a];
-      best.push([b, dx * dx + dy * dy + dz * dz]);
-    }
-    best.sort((p, q) => p[1] - q[1]);
-    const links = cw[a] > 0.9 ? 4 : 3;
-    for (let k = 0; k < links; k++) {
-      const pair = best[k];
-      if (!pair || pair[1] > hubLinkMax2) continue;        // drop over-long synapses
-      const b = pair[0];
-      const lo = Math.min(a, b), hi = Math.max(a, b);
-      const key = `${lo}:${hi}`;
-      if (seenHubPair.has(key)) continue;
-      seenHubPair.add(key);
-      hubPairs.push([lo, hi]);
-    }
-  }
-  const hubs = Array.from({ length: NC }, (_, n) => {
-    const o = n * 3;
-    // dense/central hubs are near-navy mass; outer hubs are indigo / blue
-    const c = cw[n] > 0.95 ? NAVY : (hubOrder.includes(n) ? coolMix(0.2 + Math.random() * 0.4) : INDIGO);
-    return {
-      index: n,
-      x: hubPositions[o],
-      y: hubPositions[o + 1],
-      z: hubPositions[o + 2],
-      radius: 1.3 + cw[n] * 1.5,
-      intensity: 0.5 + cw[n] * 0.5,
-      color: c,
-    };
-  }).sort((a, b) => b.intensity - a.intensity);
+  // half-axes (x = width / hemispheres, y = height, z = front-back length).
+  // Brain proportions ~ L:W:H = 1 : 0.76 : 0.57 — clearly longer front-back than
+  // tall, scaled to sit in the envelope the old orb occupied (~0.6 * radius).
+  const S = radius * 0.55;
+  const AX = S * 0.80, AY = S * 0.60, AZ = S * 1.06;
+  const gap = S * 0.10;                    // longitudinal-fissure half-gap
+  const foldFreq = mobile ? 2.0 : 2.3;     // fewer, LARGER gyri read better than fine noise
+  const foldAmp = 0.2;                      // gyri/sulci depth
+  const shellJit = S * 0.018;               // cortex shell thickness
 
-  // one contained orb: dense navy heart → indigo body → defined shell, plus a
-  // little short-range wiring and a sparse contained halo for a breathing edge.
-  const core = Math.floor(count * 0.2);                   // dense near-navy heart (the mass)
-  const shell = core + Math.floor(count * 0.08);          // thin, subtle membrane at the rim
-  const hubCore = shell + Math.floor(count * 0.06);       // bright neuron hub cores (the visible nodes)
-  const fil = hubCore + Math.floor(count * 0.14);         // short wiring between hubs
-  const dustStart = count - Math.floor(count * 0.025);    // last 2.5% = sparse contained halo
+  const nCortex = Math.floor(count * 0.58);
+  const nCereb = Math.floor(count * 0.13);
+  const nStem = Math.floor(count * 0.05);
+  const nInner = Math.floor(count * 0.13);
+  // remainder = sparse halo hugging the cortex
 
-  for (let i = 0; i < count; i++) {
-    let x, y, z, b, col;
-    if (i < core) {
-      // dense near-navy heart — the dark mass, "solid intelligence" on the off-white
-      const rr = R * 0.34 * Math.pow(Math.random(), 0.62);
-      const th = Math.random() * TAU;
-      const ph = Math.acos(2 * Math.random() - 1);
-      x = rr * Math.sin(ph) * Math.cos(th);
-      y = rr * Math.sin(ph) * Math.sin(th);
-      z = rr * Math.cos(ph) * flatZ;
-      const k = 1 - rr / (R * 0.34);                      // 1 at centre
-      col = k > 0.32 ? NAVY : INDIGO;                     // mostly near-navy → dark mass
-      b = 0.84 + Math.random() * 0.16;
-      sizes[i] = 0.95 + Math.random() * 0.5 + k * 0.6;
-    } else if (i < shell) {
-      // soft membrane band at the rim — hints a spherical boundary without
-      // reading as a hard wireframe sphere
-      const rr = R * (0.72 + Math.random() * 0.24);
-      const th = Math.random() * TAU;
-      const ph = Math.acos(2 * Math.random() - 1);
-      x = rr * Math.sin(ph) * Math.cos(th);
-      y = rr * Math.sin(ph) * Math.sin(th);
-      z = rr * Math.cos(ph) * flatZ;
-      col = Math.random() < 0.55 ? INDIGO : coolMix(0.2 + Math.random() * 0.6);
-      b = 0.4 + Math.random() * 0.26;
-      sizes[i] = 0.55 + Math.random() * 0.28;
-    } else if (i < hubCore) {
-      // bright neuron hub cores — the visible NODES the shader scales + breathes
-      const a = hubOrder[(Math.random() * hubOrder.length) | 0];
-      const spread = 0.6 + Math.random() * 1.0;
-      x = cx[a] + gauss() * spread;
-      y = cy[a] + gauss() * spread;
-      z = cz[a] + gauss() * spread * 0.7;
-      const r = Math.random();
-      if (r < 0.5) col = INDIGO;
-      else if (r < 0.85) col = coolMix(0.15 + Math.random() * 0.5);
-      else if (r < 0.97) col = NAVY;
-      else col = SPARK;
-      b = 0.72 + Math.random() * 0.28;
-      sizes[i] = 1.6 + Math.random() * 1.2;
-    } else if (i < fil) {
-      // filament — short wiring between a centre and its nearest neighbour
-      const a = pickNode(), c = near[a];
-      const s = Math.random();
-      x = cx[a] + (cx[c] - cx[a]) * s + gauss() * 0.5;
-      y = cy[a] + (cy[c] - cy[a]) * s + gauss() * 0.5;
-      z = cz[a] + (cz[c] - cz[a]) * s + gauss() * 0.5;
-      col = coolMix(0.25 + Math.random() * 0.6);
-      b = 0.45 + Math.random() * 0.3;
-      sizes[i] = 0.66 + Math.random() * 0.26;
-    } else if (i < dustStart) {
-      // neuron body — gaussian blobs around weighted centres, indigo dominant
-      const a = pickNode();
-      const spread = 1.0 + Math.random() * 1.25;
-      x = cx[a] + gauss() * spread;
-      y = cy[a] + gauss() * spread;
-      z = cz[a] + gauss() * spread * 0.75;
-      const r = Math.random();
-      if (r < 0.16) { col = coolMix(Math.random()); b = 0.45 + Math.random() * 0.35; }
-      else if (r < 0.19) { col = SPARK; b = 0.5 + Math.random() * 0.3; }     // rare warm
-      else if (r < 0.30) { col = NAVY; b = 0.7 + Math.random() * 0.3; }
-      else { col = INDIGO; b = 0.5 + Math.random() * 0.34; }
-      sizes[i] = 0.78 + Math.random() * 0.4;
-    } else {
-      // sparse CONTAINED halo hugging the shell — a soft breathing edge,
-      // kept close to the orb so it never reads as a scattered starfield
-      const rr = R * (1.0 + Math.random() * 0.17);
-      const th = Math.random() * TAU;
-      const ph = Math.acos(2 * Math.random() - 1);
-      x = rr * Math.sin(ph) * Math.cos(th);
-      y = rr * Math.sin(ph) * Math.sin(th);
-      z = rr * Math.cos(ph) * flatZ;
-      col = INDIGO;
-      b = 0.12 + Math.random() * 0.16;
-      sizes[i] = 0.5 + Math.random() * 0.22;
-    }
-
+  let maxR2 = 1;
+  const put = (i, x, y, z, col, b, sz) => {
+    const r2 = x * x + y * y + z * z;
+    if (r2 > maxR2) maxR2 = r2;            // rotation preserves length → pre-tilt ok
     place(positions, i, x, y, z);
     setCol(colors, i, col[0] * b, col[1] * b, col[2] * b);
+    sizes[i] = sz;
+  };
+
+  // ---- folded cerebral cortex (both hemispheres) — placed FIRST so the engine
+  //      can sample firing origins from a real brain SURFACE vertex [0, nCortex)
+  for (let i = 0; i < nCortex; i++) {
+    let dx = gauss(), dy = gauss(), dz = gauss();
+    const il = 1 / Math.hypot(dx, dy, dz);
+    dx *= il; dy *= il; dz *= il;
+    const sgn = dx >= 0 ? 1 : -1;
+    // two octaves of noise → a gyri/sulci field. gyrus≈1 on the raised ridges,
+    // ≈0 down in the grooves. It drives BOTH the radius (folds) AND brightness
+    // (gyri glow, sulci go dark) so the folds read even through additive glow.
+    const f = fbm3(dx * foldFreq + 11.2, dy * foldFreq + 5.7, dz * foldFreq + 19.1);
+    const f2 = fbm3(dx * foldFreq * 2.1 - 3.1, dy * foldFreq * 2.1 + 8.8, dz * foldFreq * 2.1 - 2.2);
+    const gyrus = smooth01((f * 0.7 + f2 * 0.3) * 1.5 + 0.5);
+    const disp = 1 + foldAmp * (gyrus - 0.45);
+    let x = AX * dx * disp;
+    let y = AY * dy * disp;
+    let z = AZ * dz * disp;
+    // longitudinal fissure: split the hemispheres apart, widest on top, closing
+    // toward the base (where the hemispheres meet over the corpus callosum)
+    const topw = smooth01((dy + 0.2) / 0.8);
+    x += sgn * gap * (0.3 + 0.7 * topw);
+    if (y < 0) y *= 0.78;                  // flatten the underside
+    x += gauss() * shellJit; y += gauss() * shellJit; z += gauss() * shellJit;
+    // dark fissure groove: dim points that sit near the top midline
+    const fdim = 1 - topw * (1 - smooth01((Math.abs(x) / AX - 0.07) / 0.13));
+    const lit = (0.2 + 0.92 * gyrus) * fdim;
+    if (Math.random() < 0.085 && gyrus > 0.55) {
+      put(i, x, y, z, BRAIN_HI, (0.6 + 0.4 * gyrus) * fdim, 1.4 + Math.random() * 1.0); // active neuron on a crest
+    } else {
+      put(i, x, y, z, BRAIN, 0.16 + 0.72 * lit, 0.68 + Math.random() * 0.5);
+    }
   }
 
-  return { positions, colors, sizes, meta: { hubs, hubEdges: hubPairs } };
+  // ---- cerebellum: a small, dense, finely-foliated ball sitting clearly BELOW
+  //      and BEHIND the cerebrum (the bump that makes the profile read as a brain)
+  const ccx = 0, ccy = -AY * 0.78, ccz = -AZ * 0.9;
+  const cbx = AX * 0.46, cby = AY * 0.38, cbz = AZ * 0.34;
+  for (let i = nCortex; i < nCortex + nCereb; i++) {
+    let dx = gauss(), dy = gauss(), dz = gauss();
+    const il = 1 / Math.hypot(dx, dy, dz);
+    dx *= il; dy *= il; dz *= il;
+    // tight parallel foliation (the cerebellum's fine horizontal leaves)
+    const foli = 1 + 0.12 * Math.sin(dy * 26 + dz * 5) + 0.05 * fbm3(dx * 6, dy * 10, dz * 8);
+    const x = ccx + cbx * dx * foli + (dx >= 0 ? 1 : -1) * AX * 0.05;
+    const y = ccy + cby * dy * foli;
+    const z = ccz + cbz * dz * foli;
+    const lit = 0.4 + 0.45 * smooth01(0.5 * Math.sin(dy * 26 + dz * 5) + 0.5);
+    put(i, x, y, z, BRAIN, lit, 0.55 + Math.random() * 0.35);
+  }
+
+  // ---- brain-stem: a short tapering tail dropping down-forward from the base
+  const s0 = [0, -AY * 0.5, -AZ * 0.18], s1 = [0, -AY * 1.18, AZ * 0.16];
+  for (let i = nCortex + nCereb; i < nCortex + nCereb + nStem; i++) {
+    const t = Math.random();
+    const a = Math.random() * TAU;
+    const rr = (1 - t) * S * 0.13 + S * 0.035;
+    const x = s0[0] + (s1[0] - s0[0]) * t + Math.cos(a) * rr;
+    const y = s0[1] + (s1[1] - s0[1]) * t + gauss() * 0.3;
+    const z = s0[2] + (s1[2] - s0[2]) * t + Math.sin(a) * rr;
+    put(i, x, y, z, BRAIN, 0.34 + Math.random() * 0.26, 0.7 + Math.random() * 0.4);
+  }
+
+  // ---- sparse interior: gives the brain volume so firing reads as passing
+  //      THROUGH it, not just over a hollow shell
+  for (let i = nCortex + nCereb + nStem; i < nCortex + nCereb + nStem + nInner; i++) {
+    let dx = gauss(), dy = gauss(), dz = gauss();
+    const il = 1 / Math.hypot(dx, dy, dz);
+    dx *= il; dy *= il; dz *= il;
+    const rad = 0.15 + Math.random() * 0.6;
+    const x = AX * dx * rad;
+    let y = AY * dy * rad; if (y < 0) y *= 0.8;
+    const z = AZ * dz * rad;
+    put(i, x, y, z, BRAIN, 0.16 + Math.random() * 0.2, 0.5 + Math.random() * 0.3);
+  }
+
+  // ---- sparse halo hugging the cortex — a faint breathing edge, kept DIM so it
+  //      never fuzzes the silhouette into a round cloud
+  for (let i = nCortex + nCereb + nStem + nInner; i < count; i++) {
+    let dx = gauss(), dy = gauss(), dz = gauss();
+    const il = 1 / Math.hypot(dx, dy, dz);
+    dx *= il; dy *= il; dz *= il;
+    const disp = 1.04 + Math.random() * 0.13;
+    const sgn = dx >= 0 ? 1 : -1;
+    const x = AX * dx * disp + sgn * gap * 0.6;
+    let y = AY * dy * disp; if (y < 0) y *= 0.8;
+    const z = AZ * dz * disp;
+    put(i, x, y, z, BRAIN, 0.05 + Math.random() * 0.08, 0.4 + Math.random() * 0.22);
+  }
+
+  return { positions, colors, sizes, meta: { cortexCount: nCortex, extent: Math.sqrt(maxR2) } };
 }
 
 /* ============================================================

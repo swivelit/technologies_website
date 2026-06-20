@@ -156,6 +156,87 @@ html.gl-mobile .vignette {
     radial-gradient(58% 46% at 50% 36%, rgba(118, 150, 224, 0.09), transparent 70%);
 }
 
+/* ============================================================
+   DARK HERO STAGE
+   The homepage hero/intro sit on a DARK stage so the brain's additive firing
+   reads as glow; the page BELOW keeps the light theme. A fixed dark layer sits
+   BEHIND the (transparent) #gl canvas — html.is-hero-dark fades it in while the
+   hero is in view and out once the light page scrolls up. Everything here is
+   scoped to html.gl, so reduced-motion / no-gl / career.html never go dark.
+   ============================================================ */
+.hero-stage { display: none; }
+/* the light page bg lives on <html>; <body> goes transparent in GL so the dark
+   stage (a negative-z layer above the html bg, below the canvas) can show. */
+html.gl body { background: transparent; }
+html.gl .hero-stage {
+  display: block;
+  position: fixed; inset: 0; z-index: -1;   /* above the html bg, below #gl (z:0) */
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 42%, #13122c 0%, #06060e 72%);
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+html.gl.is-hero-dark .hero-stage { opacity: 1; }
+
+/* wordmark + hero headline are dark-ink (built for light); on the dark stage
+   flip them to a light/metallic gradient (white → pale blue) with a soft glow
+   so they read over the brain. The sheen sweep (::after) is unchanged. */
+html.gl .intro__wordmark {
+  background: linear-gradient(176deg, #ffffff 14%, #cfe0ff 52%, #8fb4ec);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  text-shadow: 0 2px 26px rgba(120, 170, 255, 0.32);
+  filter: drop-shadow(0 3px 18px rgba(40, 80, 170, 0.4));
+}
+html.gl .hero__title {
+  background: linear-gradient(176deg, #ffffff 16%, #d4e2ff 56%, #93b6ef);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  text-shadow: 0 2px 22px rgba(110, 160, 250, 0.28);
+}
+html.gl .intro__wordsub { color: #aeb9d6; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5); }
+html.gl .scene--hero .hero__sub { color: #97a4c2; }
+html.gl .scene--hero .eyebrow { color: #9fb0d4; }
+html.gl .scene--hero .eyebrow b { color: #cfe0ff; }
+
+/* the soft light "pockets" behind the headlines (built to lift dark text off a
+   busy core) become faint DARK pockets on the dark stage — they deepen the
+   backdrop right behind the type so the light headline pops over the firing.
+   (.is-hero-dark raises specificity so this beats the original light pockets
+   defined later in the file.) */
+html.gl.is-hero-dark .scene--intro .scene__hold::before,
+html.gl.is-hero-dark .scene--hero .scene__hold::before {
+  background:
+    radial-gradient(ellipse at center,
+      rgba(6, 8, 22, 0.55) 0%, rgba(6, 8, 22, 0.22) 50%, transparent 78%);
+  filter: blur(30px);
+}
+
+/* persistent chrome stays readable while the dark hero is in view; it reverts to
+   the normal dark-on-light styling automatically once is-hero-dark is removed. */
+html.gl.is-hero-dark .chrome--top::before {
+  background: linear-gradient(180deg, rgba(6, 7, 16, 0.92) 0%, rgba(6, 7, 16, 0.58) 42%, transparent 100%);
+}
+html.gl.is-hero-dark .brand__main {
+  background: linear-gradient(120deg, #ffffff 35%, #9db8e8);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+html.gl.is-hero-dark .brand__sub { color: #9aa8c6; }
+html.gl.is-hero-dark .pill {
+  background: rgba(20, 24, 44, 0.5);
+  border-color: rgba(170, 190, 230, 0.26);
+  color: #e6ecfb;
+}
+html.gl.is-hero-dark .pill:hover { border-color: #8fb4ec; color: #ffffff; box-shadow: 0 8px 22px -10px rgba(120, 170, 255, 0.55); }
+html.gl.is-hero-dark .pill--accent { border-color: rgba(143, 180, 236, 0.6); color: #cfe0ff; }
+html.gl.is-hero-dark .pill--accent:hover { background: #4f6dd8; color: #fff; }
+html.gl.is-hero-dark .windex a { color: rgba(206, 220, 248, 0.72); text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55); }
+html.gl.is-hero-dark .windex li.is-active a { color: var(--item-accent, #cfe0ff); }
+html.gl.is-hero-dark .btn-outline { color: rgba(206, 220, 248, 0.82); border-color: rgba(170, 190, 230, 0.26); }
+html.gl.is-hero-dark .progress__label { color: rgba(206, 220, 248, 0.72); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5); }
+html.gl.is-hero-dark .progress__track { background: rgba(170, 190, 230, 0.22); }
+
 main { position: relative; z-index: 2; }
 
 /* ---------- loader ---------- */

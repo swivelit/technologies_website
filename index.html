@@ -71,6 +71,10 @@
 </head>
 <body>
 
+  <!-- dark hero stage: a fixed backdrop BEHIND the transparent #gl canvas so the
+       brain's additive firing reads as glow. Fades out (is-hero-dark) once the
+       light page scrolls up. GL-only, so reduced-motion / no-gl stay light. -->
+  <div class="hero-stage" aria-hidden="true"></div>
   <canvas id="gl" aria-hidden="true"></canvas>
   <div class="vignette" aria-hidden="true"></div>
 
