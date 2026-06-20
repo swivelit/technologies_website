@@ -226,8 +226,9 @@ const PROFILES = {
   spawn: { uTurbAmp: 0.5, uTurbFreq: 0.05, uTurbSpeed: 0.08, uSize: 2.0 },
   logo: { uTurbAmp: 0.18, uTurbFreq: 0.1, uTurbSpeed: 0.1, uSize: 2.3 },
   // the neural FIELD: very low turbulence so the broad field holds its shape and
-  // clustering (the life comes from the firing waves, not from billowing)
-  nebula: { uTurbAmp: 0.1, uTurbFreq: 0.05, uTurbSpeed: 0.03, uSize: 2.4 },
+  // clustering, and FINE points (uSize 1.1) — restrained, understated. The life
+  // comes from the firing waves, not from big bright billowing.
+  nebula: { uTurbAmp: 0.1, uTurbFreq: 0.05, uTurbSpeed: 0.03, uSize: 1.1 },
   // per-product idle character — low amp keeps the detailed shapes legible
   'good-one': { uTurbAmp: 0.42, uTurbFreq: 0.08, uTurbSpeed: 0.11, uSize: 2.6 },
   'swico-ai': { uTurbAmp: 0.58, uTurbFreq: 0.07, uTurbSpeed: 0.13, uSize: 2.9 },
@@ -987,7 +988,7 @@ export async function initGL(canvas, options = {}) {
       fireGain(isMobile ? 0.4 : 0.55);
     },
     onLeaveBack: () => {
-      dim(isMobile ? 0.56 : 0.62);
+      dim(isMobile ? 0.42 : 0.46);     // restrained idle field when scrolling back up to the hero
       fireGain(1.0);
     },
   });
@@ -1330,14 +1331,14 @@ export async function initGL(canvas, options = {}) {
     // Firing stays OFF under reduced motion (updateFiring is a no-op, uFireGain 0).
     particles.setImmediate('nebula');
     particles.uniforms.uBootEnergy.value = 0.08;
-    gsap.to(particles.uniforms.uOpacity, { value: 0.58, duration: 1.0, ease: 'sine.out' });
+    gsap.to(particles.uniforms.uOpacity, { value: 0.45, duration: 1.0, ease: 'sine.out' });
     revealWordmark();
   } else {
     // staged boot: scattered nodes fade in and gather into the broad neural field,
     // then the firing waves RAMP IN as it settles and the HTML wordmark resolves.
     const T = isMobile ? 0.82 : 1;                    // mild speed-up on mobile
     // Stage 1 — nodes fade in and gather. Tuned to FRAME the wordmark, not bury it.
-    gsap.to(particles.uniforms.uOpacity, { value: 0.68, duration: 1.4 * T, ease: 'sine.out', delay: 0.15 });
+    gsap.to(particles.uniforms.uOpacity, { value: 0.48, duration: 1.4 * T, ease: 'sine.out', delay: 0.15 });
     gsap.to(particles.uniforms.uBootEnergy, { value: 0.78, duration: 1.05 * T, ease: 'sine.out', delay: 0.1 });
     gsap.to(particles.uniforms.uHubGlow, { value: isMobile ? 0.26 : 0.36, duration: 1.2 * T, ease: 'sine.out' });
     particles.morphTo('nebula', { duration: 1.9 * T, stagger: 0.4, burst: 0.05 });
@@ -1356,7 +1357,7 @@ export async function initGL(canvas, options = {}) {
     gsap.delayedCall(3.4 * T, () => {
       gsap.to(particles.uniforms.uBootEnergy, { value: 0.14, duration: 1.35, ease: 'sine.out' });
       gsap.to(particles.uniforms.uHubGlow, { value: isMobile ? 0.16 : 0.24, duration: 1.2, ease: 'sine.out' });
-      gsap.to(particles.uniforms.uOpacity, { value: 0.62, duration: 1.35, ease: 'sine.out' });
+      gsap.to(particles.uniforms.uOpacity, { value: 0.45, duration: 1.35, ease: 'sine.out' });
       gsap.to(particles.uniforms.uFireGain, { value: 1.0, duration: 1.8, ease: 'sine.out' });
     });
     // re-assert the wordmark is on (defensive, after the boot settles)

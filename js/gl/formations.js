@@ -219,8 +219,9 @@ export function nebulaFormation(count, { radius = 30, mobile = false } = {}) {
   const BRAIN = [0.30, 0.40, 0.74];
   const BRAIN_HI = [0.46, 0.62, 0.96];
 
-  // half-axes: WIDE in x, short in y, shallow real depth in z
-  const AX = radius * 1.4, AY = radius * 0.5, AZ = radius * 0.6;
+  // half-axes: WIDE in x, short in y, shallow real depth in z. Pulled in from
+  // 1.4 → 1.15 so the field doesn't fling edge-to-edge — calmer, more contained.
+  const AX = radius * 1.15, AY = radius * 0.5, AZ = radius * 0.6;
   const clFreq = mobile ? 1.5 : 1.8;       // low-freq structural clustering
 
   const nCore = Math.floor(count * 0.3);   // dense central CORE — firing origins live here
@@ -240,11 +241,12 @@ export function nebulaFormation(count, { radius = 30, mobile = false } = {}) {
 
   // structural density: a few soft denser regions + filaments. Two octaves at
   // different scales (the second stretched) read as connected clumps/strands,
-  // not even dust. Returns 0..1, deliberately contrasty (clear clumps vs gaps).
+  // not even dust. Contrast softened (1.85 → 1.15) so the clustering is CALM,
+  // not patchy/explosive. Returns 0..1.
   const cluster = (nx, ny, nz) => {
     const a = fbm3(nx * clFreq + 4.3, ny * clFreq * 1.7 + 1.9, nz * clFreq + 7.1);
     const b = fbm3(nx * clFreq * 2.4 - 2.0, ny * clFreq * 1.3 + 5.0, nz * clFreq * 2.4 + 1.0);
-    return smooth01((a * 0.62 + b * 0.38) * 1.85 + 0.42);
+    return smooth01((a * 0.62 + b * 0.38) * 1.15 + 0.42);
   };
 
   for (let i = 0; i < count; i++) {
@@ -263,16 +265,20 @@ export function nebulaFormation(count, { radius = 30, mobile = false } = {}) {
       if (core || Math.random() < 0.14 + 0.86 * cl) break;
     } while (tries < 5);
 
-    // brightness: brighter at the dense centre + on cluster crests; fades out
+    // brightness: brighter at the dense centre + on cluster crests; fades out.
+    // RESTRAINT PASS — everything is dim, fine indigo; the firing waves supply the
+    // drama. Brightness multipliers ~halved, "active" (HI) fractions ~halved, point
+    // sizes shrunk + tightened, and the periphery skews smallest + dimmest so it
+    // dissolves into the dark. No colour channel exceeds 1.0 (additive on dark).
     const rad = Math.exp(-(x * x / (AX * AX) + y * y / (AY * AY) + z * z / (AZ * AZ)) * 1.15);
     if (core) {
-      if (Math.random() < 0.16) put(i, x, y, z, BRAIN_HI, 0.58 + 0.42 * rad, 1.3 + Math.random() * 1.0);
-      else put(i, x, y, z, BRAIN, 0.34 + 0.52 * rad, 0.7 + Math.random() * 0.5);
-    } else if (Math.random() < 0.08 && cl > 0.5) {
-      put(i, x, y, z, BRAIN_HI, (0.5 + 0.45 * cl) * (0.4 + 0.6 * rad), 1.2 + Math.random() * 0.9);
+      if (Math.random() < 0.08) put(i, x, y, z, BRAIN_HI, 0.36 + 0.26 * rad, 0.8 + Math.random() * 0.35);
+      else put(i, x, y, z, BRAIN, 0.22 + 0.30 * rad, 0.5 + Math.random() * 0.28);
+    } else if (Math.random() < 0.04 && cl > 0.5) {
+      put(i, x, y, z, BRAIN_HI, (0.32 + 0.30 * cl) * (0.4 + 0.6 * rad), 0.75 + Math.random() * 0.35);
     } else {
       const lit = (0.1 + 0.95 * cl) * (0.3 + 0.8 * rad);
-      put(i, x, y, z, BRAIN, 0.08 + 0.82 * lit, 0.56 + Math.random() * 0.48);
+      put(i, x, y, z, BRAIN, 0.05 + 0.42 * lit, (0.4 + 0.28 * Math.random()) * (0.72 + 0.28 * rad));
     }
   }
 
