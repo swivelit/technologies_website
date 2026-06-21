@@ -8,6 +8,7 @@ import {
   spawnFormation, logoFormation, nebulaFormation,
   goodOneFormation, swicoFormation, grabBasketFormation,
   manasFormation, aiAssistantFormation, defectFormation,
+  buildEdges,
 } from './formations.js';
 import { scramble } from '../scramble.js';
 import { CORRIDOR_PRODUCTS, createCorridor } from './imagePlanes.js';
@@ -109,20 +110,19 @@ attribute vec3 aColTo;
 attribute float aSizeFrom;
 attribute float aSizeTo;
 attribute vec4 aSeed;
+attribute float aFire;            // per-neuron activation (0 = resting, → ~1 firing)
 uniform float uOpacity;
 uniform float uSize;
 uniform float uPixelRatio;
 uniform float uBootEnergy;
 uniform float uHubGlow;
 uniform float uMaxPoint;          // hard cap on point size (px, pre-DPR)
-uniform vec3 uFireOrigins[6];     // firing-wave centres (object space)
-uniform vec2 uFireWaves[6];       // x = shell radius, y = intensity
-uniform float uFireWidth;         // shell falloff width² (scaled to field size)
 uniform float uFireGain;          // global firing ramp (0 during boot → 1)
 varying vec3 vColor;
 varying float vAlpha;
 varying float vHub;
 varying float vDepth;
+varying float vFire;
 void main(){
   float t = morphProg(aSeed.w);
   vec3 pos = particlePos(aFrom, aTo, aSeed);
@@ -132,17 +132,12 @@ void main(){
   float hubPulse = 1.0 + hub * (0.12 + uBootEnergy * 0.26)
     * (0.5 + 0.5 * sin(uTime * (1.6 + aSeed.y * 0.7) + aSeed.x * 6.28318));
 
-  // FIRING: expanding activation shells ripple THROUGH the points — this is the
-  // only "communication" in the field (no lines anywhere). Each wave is a thin
-  // gaussian shell at radius uFireWaves[k].x from its origin; act peaks as the
-  // shell front sweeps past this particle. uFireWidth is scaled to the field so
-  // the shell stays ~1–2 particle-spacings thick at any size.
-  float act = 0.0;
-  for (int k = 0; k < 6; k++) {
-    float s = distance(pos, uFireOrigins[k]) - uFireWaves[k].x;
-    act += uFireWaves[k].y * exp(-(s * s) / uFireWidth);
-  }
-  act = clamp(act * uFireGain, 0.0, 1.5);
+  // FIRING: the signal PROPAGATES node-to-node along the neural adjacency. The JS
+  // cascade driver lights aFire on each neuron as the spark hops to it (sharp
+  // attack) then decays it smoothly — so a branching front races through the cloud
+  // instead of a concentric shell sweeping by. The shader just reads aFire here.
+  float act = clamp(aFire * uFireGain, 0.0, 1.5);
+  vFire = act;
 
   vec4 mv = modelViewMatrix * vec4(pos, 1.0);
   gl_Position = projectionMatrix * mv;
@@ -172,6 +167,7 @@ varying vec3 vColor;
 varying float vAlpha;
 varying float vHub;
 varying float vDepth;
+varying float vFire;
 uniform float uDepthNear;
 uniform float uDepthFar;
 void main(){
@@ -180,9 +176,14 @@ void main(){
   float d = length(uv) * 2.0;
   if (d > 1.0) discard;
   float core = smoothstep(1.0, 0.0, d);
+  // firing neuron: a sharp hot pin-core inside the soft body, so a lit node reads
+  // as a bright point flaring rather than just a bigger blob.
+  float hotCore = pow(core, 3.0);
   // depth-dim distant points for real depth (nearer = brighter)
   float depthDim = clamp((uDepthFar - vDepth) / (uDepthFar - uDepthNear), 0.4, 1.0);
-  gl_FragColor = vec4(vColor * (0.9 + core * 0.4), core * core * vAlpha * depthDim);
+  vec3 col = vColor * (0.9 + core * 0.4 + vFire * hotCore * 1.1);
+  float a = core * core * vAlpha * depthDim * (1.0 + vFire * 0.5);
+  gl_FragColor = vec4(col, a);
 }`;
 
 /* ---------------- dependency loading ---------------- */
@@ -274,11 +275,11 @@ class Particles {
     geo.setAttribute('aSizeTo', new THREE.BufferAttribute(new Float32Array(count), 1));
     geo.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 4));
 
-    // firing waves: 6 expanding activation shells. The uniforms hold their live
-    // origins (object space) + (radius, intensity); the JS driver advances them.
-    const fireOrigins = [];
-    const fireWaves = [];
-    for (let k = 0; k < 6; k++) { fireOrigins.push(new THREE.Vector3()); fireWaves.push(new THREE.Vector2(0, 0)); }
+    // per-neuron activation: the cascade driver writes 1.0 when a node fires and
+    // decays it each frame; the shader reads it as the firing glow. Updated often.
+    const aFire = new THREE.BufferAttribute(new Float32Array(count), 1);
+    aFire.setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute('aFire', aFire);
 
     this.uniforms = {
       uTime: { value: 0 },
@@ -294,9 +295,6 @@ class Particles {
       uBootEnergy: { value: 0 },
       uHubGlow: { value: mobile ? 0.18 : 0.28 },
       uMaxPoint: { value: mobile ? 26 : 30 },           // cap so close firing never blows out
-      uFireOrigins: { value: fireOrigins },
-      uFireWaves: { value: fireWaves },
-      uFireWidth: { value: 6 },                          // shell falloff width² (set per formation)
       uFireGain: { value: 0 },                           // global firing ramp (0 during boot)
       uDepthNear: { value: 28 },
       uDepthFar: { value: 96 },
@@ -321,18 +319,23 @@ class Particles {
     this.group = new THREE.Group();
     this.group.add(this.points);
 
-    // firing-wave driver state (origins are written straight into the uniforms).
-    // RARE, natural signals: like a real brain, only 1–2 fire every ~20s, at most
-    // a couple on screen at once, each propagating out and fading with long quiet
-    // gaps between. Slots start IDLE; the scheduler spawns into free slots.
+    // firing driver state. RARE, natural signals: like a real brain, only 1–2 fire
+    // every ~20s, at most a couple on screen at once. Each is a CASCADE — a spark
+    // that lights a seed neuron then hops node-to-node along the cached adjacency,
+    // branching and dying out, each lit neuron flaring then fading. Long quiet gaps.
     this.fire = {
-      origins: fireOrigins,
-      waves: Array.from({ length: 6 }, () => ({ r: 0, max: 1, speed: 1, active: false })),
-      src: null, srcCount: 0, extent: 20,
+      aFire: aFire.array,            // the geometry attribute backing array
+      aFireAttr: aFire,
+      adjacency: null,               // Map<nodeIndex, neighbourIndex[]> for active formation
+      seeds: null,                   // node indices that have neighbours (cascade seeds)
+      coreCount: this.count,
+      cascades: [],                  // live cascades (each a branching front)
+      lit: new Set(),                // nodes with aFire > 0 (decayed each frame)
+      time: 0,
       gapMin: 10, gapMax: 20,        // seconds between signal events
-      maxConcurrent: 2,              // never more than this on screen at once
-      doubleChance: 0.3,            // chance an event fires a quick second signal
-      activeCount: 0, nextSpawn: 3,  // first signal arrives shortly after load
+      maxConcurrent: 2,              // never more than this travelling at once
+      doubleChance: 0.3,             // chance an event fires a quick second signal
+      nextSpawn: 3,                  // first signal arrives shortly after load
     };
   }
 
@@ -346,94 +349,125 @@ class Particles {
     return this._defaultSizes;
   }
 
-  /* point the firing driver at the active formation: sample wave origins from its
-     leading CORE slice (meta.coreCount) and scale the shell + wave radius to its
-     extent so signals sweep ACROSS the whole shape. */
+  /* point the firing driver at the active formation: build (once, cached) a kNN
+     adjacency over its leading CORE slice (meta.coreCount) so the cascade can hop
+     neuron-to-neuron, then reset all activation to resting. */
   _setFireForActive(name) {
     const f = this.formations[name];
     if (!f) return;
-    if (f._extent == null) {
-      let m = 1; const p = f.positions;
-      for (let i = 0; i < p.length; i += 3) {
-        const r2 = p[i] * p[i] + p[i + 1] * p[i + 1] + p[i + 2] * p[i + 2];
-        if (r2 > m) m = r2;
-      }
-      f._extent = Math.sqrt(m);
+    const coreCount = Math.max(2, (f.meta && f.meta.coreCount) || this.count);
+    if (!f._adj) f._adj = this._buildAdjacency(f.positions, coreCount);
+
+    const fr = this.fire;
+    fr.adjacency = f._adj.adjacency;
+    fr.seeds = f._adj.seeds;
+    fr.coreCount = coreCount;
+    fr.cascades.length = 0;
+    fr.lit.clear();
+    fr.aFire.fill(0);
+    fr.aFireAttr.needsUpdate = true;
+    fr.time = 0;
+    fr.nextSpawn = 2 + Math.random() * 2;   // first signal 2–4s out
+  }
+
+  /* kNN adjacency over the CORE neurons: reuse buildEdges to get nearest-neighbour
+     pairs, then fold them into a per-node neighbour list the cascade walks. Capped
+     node count keeps the O(n²) build cheap; cached per formation. */
+  _buildAdjacency(positions, coreCount) {
+    const nodes = Math.min(coreCount, 1400);
+    const edges = buildEdges(positions, coreCount, { nodes, k: 4, maxSegments: nodes * 4 });
+    const adjacency = new Map();
+    const seeds = [];
+    for (let e = 0; e < edges.length; e += 2) {
+      const a = edges[e], b = edges[e + 1];
+      let la = adjacency.get(a);
+      if (!la) { la = []; adjacency.set(a, la); seeds.push(a); }
+      let lb = adjacency.get(b);
+      if (!lb) { lb = []; adjacency.set(b, lb); seeds.push(b); }
+      la.push(b); lb.push(a);
     }
-    const extent = (f.meta && f.meta.extent) || f._extent;
-    const coreCount = (f.meta && f.meta.coreCount) || this.count;
-    this.fire.src = f.positions;
-    this.fire.srcCount = Math.max(1, coreCount);
-    this.fire.extent = extent;
-    // shell ~1–2 particle-spacings thick, derived from the field size (not hardcoded)
-    const w = extent * 0.06;
-    this.uniforms.uFireWidth.value = Math.max(0.6, w * w);
-    // start fully quiet: every slot idle at (0,0). The first signal is scheduled a
-    // few seconds out so it arrives shortly after load — not instantly, not never.
-    const f2 = this.fire;
-    for (let k = 0; k < 6; k++) {
-      f2.waves[k].active = false;
-      this.uniforms.uFireWaves.value[k].set(0, 0);
-    }
-    f2.activeCount = 0;
-    f2.nextSpawn = 2 + Math.random() * 2;   // 2–4s
+    return { adjacency, seeds };
   }
 
-  /* index of a free (idle) wave slot, or -1 if all are busy */
-  _freeWave() {
-    const ws = this.fire.waves;
-    for (let k = 0; k < ws.length; k++) if (!ws[k].active) return k;
-    return -1;
+  /* start one cascade: a spark seeded at a random core neuron that will hop along
+     the adjacency, branching and dying out. */
+  _spawnCascade() {
+    const f = this.fire;
+    if (!f.seeds || f.seeds.length === 0) return;
+    const seed = f.seeds[(Math.random() * f.seeds.length) | 0];
+    f.cascades.push({
+      queue: [{ node: seed, fireAt: f.time, depth: 0 }],
+      fired: new Set(),
+      firedCount: 0,
+      maxFired: 60 + ((Math.random() * 60) | 0),   // 60–120 nodes
+      maxDepth: 14,
+    });
   }
 
-  /* light up one wave: origin at a random core vertex, sweeping out from r=0.
-     Slowed so each signal takes ~4–6s to sweep across the wider field and fade. */
-  _spawnWave(k) {
-    const f = this.fire, w = f.waves[k];
-    const i = (Math.random() * f.srcCount) | 0;
-    const o = f.origins[k];
-    if (f.src) o.set(f.src[i * 3], f.src[i * 3 + 1], f.src[i * 3 + 2]);
-    else o.set(0, 0, 0);
-    w.max = f.extent * (1.7 + Math.random() * 0.6);       // ~2× extent → sweeps across
-    w.speed = f.extent * (0.3 + Math.random() * 0.15);     // slower → graceful sweep
-    w.r = 0;
-    w.active = true;
-    f.activeCount++;
-    this.uniforms.uFireWaves.value[k].set(0, 0);
-  }
-
-  /* advance ONLY active waves; each expands 0 → ~2× extent, intensity attacks then
-     fades, and when it completes the slot goes idle (0,0) — no auto-respawn, so the
-     field is fully quiet between signals. A scheduler drips in rare new signals. */
+  /* advance the firing: decay every lit neuron, step each live cascade so the spark
+     hops to 1–3 unfired neighbours per node, and schedule rare new cascades. Writes
+     the aFire attribute so the shader lights the travelling front. */
   updateFiring(dt) {
     if (this.reducedMotion) return;
     const f = this.fire;
-    if (!f.src) return;
+    if (!f.adjacency) return;
+    f.time += dt;
+    const now = f.time;
+    const arr = f.aFire;
+    let dirty = false;
 
-    for (let k = 0; k < 6; k++) {
-      const w = f.waves[k];
-      if (!w.active) continue;            // idle slots stay quiet at (0,0)
-      w.r += w.speed * dt;
-      if (w.r >= w.max) {                 // signal has swept out + faded → extinguish
-        w.active = false;
-        f.activeCount = Math.max(0, f.activeCount - 1);
-        this.uniforms.uFireWaves.value[k].set(0, 0);
-        continue;
+    // decay: each lit neuron flares then fades (~0.7s) — sharp attack, smooth tail.
+    const decay = Math.exp(-dt / 0.7);
+    if (f.lit.size) {
+      for (const n of f.lit) {
+        let v = arr[n] * decay;
+        if (v < 0.01) { v = 0; f.lit.delete(n); }
+        arr[n] = v;
       }
-      const ph = w.r / w.max;
-      const inten = Math.pow(1 - ph, 1.3) * Math.min(1, ph / 0.12);
-      this.uniforms.uFireWaves.value[k].set(w.r, inten);
+      dirty = true;
     }
 
-    // scheduler: rare signal events with long quiet gaps. ~1–2 signals per 20s.
+    // step cascades: fire every due node, branch to a few unfired neighbours.
+    for (let c = f.cascades.length - 1; c >= 0; c--) {
+      const cas = f.cascades[c];
+      const next = [];
+      for (const item of cas.queue) {
+        if (item.fireAt > now) { next.push(item); continue; }
+        if (cas.fired.has(item.node)) continue;
+        if (cas.firedCount >= cas.maxFired || item.depth > cas.maxDepth) continue;
+        arr[item.node] = 1;                         // light it up (sharp attack)
+        f.lit.add(item.node);
+        cas.fired.add(item.node);
+        cas.firedCount++;
+        dirty = true;
+        const nbrs = f.adjacency.get(item.node);
+        if (nbrs && nbrs.length) {
+          const want = 1 + ((Math.random() * 3) | 0);    // hop to 1–3 neighbours
+          let added = 0;
+          // small random offset so branches aren't always the same neighbours
+          const start = (Math.random() * nbrs.length) | 0;
+          for (let s = 0; s < nbrs.length && added < want; s++) {
+            const nb = nbrs[(start + s) % nbrs.length];
+            if (cas.fired.has(nb)) continue;
+            const hop = 0.05 + Math.random() * 0.07;       // 0.05–0.12s per hop
+            next.push({ node: nb, fireAt: now + hop, depth: item.depth + 1 });
+            added++;
+          }
+        }
+      }
+      cas.queue = next;
+      if (next.length === 0) f.cascades.splice(c, 1);     // front died out
+    }
+
+    if (dirty) f.aFireAttr.needsUpdate = true;
+
+    // scheduler: rare signal events with long quiet gaps. ~1–2 cascades per 20s.
     f.nextSpawn -= dt;
     if (f.nextSpawn > 0) return;
-    if (f.activeCount < f.maxConcurrent) {
-      const k = this._freeWave();
-      if (k >= 0) this._spawnWave(k);
-      // sometimes a quick second signal, then a long gap; otherwise straight to the gap
-      if (Math.random() < f.doubleChance && f.activeCount < f.maxConcurrent) {
-        f.nextSpawn = 1.5 + Math.random() * 1.5;             // 1.5–3s
+    if (f.cascades.length < f.maxConcurrent) {
+      this._spawnCascade();
+      if (Math.random() < f.doubleChance && f.cascades.length < f.maxConcurrent) {
+        f.nextSpawn = 1.5 + Math.random() * 1.5;           // a quick second signal
       } else {
         f.nextSpawn = f.gapMin + Math.random() * (f.gapMax - f.gapMin);
       }

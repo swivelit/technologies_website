@@ -219,14 +219,14 @@ export function nebulaFormation(count, { radius = 30, mobile = false } = {}) {
   const BRAIN = [0.30, 0.40, 0.74];
   const BRAIN_HI = [0.46, 0.62, 0.96];
 
-  // half-axes: WIDE in x, short in y, shallow real depth in z. Spread the field
-  // across the hero (1.15 → 1.6) so it reads as a broad neural field that
-  // dissolves into the dark, NOT a compact brain-ish blob. meta.extent follows
-  // AX, so the firing waves sweep the full wider span.
-  const AX = radius * 1.6, AY = radius * 0.55, AZ = radius * 0.6;
+  // half-axes: WIDE in x, short in y, shallow real depth in z. A broad neural
+  // field that fills the hero side-to-side (moderate spread so it stays cohesive)
+  // and feathers out at the rim. meta.extent follows AX so the firing adjacency
+  // spans the full width.
+  const AX = radius * 1.4, AY = radius * 0.55, AZ = radius * 0.6;
   const clFreq = mobile ? 1.5 : 1.8;       // low-freq structural clustering
 
-  const nCore = Math.floor(count * 0.3);   // dense central CORE — firing origins live here
+  const nCore = Math.floor(count * 0.3);   // CORE neurons — the firing-cascade graph lives here
 
   const put = (i, x, y, z, col, b, sz) => {
     place(positions, i, x, y, z);
@@ -253,34 +253,33 @@ export function nebulaFormation(count, { radius = 30, mobile = false } = {}) {
 
   for (let i = 0; i < count; i++) {
     const core = i < nCore;
-    // CORE neurons cluster tight at the centre; the broad FIELD spreads wide and
-    // fades. Both are gaussian, so density peaks at centre and dissolves to edges.
-    const spread = core ? 0.34 : 0.62;
-    let x = 0, y = 0, z = 0, cl = 0, tries = 0;
-    do {
-      const nx = cg() * spread, ny = cg() * spread, nz = cg() * spread;
-      x = AX * nx; y = AY * ny; z = AZ * nz;
-      cl = cluster(nx, ny, nz);
-      tries++;
-      // rejection on the clustering field → denser clumps + emptier gaps WITHOUT
-      // distorting the gaussian envelope. Core is accepted immediately.
-      if (core || Math.random() < 0.14 + 0.86 * cl) break;
-    } while (tries < 5);
+    // EVEN fill: sample uniformly in the unit disk so the mass reads the same from
+    // side to side (no bright centre), scaled onto the wide field ellipse. z gets a
+    // shallow gaussian depth so the plane has thickness without changing the even
+    // screen density. Both core + field share the spread so cascades can travel the
+    // full width node-to-node.
+    let ux = 0, uy = 0, rr = 1;
+    do { ux = Math.random() * 2 - 1; uy = Math.random() * 2 - 1; rr = ux * ux + uy * uy; } while (rr > 1);
+    const radial = Math.sqrt(rr);
+    const x = AX * ux, y = AY * uy, z = AZ * cg() * 0.45;
+    const nx = ux, ny = uy, nz = z / AZ;
+    const cl = cluster(nx, ny, nz);
+    // soft feather on the outer ~15% ONLY — flat across the body, dissolving at the
+    // rim so there's no boundary but also no centre hotspot.
+    const edge = 1 - smooth01((radial - 0.85) / 0.15);
 
-    // brightness: brighter at the dense centre + on cluster crests; fades out.
-    // RESTRAINT PASS — everything is dim, fine indigo; the firing waves supply the
-    // drama. Brightness multipliers ~halved, "active" (HI) fractions ~halved, point
-    // sizes shrunk + tightened, and the periphery skews smallest + dimmest so it
-    // dissolves into the dark. No colour channel exceeds 1.0 (additive on dark).
-    const rad = Math.exp(-(x * x / (AX * AX) + y * y / (AY * AY) + z * z / (AZ * AZ)) * 1.15);
+    // RESTRAINT PASS, lifted: still fine, dim indigo — the firing supplies the drama
+    // — but the resting field is now clearly VISIBLE, not blank. Brightness is even
+    // across the body (driven by clustering, not a centre gaussian) and only dims at
+    // the feathered rim. Nodes stay FINE (brighter, not bigger).
     if (core) {
-      if (Math.random() < 0.08) put(i, x, y, z, BRAIN_HI, 0.36 + 0.26 * rad, 0.8 + Math.random() * 0.35);
-      else put(i, x, y, z, BRAIN, 0.22 + 0.30 * rad, 0.5 + Math.random() * 0.28);
+      if (Math.random() < 0.08) put(i, x, y, z, BRAIN_HI, (0.42 + 0.22 * cl) * edge, 0.8 + Math.random() * 0.35);
+      else put(i, x, y, z, BRAIN, (0.30 + 0.40 * (0.4 + 0.6 * cl)) * edge, 0.5 + Math.random() * 0.28);
     } else if (Math.random() < 0.04 && cl > 0.5) {
-      put(i, x, y, z, BRAIN_HI, (0.32 + 0.30 * cl) * (0.4 + 0.6 * rad), 0.75 + Math.random() * 0.35);
+      put(i, x, y, z, BRAIN_HI, (0.34 + 0.30 * cl) * edge, 0.75 + Math.random() * 0.35);
     } else {
-      const lit = (0.1 + 0.95 * cl) * (0.3 + 0.8 * rad);
-      put(i, x, y, z, BRAIN, 0.05 + 0.42 * lit, (0.4 + 0.28 * Math.random()) * (0.72 + 0.28 * rad));
+      const lit = (0.45 + 0.55 * cl) * edge;
+      put(i, x, y, z, BRAIN, 0.12 + 0.50 * lit, (0.4 + 0.28 * Math.random()) * (0.78 + 0.22 * edge));
     }
   }
 
