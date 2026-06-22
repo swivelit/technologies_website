@@ -17,7 +17,7 @@ const AboutSection = () => (
         {/* Left: Text Content */}
         <div className="reveal-left">
           <div className="label">Who We Are</div>
-          <h2 className="h2">About Swivel <em>Technology</em></h2>
+          <h2 className="h2">About Swivel <em>Technologies</em></h2>
           <p className="body-lg">
             Swivel Technologies is a fast-growing technology company dedicated to delivering innovative digital solutions and customized services. 
             The company develops its own digital platforms while also partnering with businesses to create technology that improves efficiency, drives growth, and supports innovation.
@@ -55,7 +55,7 @@ const AboutSection = () => (
         >
           <img
             src={aboutImg}
-            alt="Swivel Technology - Digital Innovation"
+            alt="Swivel Technologies - Digital Innovation"
             style={{
               width: '90%',
               maxWidth: '400px',

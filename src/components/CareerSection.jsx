@@ -82,7 +82,7 @@ const CareerSection = () => {
         <h2 className="career-main-title">Join Our Team</h2>
         <div className="career-title-line" />
         <p className="career-subtitle">
-          Build your future with Swivel Technology. We create opportunities for talented people
+          Build your future with Swivel Technologies. We create opportunities for talented people
           in technology, marketing, and innovation.
         </p>
       </div>

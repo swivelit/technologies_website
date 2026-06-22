@@ -3,7 +3,7 @@ const Footer = () => (
     <div className="footer-top">
       <div className="footer-brand">
         <a className="logo" href="#">
-          <span className="logo-name">Swivel <span>Technology</span></span>
+          <span className="logo-name">Swivel <span>Technologies</span></span>
         </a>
         <p>We build innovative digital solutions for entrepreneurs, startups and small businesses across India.</p>
       </div>
@@ -19,23 +19,23 @@ const Footer = () => (
       <div className="footer-col">
         <h5>Product</h5>
         <ul>
-          <li><a href="#grab">Grab Basket</a></li>
-          <li><a href="#">Pricing</a></li>
-          <li><a href="#">Features</a></li>
-          <li><a href="#">Support</a></li>
+          <li><a href="/grab-basket">Grab Basket</a></li>
+          <li><a href="/good-one">Good One</a></li>
+          <li><a href="/swico-ai">Swico AI</a></li>
+          <li><a href="/defect-detector">Defect Detector</a></li>
         </ul>
       </div>
       <div className="footer-col">
         <h5>Contact</h5>
         <ul>
           <li>Chennai, Tamil Nadu 600116</li>
-          <li><a href="mailto:jeygroups@gmail.com">jeygroups@gmail.com</a></li>
+          <li><a href="mailto:swivel.technology@swivelit.in">swivel.technology@swivelit.in</a></li>
           <li><a href="tel:+918438074230">+91 84380 74230</a></li>
         </ul>
       </div>
     </div>
     <div className="footer-bottom">
-      <span className="footer-copy">© 2026 Swivel Technology | All Rights Reserved</span>
+      <span className="footer-copy">© 2026 Swivel Technologies | All Rights Reserved</span>
       <div className="socials">
         <a href="https://www.instagram.com/swivel.technologies" className="social-btn" target="_blank" rel="noreferrer" aria-label="Instagram">
           <svg viewBox="0 0 24 24">
