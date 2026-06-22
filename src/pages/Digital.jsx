@@ -249,6 +249,9 @@ function AnalyticsCard() {
 }
 
 function DigitalMarketingPage() {
+  useEffect(() => {
+  document.title = "Digital Marketing | Swivel Technologies";
+  }, []);
   return (
     <div className="digital-page sw-page">
     {/* ---------------- HERO ---------------- */}

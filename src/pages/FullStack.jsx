@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import "../css/FullStack.css";
 
 import img1 from "../assets/FullStack-1.jpg";
@@ -103,6 +103,10 @@ const services = [
 
 function FullStackPage() {
   const [hovered, setHovered] = useState(null);
+
+  useEffect(() => {
+  document.title = "Full Stack | Swivel Technologies";
+  }, []);
 
   return (
     <div className="fullstack-page">

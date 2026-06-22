@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import "../css/Customer.css";
 import support1 from "../assets/Customer-Support-1.jpg";
 import support2 from "../assets/Customer-Support-2.jpg";
@@ -137,6 +137,9 @@ const advantages = [
 ];
 
 function CustomerSupportPage() {
+  useEffect(() => {
+  document.title = "Technical Support | Swivel Technologies";
+  }, []);
   return (
     <div className="customer-page">
 

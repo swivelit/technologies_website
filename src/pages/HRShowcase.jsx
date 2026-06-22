@@ -54,6 +54,11 @@ function FadeIn({ children, delay = 0, className = "" }) {
 }
 
 export default function HRShowcase() {
+
+  useEffect(() => {
+  document.title = "Administration and HR | Swivel Technologies";
+  }, []);
+
   return (
     <div className="hr-page">
 

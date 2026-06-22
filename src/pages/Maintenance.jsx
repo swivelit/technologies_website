@@ -64,6 +64,11 @@ function FadeIn({ children, delay = 0, className = "" }) {
 }
 
 export default function Maintenance() {
+
+  useEffect(() => {
+  document.title = "Maintenance | Swivel Technologies";
+  }, []);
+
   return (
     <div className="maint-page">
 

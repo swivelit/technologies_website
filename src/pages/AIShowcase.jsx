@@ -26,6 +26,10 @@ export default function AIShowcase() {
     return () => obs.disconnect();
   }, []);
 
+  useEffect(() => {
+  document.title = "Artificial Intelligence Research Team | Swivel Technologies";
+  }, []);
+
   return (
     <div className="page">
 
