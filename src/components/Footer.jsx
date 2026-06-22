@@ -19,10 +19,10 @@ const Footer = () => (
       <div className="footer-col">
         <h5>Product</h5>
         <ul>
-          <li><a href="/grab-basket">Grab Basket</a></li>
-          <li><a href="/good-one">Good One</a></li>
-          <li><a href="/swico-ai">Swico AI</a></li>
-          <li><a href="/defect-detector">Defect Detector</a></li>
+          <li><a href="/grab-basket" target="_blank">Grab Basket</a></li>
+          <li><a href="/good-one" target="_blank">Good One</a></li>
+          <li><a href="/swico-ai" target="_blank">Swico AI</a></li>
+          <li><a href="/defect-detector" target="_blank">Defect Detector</a></li>
         </ul>
       </div>
       <div className="footer-col">
