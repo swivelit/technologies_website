@@ -5,7 +5,8 @@ const Footer = () => (
         <a className="logo" href="#">
           <span className="logo-name">Swivel <span>Technologies</span></span>
         </a>
-        <p>We build innovative digital solutions for entrepreneurs, startups and small businesses across India.</p>
+        <p>Swivel Technologies empowers businesses with innovative digital solutions,automation and technology-driven 
+          growth opportunities.</p>
       </div>
       <div className="footer-col">
         <h5>Pages</h5>
