@@ -1,0 +1,222 @@
+/* ===========================
+   DigitalTransformationBrandPresence.module.css
+   =========================== */
+
+/* ---- HERO ---- */
+.hero {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #ff6a00 0%, #ff8c38 40%, #fff3e6 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+  text-align: center;
+}
+
+.heroBadge {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+  padding: 6px 16px;
+  margin-bottom: 32px;
+  display: inline-block;
+}
+
+.heroTitle {
+  font-size: clamp(36px, 6.5vw, 82px);
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.05;
+  max-width: 900px;
+  margin: 0 auto 28px;
+  letter-spacing: -0.02em;
+}
+
+.heroTitleAccent {
+  color: #1a1a1a;
+}
+
+.heroSubtitle {
+  font-size: clamp(16px, 2.2vw, 22px);
+  color: rgba(255, 255, 255, 0.92);
+  max-width: 640px;
+  line-height: 1.65;
+  margin: 0 auto 48px;
+}
+
+.heroTags {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.heroTag {
+  background: #fff;
+  color: #ff6a00;
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 999px;
+  padding: 8px 20px;
+  letter-spacing: 0.04em;
+}
+
+/* ---- INTRO ---- */
+.intro {
+  background: #fff;
+  padding: 80px 24px 60px;
+  max-width: 820px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.introParagraph {
+  font-size: clamp(16px, 2vw, 20px);
+  color: #444;
+  line-height: 1.8;
+}
+
+/* ---- DIVIDER ---- */
+.divider {
+  max-width: 120px;
+  height: 4px;
+  background: #ff6a00;
+  border-radius: 2px;
+  margin: 0 auto 80px;
+}
+
+/* ---- FEATURES ---- */
+.features {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+
+.featuresHeading {
+  font-size: clamp(26px, 4vw, 42px);
+  font-weight: 800;
+  color: #1a1a1a;
+  text-align: center;
+  margin-bottom: 64px;
+  letter-spacing: -0.01em;
+}
+
+.featureList {
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+}
+
+.featureItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+  border-left: 4px solid #ff6a00;
+  padding-left: 28px;
+}
+
+.featureNumber {
+  min-width: 48px;
+  height: 48px;
+  background: #ff6a00;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 18px;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.featureTitle {
+  font-size: clamp(18px, 2.5vw, 24px);
+  font-weight: 800;
+  color: #1a1a1a;
+  margin-bottom: 10px;
+}
+
+.featureDesc {
+  font-size: clamp(14px, 1.6vw, 17px);
+  color: #555;
+  line-height: 1.75;
+  margin: 0;
+}
+
+/* ---- GALLERY ---- */
+.gallery {
+  background: #fff8f2;
+  padding: 80px 24px;
+}
+
+.galleryInner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.galleryHeading {
+  font-size: clamp(22px, 3.5vw, 36px);
+  font-weight: 800;
+  color: #1a1a1a;
+  text-align: center;
+  margin-bottom: 48px;
+  letter-spacing: -0.01em;
+}
+
+.galleryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 32px;
+}
+
+.galleryCard {
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(255, 106, 0, 0.12);
+  border: 2px solid #ffe0c8;
+}
+
+.galleryImage {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.galleryCardBody {
+  padding: 20px 24px;
+  background: #fff;
+}
+
+.galleryCardTitle {
+  margin: 0;
+  font-weight: 700;
+  font-size: 15px;
+  color: #ff6a00;
+}
+
+.galleryCardDesc {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #777;
+  line-height: 1.6;
+}
+
+/* ---- FOOTER ---- */
+.footer {
+  background: #ff6a00;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.footerText {
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  margin: 0;
+}

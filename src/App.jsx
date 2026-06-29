@@ -21,7 +21,10 @@ import DefectDetectorPage from "./pages/DefectDetectorPage";
 import HRShowcase from "./pages/HRShowcase";
 import Maintenance from "./pages/Maintenance";
 import AIShowcase from "./pages/AIShowcase";
-
+import WebDevelopmentPage from "./pages/DigitalPlatformShowcase";
+import EcommercePage from "./pages/EcommerceSolutions";
+import AutomationPage from "./pages/business automation";
+import DigitalPresencePage from "./pages/DigitalTransformationShowcase";
 function HomePage() {
   return (
     <>
@@ -56,6 +59,10 @@ function App() {
         <Route path="/customer-support" element={<CustomerSupport />}/>
         <Route path="/full-stack" element={<FullStack />}/>
         <Route path="/ai-research" element={<AIShowcase />}/>
+        <Route path="/web-development" element={<WebDevelopmentPage />} />
+        <Route path="/ecommerce" element={<EcommercePage />} />
+        <Route path="/automation" element={<AutomationPage />} />
+        <Route path="/digital-presence" element={<DigitalPresencePage />} />
       </Routes>
     </BrowserRouter>
   );
