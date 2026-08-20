@@ -1546,3 +1546,207 @@ html.no-gl .scene--contact::before {
   }
   html.js [data-reveal] { opacity: 1; transform: none; }
 }
+/* =====================================================
+ASSIST + DETECT SWIVEL - MOBILE DASHBOARD
+FULL IMAGE + CENTERED PHONE + RESPONSIVE
+===================================================== */
+
+/* =====================================================
+FIX - ALLOW FULL PHONE / DEVICE TO SHOW
+===================================================== */
+
+.scene--product .product__card {
+overflow: visible !important;
+}
+
+/* =====================================================
+MOBILE DEVICES
+===================================================== */
+
+@media (max-width: 768px) {
+
+/* Main screen/card */
+.scene--product .card__screen {
+overflow: hidden;
+display: flex;
+align-items: center;
+justify-content: center;
+width: 100%;
+height: auto;
+min-height: 100%;
+-webkit-overflow-scrolling: touch;
+}
+
+/* Device / phone area */
+.scene--product .device--screen {
+position: relative;
+inset: auto;
+
+flex: 0 0 auto;   
+
+width: 100%;   
+max-width: 100%;   
+height: auto;   
+max-height: none;   
+
+display: flex;   
+align-items: center;   
+justify-content: center;   
+
+margin: 0 auto;
+
+}
+
+/* Screen container */
+.scene--product .device--screen .device__sc {
+position: relative;
+
+width: 100%;   
+height: auto;   
+  
+/* CHANGED ONLY THIS */  
+aspect-ratio: 1 / 1;   
+
+overflow: hidden;   
+
+background: #ffffff;   
+
+display: flex;   
+align-items: center;   
+justify-content: center;   
+
+margin: 0 auto;
+
+}
+
+/* Dashboard image */
+.scene--product .device--screen .device__sc img {
+position: absolute;
+
+top: 50%;   
+left: 50%;   
+
+width: 100%;   
+height: 100%;   
+
+max-width: none;   
+max-height: none;   
+
+transform: translate(-50%, -50%);   
+
+object-fit: contain;   
+object-position: center center;   
+
+display: block;   
+
+margin: 0;
+
+}
+}
+
+/* =====================================================
+SMALL MOBILE DEVICES
+===================================================== */
+
+@media (max-width: 480px) {
+
+.scene--product .card__screen {
+width: 100%;
+overflow: hidden;
+
+display: flex;   
+align-items: center;   
+justify-content: center;
+
+}
+
+.scene--product .device--screen {
+width: 100%;
+max-width: 100%;
+
+display: flex;   
+align-items: center;   
+justify-content: center;   
+
+margin-left: auto;   
+margin-right: auto;
+
+}
+
+.scene--product .device--screen .device__sc {
+width: 100%;
+max-width: 100%;
+
+/* CHANGED ONLY THIS */  
+aspect-ratio: 1 / 1;   
+
+display: flex;   
+align-items: center;   
+justify-content: center;   
+
+margin-left: auto;   
+margin-right: auto;
+
+}
+
+.scene--product .device--screen .device__sc img {
+top: 50%;
+left: 50%;
+
+width: 100%;   
+height: 100%;   
+
+transform: translate(-50%, -50%);   
+
+object-fit: contain;   
+object-position: center center;
+
+}
+}
+
+/* =====================================================
+VERY SMALL PHONES
+===================================================== */
+
+@media (max-width: 360px) {
+
+.scene--product .card__screen {
+overflow: hidden;
+
+width: 100%;   
+display: flex;   
+justify-content: center;   
+align-items: center;
+
+}
+
+.scene--product .device--screen {
+width: 100%;
+max-width: 100%;
+
+margin: 0 auto;
+
+}
+
+.scene--product .device--screen .device__sc {
+width: 100%;
+max-width: 100%;
+
+/* CHANGED ONLY THIS */  
+aspect-ratio: 1 / 1;   
+
+margin: 0 auto;
+
+}
+
+.scene--product .device--screen .device__sc img {
+width: 100%;
+height: 100%;
+
+object-fit: contain;   
+object-position: center center;   
+
+transform: translate(-50%, -50%);
+
+}
+}.... Ithin pakaram entha replace aakkandee?
