@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 
-const API_URL = "https://swivel-career-platform-g0jn.onrender.com";
+const API_URL = "https://technologies-website-31kz.onrender.com";
 
 function Register() {
   const navigate = useNavigate();
