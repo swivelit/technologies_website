@@ -36,7 +36,7 @@ app.add_middleware(
         "http://[::1]:5175",
 
         # Deployed frontend
-        "https://swivel-career-platform.onrender.com",
+        "https://technologies-website-6gb7.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
