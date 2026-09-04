@@ -1,0 +1,417 @@
+#root {
+  min-height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f7f8fc;
+  color: #172033;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ---------- NAVBAR ---------- */
+
+.navbar {
+  height: 70px;
+  padding: 0 7%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  background: #ffffff;
+  border-bottom: 1px solid #e6e8ef;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.navbar-logo a {
+  font-size: 25px;
+  font-weight: 700;
+  color: #172033;
+}
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.navbar-links a {
+  font-size: 15px;
+  font-weight: 500;
+  color: #4b5568;
+  transition: 0.2s;
+}
+
+.navbar-links a:hover {
+  color: #315efb;
+}
+
+/* ---------- HOME ---------- */
+
+.hero {
+  min-height: 520px;
+  padding: 100px 20px 80px;
+  text-align: center;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  background: linear-gradient(
+    180deg,
+    #eef3ff 0%,
+    #f7f8fc 100%
+  );
+}
+
+.hero h1 {
+  max-width: 850px;
+  margin: 0;
+  font-size: 52px;
+  line-height: 1.12;
+  font-weight: 750;
+  letter-spacing: -1.5px;
+}
+
+.hero p {
+  max-width: 680px;
+  margin: 25px 0 35px;
+
+  font-size: 18px;
+  line-height: 1.7;
+  color: #657086;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+/* ---------- BUTTONS ---------- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 13px 24px;
+  border-radius: 8px;
+
+  background: #315efb;
+  color: white;
+
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.button:hover {
+  background: #244bd1;
+  transform: translateY(-1px);
+}
+
+.button.secondary {
+  background: white;
+  color: #315efb;
+  border: 1px solid #315efb;
+}
+
+.button.secondary:hover {
+  background: #eef3ff;
+}
+
+/* ---------- BENEFITS ---------- */
+
+.benefits {
+  padding: 75px 7%;
+  text-align: center;
+  background: white;
+}
+
+.benefits h2 {
+  margin: 0 0 40px;
+  font-size: 30px;
+}
+
+.benefit-list {
+  max-width: 1100px;
+  margin: auto;
+
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.benefit-list div {
+  padding: 28px 20px;
+
+  background: #f7f8fc;
+  border: 1px solid #e6e8ef;
+  border-radius: 12px;
+
+  font-weight: 600;
+  color: #344054;
+}
+
+/* ---------- GENERAL PAGES ---------- */
+
+.page {
+  max-width: 1100px;
+  margin: auto;
+  padding: 60px 25px;
+}
+
+.page h1 {
+  margin-bottom: 15px;
+  font-size: 38px;
+}
+
+.page p {
+  color: #657086;
+  line-height: 1.6;
+}
+
+/* ---------- PROJECTS ---------- */
+
+.project-grid {
+  margin-top: 35px;
+
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 25px;
+}
+
+.project-card {
+  padding: 25px;
+
+  background: white;
+  border: 1px solid #e6e8ef;
+  border-radius: 12px;
+
+  box-shadow: 0 5px 20px rgba(20, 30, 50, 0.05);
+}
+
+.project-card h2 {
+  margin-top: 0;
+  color: #172033;
+}
+
+.project-card p {
+  margin: 10px 0;
+}
+
+.project-card .button {
+  margin-top: 15px;
+}
+
+/* ---------- PROJECT DETAILS ---------- */
+
+.project-details {
+  margin-top: 30px;
+  padding: 30px;
+
+  background: white;
+  border: 1px solid #e6e8ef;
+  border-radius: 12px;
+}
+
+/* ---------- FORMS ---------- */
+
+form {
+  max-width: 450px;
+  margin-top: 30px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+input {
+  width: 100%;
+  padding: 14px 15px;
+
+  border: 1px solid #d6dae3;
+  border-radius: 8px;
+
+  font-size: 15px;
+  outline: none;
+}
+
+input:focus {
+  border-color: #315efb;
+}
+
+/* ---------- DASHBOARDS ---------- */
+
+.page section {
+  margin-top: 25px;
+  padding: 25px;
+
+  background: white;
+  border: 1px solid #e6e8ef;
+  border-radius: 12px;
+}
+
+/* ---------- MOBILE ---------- */
+
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 20px;
+  }
+
+  .navbar-links {
+    gap: 12px;
+  }
+
+  .navbar-links a {
+    font-size: 13px;
+  }
+
+  .hero {
+    padding: 70px 20px;
+  }
+
+  .hero h1 {
+    font-size: 38px;
+  }
+
+  .hero p {
+    font-size: 16px;
+  }
+
+  .benefit-list {
+    grid-template-columns: 1fr;
+  }
+
+  .project-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* ---------- AUTH PAGES ---------- */
+
+.auth-page {
+  min-height: calc(100vh - 70px);
+  background: #f7f8fc;
+
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+
+  padding: 90px 20px;
+}
+
+.auth-container {
+  width: 100%;
+  max-width: 560px;
+}
+
+.auth-container h1 {
+  margin: 0 0 40px;
+
+  font-size: 48px;
+  line-height: 1.2;
+  font-weight: 750;
+  letter-spacing: -1px;
+
+  color: #0b2545;
+}
+
+.auth-form {
+  max-width: none;
+  margin-top: 0;
+
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.auth-form input {
+  width: 100%;
+  box-sizing: border-box;
+
+  padding: 18px;
+
+  font-size: 18px;
+
+  border: 1px solid #d5dbe7;
+  border-radius: 10px;
+
+  background: white;
+  outline: none;
+}
+
+.auth-form input:focus {
+  border-color: #315efb;
+}
+
+.auth-button {
+  width: 100%;
+
+  padding: 17px;
+  margin-top: 2px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: #315efb;
+  color: white;
+
+  font-size: 18px;
+  font-weight: 600;
+
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.auth-button:hover {
+  background: #244bd1;
+}
+
+.auth-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.success-message {
+  margin-top: 20px;
+  font-size: 18px;
+  color: #26734d;
+}
+
+.error-message {
+  margin-top: 20px;
+  font-size: 18px;
+  color: #c62828;
+}
+.logout-button {
+  background: none;
+  border: none;
+  padding: 0;
+
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+
+  color: #4b5568;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  color: #315efb;
+}
